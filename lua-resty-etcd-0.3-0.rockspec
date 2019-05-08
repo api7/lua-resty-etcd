@@ -13,11 +13,11 @@ description = {
 dependencies = {
    "lua >= 5.1"
    "resty.http >= 0.13"
+   "typeof >= 0.1"
 }
 build = {
    type = "builtin",
    modules = {
-      ["resty.etcd"] = "lib/resty/etcd.lua",
-      ["resty.etcd.typeof"] = "lib/resty/etcd/typeof.lua"
+      ["resty.etcd"] = "lib/resty/etcd.lua"
    }
 }

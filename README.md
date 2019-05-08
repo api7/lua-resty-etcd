@@ -8,9 +8,10 @@ lua-resty-etcd
 ## Dependencies
 
 - lua-resty-http: https://github.com/ledgetech/lua-resty-http
+- lua-typeof: https://github.com/iresty/lua-typeof
 
 ```shell
-luarocks install lua-resty-http
+luarocks install lua-resty-http lua-typeof
 ```
 
 ## Create client object

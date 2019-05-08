@@ -1,6 +1,6 @@
 -- https://github.com/ledgetech/lua-resty-http
 local HttpCli = require "resty.http"
-local typeof = require "resty.etcd.typeof"
+local typeof = require "typeof"
 local encode_args = ngx.encode_args
 local setmetatable = setmetatable
 local decode_json, encode_json
@@ -199,7 +199,6 @@ local function set(self, key, val, attr)
             prevIndex = attr.prevIndex,
         }
     }
-    -- ngx.log(ngx.WARN, require("cjson").encode(opts))
 
     -- todo: check arguments
 
@@ -325,7 +324,6 @@ local function delete(self, key, attr)
     }
 
     -- todo: check arguments
-
     return _request("DELETE",
                     self.endpoints.full_prefix .. normalize(key),
                     opts, self.timeout)
