@@ -5,7 +5,7 @@ repeat_each(2);
 
 our $HttpConfig = <<'_EOC_';
     lua_socket_log_errors off;
-    lua_package_path '/usr/share/lua/5.1/?.lua;lib/?.lua;;';
+    lua_package_path 'lib/?.lua;/usr/share/lua/5.1/?.lua;;';
     init_by_lua_block {
         function check_res(data, err, val, err_msg)
             if err then
