@@ -277,3 +277,9 @@ getting the store statistics info.
 ```lua
 local res, err = cli:statsSelf()
 ```
+
+## Install
+
+```shell
+luarocks install lua-resty-etcd
+```
