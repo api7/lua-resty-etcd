@@ -43,7 +43,7 @@ qr{\d+.\d+.\d+}
 
 
 
-=== TEST 2: statsLeader
+=== TEST 2: stats_leader
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -51,7 +51,7 @@ qr{\d+.\d+.\d+}
             local etcd, err = require "resty.etcd" .new()
             check_res(etcd, err)
 
-            local res, err = etcd:statsLeader()
+            local res, err = etcd:stats_leader()
             check_res(res, err)
 
             -- ngx.say(require "cjson" .encode(res.body))
@@ -69,7 +69,7 @@ followers type: table
 
 
 
-=== TEST 3: statsSelf
+=== TEST 3: stats_self
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -77,7 +77,7 @@ followers type: table
             local etcd, err = require "resty.etcd" .new()
             check_res(etcd, err)
 
-            local res, err = etcd:statsSelf()
+            local res, err = etcd:stats_self()
             check_res(res, err)
 
             -- ngx.say(require "cjson" .encode(res.body))
@@ -95,7 +95,7 @@ GET /t
 
 
 
-=== TEST 4: statsStore
+=== TEST 4: stats_store
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -103,7 +103,7 @@ GET /t
             local etcd, err = require "resty.etcd" .new()
             check_res(etcd, err)
 
-            local res, err = etcd:statsStore()
+            local res, err = etcd:stats_store()
             check_res(res, err)
 
             -- ngx.log(ngx.WARN, require "cjson" .encode(res.body))

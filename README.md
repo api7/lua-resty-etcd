@@ -14,6 +14,12 @@ lua-resty-etcd
 luarocks install lua-resty-http lua-typeof
 ```
 
+## Install
+
+```shell
+luarocks install lua-resty-etcd
+```
+
 ## Create client object
 
 #### cli, err = Etcd.new([option:table])
@@ -42,9 +48,9 @@ local cli, err = require('resty.etcd').new()
 
 ## About the return values of client methods.
 
-client methods returns either a `HTTP Response Entity` or an `error string`.
+The client methods returns either a `HTTP Response Entity` or an `error string`.
 
-a `HTTP Response Entity` contains the following fields except `408` timeout status;
+`HTTP Response Entity` contains the following fields except `408` timeout status;
 
 - `status`: number - HTTP status code.
 - `header`: table - response header if `status` is not `408` timeout status.
@@ -53,7 +59,7 @@ a `HTTP Response Entity` contains the following fields except `408` timeout stat
 **Note:** a client method will decode a response body as a JSON string if a `Content-Type` response header value is a `application/json`.
 
 
-please refer the **etcd API documentaion** at - https://github.com/coreos/etcd for more details of a response entity.
+Please refer the **etcd API documentaion** at - https://github.com/coreos/etcd for more details of a response entity.
 
 
 ## Key-value operations
@@ -62,7 +68,7 @@ please refer the **etcd API documentaion** at - https://github.com/coreos/etcd f
 
 #### res, err = cli:get(key:string)
 
-get the value for key.
+Gets the value for key.
 
 ```lua
 local res, err = cli:get('/path/to/key')
@@ -70,26 +76,26 @@ local res, err = cli:get('/path/to/key')
 
 ### Set the key-value pair
 
-#### res, err = cli:set(key:string, val:JSON encodable value [, ttl:int])
+#### res, err = cli:set(key:string, val:JSON value [, ttl:int])
 
-set a key-value pair.
+Set a key-value pair.
 
 ```lua
 local res, err = cli:set('/path/to/key', 'val', 10)
 ```
 
-#### res, err = cli:setnx(key:string, val:JSON encodable value [, ttl:int])
+#### res, err = cli:setnx(key:string, val:JSON value [, ttl:int])
 
-set a key-value pair if that key does not exist.
+Set a key-value pair if that key does not exist.
 
 ```lua
 local res, err = cli:setnx('/path/to/key', 'val', 10)
 ```
 
 
-#### res, err = cli:setx(key:string, val:JSON encodable value [, ttl:int [, modifiedIndex:uint] ])
+#### res, err = cli:setx(key:string, val:JSON value [, ttl:int [, modified_index:uint] ])
 
-set a key-value pair when that key is exists.
+Set a key-value pair when that key is exists.
 
 ```lua
 local res, err = cli:setx('/path/to/key', 'val', 10)
@@ -97,21 +103,22 @@ local res, err = cli:setx('/path/to/key', 'val', 10)
 
 **Parameters**
 
-- `modifiedIndex`: uint - this argument to use to the `prevIndex` query of atomic operation.
+- `modified_index`: uint - this argument to use to the `prev_index` query of atomic operation.
 
 ```lua
 local res, err = cli:get('/path/to/key')
 
--- this operation will be failed if the `modifiedIndex` of specified key has already been updated by another client.
+-- this operation will be failed if the `modified_index` of specified key
+-- has already been updated by another client.
 res, err = cli:setx('/path/to/key', 'val', 10, res.body.node.modifiedIndex)
 ```
 
 
 ### Delete the key-value pair
 
-#### res, err = cli:delete(key:string [, val:JSON encodable value [, modifiedIndex:uint] ])
+#### res, err = cli:delete(key:string [, val:JSON value [, modified_index:uint] ])
 
-delete a key-value pair.
+Deletes a key-value pair.
 
 ```lua
 local res, err = cli:delete('/path/to/key')
@@ -119,19 +126,22 @@ local res, err = cli:delete('/path/to/key')
 
 **Parameters**
 
-- `val`: JSON encodable value - this argument to use to the `prevValue` query of atomic operation.
-- `modifiedIndex`: uint - this argument to use to the `prevIndex` query of atomic operation.
+- `val`: JSON value - this argument to use to the `prevValue` query of atomic operation.
+- `modified_index`: uint - this argument to use to the `prev_index` query of atomic operation.
 
 ```lua
 local res, err = cli:get('/path/to/key')
 
--- delete key-value pair if both of `value` and `modifiedIndex` has matched to the passed arguments
-res, err = cli:delete('/path/to/key', res.body.node.value, res.body.node.modifiedIndex)
+-- delete key-value pair if both of `value` and `modified_index` has matched
+-- to the passed arguments
+res, err = cli:delete('/path/to/key', res.body.node.value,
+                      res.body.node.modifiedIndex)
 
 -- delete key-value pair if `value` has matched to the passed value
 res, err = cli:delete('/path/to/key', res.body.node.value)
 
--- delete key-value pair if `modifiedIndex` has matched to the passed modifiedIndex
+-- delete key-value pair if `modified_index` has matched to the passed
+-- modifiedIndex
 res, err = cli:delete('/path/to/key', nil, res.body.node.modifiedIndex)
 
 ```
@@ -139,7 +149,7 @@ res, err = cli:delete('/path/to/key', nil, res.body.node.modifiedIndex)
 
 ### Wait the update of key.
 
-#### res, err = cli:wait(key:string [, modifiedIndex:uint [, timeout:uint] ])
+#### res, err = cli:wait(key:string [, modified_index:uint [, timeout:uint] ])
 
 ```lua
 local res, err = cli:wait('/path/to/key')
@@ -147,20 +157,20 @@ local res, err = cli:wait('/path/to/key')
 
 **Parameters**
 
-- `modifiedIndex`: uint - this argument to use to the `prevIndex` query of atomic operation.
+- `modified_index`: uint - this argument to use to the `prev_index` query of atomic operation.
 - `timeout`: uint - request timeout seconds. set 0 to disable timeout.
 
 ```lua
 
 local res, err = cli:get('/path/to/key')
 
--- Wait forever the update of key until that modifiedIndex of key has changed to modifiedIndex + 1
+-- Wait forever the update of key until that modifiedIndex of key has changed
+-- to modifiedIndex + 1
 res, err = cli:wait('/path/to/key', res.body.node.modifiedIndex + 1, 0)
 
--- Wait for 10 seconds the update of key until that modifiedIndex of key has changed to modifiedIndex + 2
+-- Wait for 10 seconds the update of key until that modifiedIndex of key has
+-- changed to modifiedIndex + 2
 res, err = cli:wait('/path/to/key', res.body.node.modifiedIndex + 2, 10)
-
-
 ```
 
 
@@ -183,7 +193,7 @@ local res, err = cli:readdir('/path/to/dir')
 
 #### res, err = cli:mkdir(key:string [, ttl:int])
 
-create a directory.
+Creates a directory.
 
 ```lua
 local res, err = cli:mkdir('/path/to/dir', 10)
@@ -191,7 +201,7 @@ local res, err = cli:mkdir('/path/to/dir', 10)
 
 #### res, err = cli:mkdirnx(key:string [, ttl:int])
 
-create a directory if that directory does not exist.
+Creates a directory if that directory does not exist.
 
 ```lua
 local res, err = cli:mkdirnx('/path/to/dir', 10)
@@ -209,10 +219,9 @@ local res, err = cli:rmdir('/path/to/dir')
 
 - `recursive`: boolean - remove all the contents under a directory.
 
-
 ### Wait the update of directory
 
-#### res, err = cli:waitdir(key:string [, modifiedIndex:uint [, timeout:uint] ])
+#### res, err = cli:waitdir(key:string [, modified_index:uint [, timeout:uint] ])
 
 ```lua
 local res, err = cli:waitdir('/path/to/dir')
@@ -220,67 +229,44 @@ local res, err = cli:waitdir('/path/to/dir')
 
 **Parameters**
 
-- `modifiedIndex`: uint - this argument to use to the `prevIndex` query of atomic operation.
+- `modified_index`: uint - this argument to use to the `prev_index` query of atomic operation.
 - `timeout`: uint - request timeout seconds. set 0 to disable timeout.
 
 
 ### Push a value into the directory
 
 
-#### res, err = cli:push(key:string, val:JSON encodable value [, ttl:int])
+#### res, err = cli:push(key:string, val:JSON value [, ttl:int])
 
-push a value into the specified directory.
+Pushs a value into the specified directory.
 
 ```lua
 local res, err = cli:mkdir('/path/to/dir')
 res, err = cli:push('/path/to/dir', 'val', 10)
 ```
 
-
 ## Get or set the cluster information
 
-the following client methods to use to get or set the cluster informations.
+The following client methods to use to get or set the cluster informations.
 
 ### Get the etcd version
 
 #### res, err = cli:version()
 
-getting the etcd version info.
-
-```lua
-local res, err = cli:version()
-```
+Gets the etcd version info.
 
 ### Get the cluster statistics
 
 the following client methods to use to get the cluster statistics information.
 
-#### res, err = cli:statsLeader()
+#### res, err = cli:stats_leader()
 
-getting the leader statistics info.
+Gets the leader statistics info.
 
-```lua
-local res, err = cli:statsLeader()
-```
+#### res, err = cli:stats_self()
 
-#### res, err = cli:statsSelf()
+Gets the self statistics info.
 
-getting the self statistics info.
+#### res, err = cli:stats_store()
 
-```lua
-local res, err = cli:statsSelf()
-```
-
-#### res, err = cli:statsStore()
-
-getting the store statistics info.
-
-```lua
-local res, err = cli:statsSelf()
-```
-
-## Install
-
-```shell
-luarocks install lua-resty-etcd
-```
+Gets the store statistics info.

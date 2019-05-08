@@ -1,5 +1,5 @@
 -- https://github.com/ledgetech/lua-resty-http
-local HttpCli = require "resty.http"
+local http = require "resty.http"
 local typeof = require "typeof"
 local encode_args = ngx.encode_args
 local setmetatable = setmetatable
@@ -113,9 +113,9 @@ function _M.new(opts)
                 http_host = http_host,
                 prefix = prefix,
                 version     = http_host .. '/version',
-                statsLeader = http_host .. '/v2/stats/leader',
-                statsSelf   = http_host .. '/v2/stats/self',
-                statsStore  = http_host .. '/v2/stats/store',
+                stats_leader = http_host .. '/v2/stats/leader',
+                stats_self   = http_host .. '/v2/stats/self',
+                stats_store  = http_host .. '/v2/stats/store',
                 keys        = http_host .. '/v2/keys',
             }
         },  mt)
@@ -124,7 +124,6 @@ end
     local content_type = {
         ["Content-Type"] = "application/x-www-form-urlencoded",
     }
-
 
 local function _request(method, uri, opts, timeout)
     local body
@@ -136,7 +135,7 @@ local function _request(method, uri, opts, timeout)
         uri = uri .. '?' .. encode_args(opts.query)
     end
 
-    local http_cli, err = HttpCli.new()
+    local http_cli, err = http.new()
     if err then
         return nil, err
     end
@@ -178,9 +177,9 @@ local function set(self, key, val, attr)
         end
     end
 
-    local prevExist
-    if attr.prevExist ~= nil then
-        prevExist = attr.prevExist and 'true' or 'false'
+    local prev_exist
+    if attr.prev_exist ~= nil then
+        prev_exist = attr.prev_exist and 'true' or 'false'
     end
 
     local dir
@@ -195,8 +194,8 @@ local function set(self, key, val, attr)
             dir = dir,
         },
         query = {
-            prevExist = prevExist,
-            prevIndex = attr.prevIndex,
+            prevExist = prev_exist,
+            prevIndex = attr.prev_index,
         }
     }
 
@@ -209,7 +208,7 @@ local function set(self, key, val, attr)
     end
 
     local res
-    res, err = _request(attr.inOrder and 'POST' or 'PUT',
+    res, err = _request(attr.in_order and 'POST' or 'PUT',
                         self.endpoints.full_prefix .. key,
                         opts, self.timeout)
     if err then
@@ -245,7 +244,7 @@ local function get(self, key, attr)
         opts = {
             query = {
                 wait = attr_wait,
-                waitIndex = attr.waitIndex,
+                waitIndex = attr.wait_index,
                 recursive = attr_recursive,
                 consistent = attr.consistent,   -- todo
             }
@@ -296,7 +295,7 @@ end
 
 
 local function delete(self, key, attr)
-    local val, err = attr.prevValue
+    local val, err = attr.prev_value
     if val ~= nil and type(val) ~= "number" then
         val, err = encode_json(val)
         if not val then
@@ -317,7 +316,7 @@ local function delete(self, key, attr)
     local opts = {
         query = {
             dir = attr_dir,
-            prevIndex = attr.prevIndex,
+            prevIndex = attr.prev_index,
             recursive = attr_recursive,
             prevValue = val,
         },
@@ -340,10 +339,10 @@ function _M.get(self, key)
 end
 
     local attr = {}
-function _M.wait(self, key, modifiedIndex, timeout)
+function _M.wait(self, key, modified_index, timeout)
     clear_tab(attr)
     attr.wait = true
-    attr.waitIndex = modifiedIndex
+    attr.wait_index = modified_index
     attr.timeout = timeout
 
     return get(self, key, attr)
@@ -358,12 +357,12 @@ function _M.readdir(self, key, recursive)
 end
 
 -- wait with recursive
-function _M.waitdir(self, key, modifiedIndex, timeout)
+function _M.waitdir(self, key, modified_index, timeout)
     clear_tab(attr)
     attr.wait = true
     attr.dir = true
     attr.recursive = true
-    attr.waitIndex = modifiedIndex
+    attr.wait_index = modified_index
     attr.timeout = timeout
 
     return get(self, key, attr)
@@ -375,16 +374,16 @@ function _M.version(self)
 end
 
 -- /stats
-function _M.statsLeader(self)
-    return _request('GET', self.endpoints.statsLeader, nil, self.timeout)
+function _M.stats_leader(self)
+    return _request('GET', self.endpoints.stats_leader, nil, self.timeout)
 end
 
-function _M.statsSelf(self)
-    return _request('GET', self.endpoints.statsSelf, nil, self.timeout)
+function _M.stats_self(self)
+    return _request('GET', self.endpoints.stats_self, nil, self.timeout)
 end
 
-function _M.statsStore(self)
-    return _request('GET', self.endpoints.statsStore, nil, self.timeout)
+function _M.stats_store(self)
+    return _request('GET', self.endpoints.stats_store, nil, self.timeout)
 end
 
 end -- do
@@ -403,17 +402,17 @@ end
 function _M.setnx(self, key, val, ttl)
     clear_tab(attr)
     attr.ttl = ttl
-    attr.prevExist = false
+    attr.prev_exist = false
 
     return set(self, key, val, attr)
 end
 
 -- set key-val and ttl if key is exists (update)
-function _M.setx(self, key, val, ttl, modifiedIndex)
+function _M.setx(self, key, val, ttl, modified_index)
     clear_tab(attr)
     attr.ttl = ttl
-    attr.prevExist = true
-    attr.prevIndex = modifiedIndex
+    attr.prev_exist = true
+    attr.prev_index = modified_index
 
     return set(self, key, val, attr)
 end
@@ -432,7 +431,7 @@ function _M.mkdirnx(self, key, ttl)
     clear_tab(attr)
     attr.ttl = ttl
     attr.dir = true
-    attr.prevExist = false
+    attr.prev_exist = false
 
     return set(self, key, nil, attr)
 end
@@ -441,7 +440,7 @@ end
 function _M.push(self, key, val, ttl)
     clear_tab(attr)
     attr.ttl = ttl
-    attr.inOrder = true
+    attr.in_order = true
 
     return set(self, key, val, attr)
 end
@@ -451,10 +450,10 @@ end -- do
 
 do
     local attr = {}
-function _M.delete(self, key, prevVal, modifiedIndex)
+function _M.delete(self, key, prev_val, modified_index)
     clear_tab(attr)
-    attr.prevValue = prevVal
-    attr.prevIndex = modifiedIndex
+    attr.prev_value = prev_val
+    attr.prev_index = modified_index
 
     return delete(self, key, attr)
 end
