@@ -16,6 +16,7 @@ local concat_tab = table.concat
 local tostring = tostring
 local select = select
 local ipairs = ipairs
+local type = type
 
 
 local _M = {}
@@ -155,10 +156,6 @@ local function _request(method, uri, opts, timeout)
         return nil, err
     end
 
-    ngx.log(ngx.WARN, "method: ", method)
-    ngx.log(ngx.WARN, "uri: ", uri)
-    ngx.log(ngx.WARN, "body: ", body)
-
     if res.status >= 500 then
         return nil, "invalid response code: " .. res.status
     end
@@ -285,8 +282,6 @@ local function get(self, key, attr)
                 return nil, err
             end
         end
-
-        ngx.log(ngx.WARN, "read addr: ", encode_json(res.body.node))
 
     -- get
     elseif res.status == 200 and res.body.node and
