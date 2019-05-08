@@ -144,7 +144,8 @@ local function _request(method, uri, opts, timeout)
         http_cli:set_timeout(timeout * 1000)
     end
 
-    local res, err = http_cli:request_uri(uri, {
+    local res
+    res, err = http_cli:request_uri(uri, {
         method = method,
         body = body,
         headers = content_type,
@@ -211,9 +212,10 @@ local function set(self, key, val, attr)
         return nil, "key should not be a slash"
     end
 
-    local res, err = _request(attr.inOrder and 'POST' or 'PUT',
-                              self.endpoints.full_prefix .. key,
-                              opts, self.timeout)
+    local res
+    res, err = _request(attr.inOrder and 'POST' or 'PUT',
+                        self.endpoints.full_prefix .. key,
+                        opts, self.timeout)
     if err then
         return nil, err
     end
@@ -459,7 +461,7 @@ do
 function _M.delete(self, key, prevVal, modifiedIndex)
     clear_tab(attr)
     attr.prevValue = prevVal
-    attr.prevIndex = premodifiedIndexvVal
+    attr.prevIndex = modifiedIndex
 
     return delete(self, key, attr)
 end
