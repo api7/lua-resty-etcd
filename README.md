@@ -1,7 +1,7 @@
 lua-resty-etcd
 ==============
 
-[etcd](https://github.com/membphis/lua-resty-etcd) client module under OpenResty, this module supports etcd API v2.
+[etcd](https://github.com/membphis/lua-resty-etcd) Nonblocking Lua etcd driver library for OpenResty, this module supports etcd API v2.
 
 ---
 
