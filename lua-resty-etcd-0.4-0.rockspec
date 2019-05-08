@@ -1,8 +1,8 @@
 package = "lua-resty-etcd"
-version = "0.3-0"
+version = "0.4-0"
 source = {
    url = "git://github.com/iresty/lua-resty-etcd",
-   tag = "v0.3"
+   tag = "v0.4"
 }
 description = {
    summary = "Nonblocking Lua etcd driver library for OpenResty",
