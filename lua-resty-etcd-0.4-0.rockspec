@@ -12,8 +12,8 @@ description = {
 }
 dependencies = {
    "lua >= 5.1",
-   "resty.http >= 0.13",
-   "typeof >= 0.1"
+   "lua-resty-http >= 0.13",
+   "lua-typeof >= 0.1"
 }
 build = {
    type = "builtin",
