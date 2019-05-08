@@ -8,111 +8,111 @@ local function typeof(cmp, arg)
     return cmp == type(arg)
 end
 
-local function typeofNil(...)
+local function typeof_nil(...)
     return typeof('nil', ...)
 end
 
-local function typeofBoolean(...)
+local function typeof_bool(...)
     return typeof('boolean', ...)
 end
 
-local function typeofString(...)
+local function typeof_str(...)
     return typeof('string', ...)
 end
 
-local function typeofNumber(...)
+local function typeof_num(...)
     return typeof('number', ...)
 end
 
-local function typeofFunction(...)
+local function typeof_fun(...)
     return typeof('function', ...)
 end
 
-local function typeofTable(...)
+local function typeof_table(...)
     return typeof('table', ...)
 end
 
-local function typeofThread(...)
+local function typeof_thread(...)
     return typeof('thread', ...)
 end
 
-local function typeofUserdata(...)
+local function typeof_userdata(...)
     return typeof('userdata', ...)
 end
 
-local function typeofFinite(arg)
+local function typeof_finite(arg)
     return type(arg) == 'number' and (arg < INFINITE_POS and arg > INFINITE_NEG)
 end
 
-local function typeofUnsigned(arg)
+local function typeof_unsigned(arg)
     return type(arg) == 'number' and (arg < INFINITE_POS and arg >= 0)
 end
 
-local function typeofInt(arg)
-    return typeofFinite(arg) and rawequal(floor(arg), arg)
+local function typeof_int(arg)
+    return typeof_finite(arg) and rawequal(floor(arg), arg)
 end
 
-local function typeofInt8(arg)
-    return typeofInt(arg) and arg >= -128 and arg <= 127
+local function typeof_int8(arg)
+    return typeof_int(arg) and arg >= -128 and arg <= 127
 end
 
-local function typeofInt16(arg)
-    return typeofInt(arg) and arg >= -32768 and arg <= 32767
+local function typeof_int16(arg)
+    return typeof_int(arg) and arg >= -32768 and arg <= 32767
 end
 
-local function typeofInt32(arg)
-    return typeofInt(arg) and arg >= -2147483648 and arg <= 2147483647
+local function typeof_int32(arg)
+    return typeof_int(arg) and arg >= -2147483648 and arg <= 2147483647
 end
 
-local function typeofUInt(arg)
-    return typeofUnsigned(arg) and rawequal(floor(arg), arg)
+local function typeof_uint(arg)
+    return typeof_unsigned(arg) and rawequal(floor(arg), arg)
 end
 
-local function typeofUInt8(arg)
-    return typeofUInt(arg) and arg <= 255
+local function typeof_uint8(arg)
+    return typeof_uint(arg) and arg <= 255
 end
 
-local function typeofUInt16(arg)
-    return typeofUInt(arg) and arg <= 65535
+local function typeof_uint16(arg)
+    return typeof_uint(arg) and arg <= 65535
 end
 
-local function typeofUInt32(arg)
-    return typeofUInt(arg) and arg <= 4294967295
+local function typeof_uint32(arg)
+    return typeof_uint(arg) and arg <= 4294967295
 end
 
-local function typeofNaN(arg)
+local function typeof_nan(arg)
     return arg ~= arg
 end
 
-local function typeofNon(arg)
+local function typeof_non(arg)
     return arg == nil or arg == false or arg == 0 or arg == '' or arg ~= arg
 end
 
 
 local _M = {
-    ['nil'] = typeofNil,
-    ['boolean'] = typeofBoolean,
-    ['string'] = typeofString,
-    ['number'] = typeofNumber,
-    ['function'] = typeofFunction,
-    ['table'] = typeofTable,
-    ['thread'] = typeofThread,
-    ['userdata'] = typeofUserdata,
-    ['finite'] = typeofFinite,
-    ['unsigned'] = typeofUnsigned,
-    ['int'] = typeofInt,
-    ['int8'] = typeofInt8,
-    ['int16'] = typeofInt16,
-    ['int32'] = typeofInt32,
-    ['uint'] = typeofUInt,
-    ['uint8'] = typeofUInt8,
-    ['uint16'] = typeofUInt16,
-    ['uint32'] = typeofUInt32,
-    ['nan'] = typeofNaN,
-    ['non'] = typeofNon,
+    ['nil'] = typeof_nil,
+    ['boolean'] = typeof_bool,
+    ['string'] = typeof_str,
+    ['number'] = typeof_num,
+    ['function'] = typeof_fun,
+    ['table'] = typeof_table,
+    ['thread'] = typeof_thread,
+    ['userdata'] = typeof_userdata,
+    ['finite'] = typeof_finite,
+    ['unsigned'] = typeof_unsigned,
+    ['int'] = typeof_int,
+    ['int8'] = typeof_int8,
+    ['int16'] = typeof_int16,
+    ['int32'] = typeof_int32,
+    ['uint'] = typeof_uint,
+    ['uint8'] = typeof_uint8,
+    ['uint16'] = typeof_uint16,
+    ['uint32'] = typeof_uint32,
+    ['nan'] = typeof_nan,
+    ['non'] = typeof_non,
     -- alias
-    ['Nil'] = typeofNil,
-    ['Function'] = typeofFunction
+    ['Nil'] = typeof_nil,
+    ['Function'] = typeof_fun
 }
 
 return _M
