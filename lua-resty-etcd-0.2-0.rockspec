@@ -1,7 +1,7 @@
 package = "lua-resty-etcd"
 version = "0.2-0"
 source = {
-   url = "git://github.com/pintsized/lua-resty-http",
+   url = "git://github.com/iresty/lua-resty-etcd",
    tag = "v0.2"
 }
 description = {
