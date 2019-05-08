@@ -1,7 +1,7 @@
-local normalize = require "resty.etcd.path" .normalize
-local typeof = require "resty.etcd.typeof"
 -- https://github.com/ledgetech/lua-resty-http
 local HttpCli = require "resty.http"
+local normalize = require "resty.etcd.path"
+local typeof = require "resty.etcd.typeof"
 local encode_args = ngx.encode_args
 local setmetatable = setmetatable
 local decode_json, encode_json
@@ -24,7 +24,7 @@ function _M.new(opts)
     elseif not typeof.table(opts) then
         return nil, 'opts must be table'
     end
-    
+
     local timeout = opts.timeout or 5000    -- 5 sec
     local http_host = opts.host or "http://127.0.0.1:2379"
     local ttl = opts.ttl or -1
@@ -146,22 +146,22 @@ local function set(self, key, val, attr)
     -- ngx.log(ngx.WARN, require("cjson").encode(opts))
 
     -- todo: check arguments
-    
+
     -- verify key
     key = normalize(key)
     if key == '/' then
         return nil, "key should not be a slash"
     end
-    
-    local res, err = _request(attr.inOrder and 'POST' or 'PUT', 
-                              self.endpoints.full_prefix .. key, 
+
+    local res, err = _request(attr.inOrder and 'POST' or 'PUT',
+                              self.endpoints.full_prefix .. key,
                               opts, self.timeout)
     if err then
         return nil, err
     end
-    
+
     -- get
-    if res.status < 300 and res.body.node and 
+    if res.status < 300 and res.body.node and
            not res.body.node.dir then
         res.body.node.value, err = decode_json(res.body.node.value)
         if err then
@@ -185,7 +185,7 @@ local function get(self, key, attr)
         if attr.recursive then
             attr_recursive = attr.recursive and 'true' or 'false'
         end
-        
+
         opts = {
             query = {
                 wait = attr_wait,
@@ -196,7 +196,7 @@ local function get(self, key, attr)
         }
     end
 
-    local res, err = _request("GET", 
+    local res, err = _request("GET",
                               self.endpoints.full_prefix .. normalize(key),
                               opts, attr and attr.timeout or self.timeout)
     if err then
@@ -206,7 +206,7 @@ local function get(self, key, attr)
     -- readdir
     if attr and attr.dir then
         -- set 404 not found if result node is not directory
-        if res.status == 200 and res.body.node and 
+        if res.status == 200 and res.body.node and
            not res.body.node.dir then
             res.status = 404
             res.body.node.dir = false
@@ -229,14 +229,14 @@ local function get(self, key, attr)
         ngx.log(ngx.WARN, "read addr: ", encode_json(res.body.node))
 
     -- get
-    elseif res.status == 200 and res.body.node and 
+    elseif res.status == 200 and res.body.node and
            not res.body.node.dir then
         res.body.node.value, err = decode_json(res.body.node.value)
         if err then
             return nil, err
         end
     end
-    
+
     return res
 end
 
@@ -271,8 +271,8 @@ local function delete(self, key, attr)
 
     -- todo: check arguments
 
-    return _request("DELETE", 
-                    self.endpoints.full_prefix .. normalize(key), 
+    return _request("DELETE",
+                    self.endpoints.full_prefix .. normalize(key),
                     opts, self.timeout)
 end
 
@@ -292,7 +292,7 @@ function _M.wait(self, key, modifiedIndex, timeout)
     attr.wait = true
     attr.waitIndex = modifiedIndex
     attr.timeout = timeout
-    
+
     return get(self, key, attr)
 end
 
@@ -312,7 +312,7 @@ function _M.waitdir(self, key, modifiedIndex, timeout)
     attr.recursive = true
     attr.waitIndex = modifiedIndex
     attr.timeout = timeout
-    
+
     return get(self, key, attr)
 end
 
