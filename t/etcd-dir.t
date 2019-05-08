@@ -1,16 +1,11 @@
-# vim:set ft= ts=4 sw=4 et fdm=marker:
-
-use Test::Nginx::Socket::Lua;
+use Test::Nginx::Socket::Lua 'no_plan';
 
 log_level('warn');
-
 repeat_each(2);
-
-plan tests => repeat_each() * (blocks() * 3);
 
 our $HttpConfig = <<'_EOC_';
     lua_socket_log_errors off;
-    lua_package_path 'lib/?.lua;;';
+    lua_package_path '/usr/share/lua/5.1/?.lua;lib/?.lua;;';
     init_by_lua_block {
         function check_res(data, err, val, err_msg, is_dir)
             if err then
@@ -30,17 +25,17 @@ our $HttpConfig = <<'_EOC_';
 
             if err_msg then
                 if err_msg ~= data.body.message then
-                    ngx.say("failed to check error msg, got:", 
+                    ngx.say("failed to check error msg, got:",
                             data.body.message, ", expect: ", val)
                     ngx.exit(200)
                 else
                     ngx.say("checked error msg as expect: ", err_msg)
                 end
             end
-            
+
             if is_dir then
                 if not data.body.node.dir then
-                    ngx.say("failed to check dir, got normal file:", 
+                    ngx.say("failed to check dir, got normal file:",
                             data.body.node.dir)
                     ngx.exit(200)
                 else
@@ -213,7 +208,7 @@ checked val as expect: b
             local res2, err = etcd:wait("/dir", res.body.node.modifiedIndex + 1, 1)
             ngx.say("err: ", err, ", more than 1sec: ", ngx.now() - cur_time > 1)
 
-            ngx.timer.at(1, function () 
+            ngx.timer.at(1, function ()
                 etcd:set("/dir/a", "a")
             end)
 

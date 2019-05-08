@@ -1,16 +1,11 @@
-# vim:set ft= ts=4 sw=4 et fdm=marker:
-
-use Test::Nginx::Socket::Lua;
+use Test::Nginx::Socket::Lua 'no_plan';
 
 log_level('warn');
-
 repeat_each(2);
-
-plan tests => repeat_each() * (blocks() * 3);
 
 our $HttpConfig = <<'_EOC_';
     lua_socket_log_errors off;
-    lua_package_path 'lib/?.lua;;';
+    lua_package_path '/usr/share/lua/5.1/?.lua;lib/?.lua;;';
     init_by_lua_block {
         function check_res(data, err, val, err_msg)
             if err then
@@ -30,14 +25,13 @@ our $HttpConfig = <<'_EOC_';
 
             if err_msg then
                 if err_msg ~= data.body.message then
-                    ngx.say("failed to check error msg, got:", 
+                    ngx.say("failed to check error msg, got:",
                             data.body.message, ", expect: ", val)
                     ngx.exit(200)
                 else
                     ngx.say("checked error msg as expect: ", err_msg)
                 end
             end
-            
         end
     }
 _EOC_
@@ -138,7 +132,7 @@ checked error msg as expect: Key not found
 
             res, err = etcd:get("/test")
             check_res(res, err, "abc")
-            
+
             etcd:delete("/test", "abc")
 
             res, err = etcd:get("/test")
@@ -232,7 +226,7 @@ checked val as expect: abc
             local res2, err = etcd:wait("/test", res.body.node.modifiedIndex + 1, 1)
             ngx.say("err: ", err, ", more than 1sec: ", ngx.now() - cur_time > 1)
 
-            ngx.timer.at(1, function () 
+            ngx.timer.at(1, function ()
                 etcd:set("/test", "bcd")
             end)
 

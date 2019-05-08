@@ -9,6 +9,10 @@ lua-resty-etcd
 
 - lua-resty-http: https://github.com/ledgetech/lua-resty-http
 
+```shell
+luarocks install lua-resty-http
+```
+
 ## Create client object
 
 #### cli, err = Etcd.new([option:table])
@@ -21,18 +25,18 @@ local cli, err = require('resty.etcd').new()
 
 - `option:table`
   - `host`: string - default `http://127.0.0.1:2379`
-  - `ttl`: int - default `-1` 
+  - `ttl`: int - default `-1`
     default ttl for key operation. set -1 to disable ttl.
-  - `prefix`: string  
+  - `prefix`: string
     append this prefix path string to key operation url `'/v2/keys'`.
-  - `timeout`: int  
+  - `timeout`: int
     request timeout seconds.
 
 
 **Returns**
 
 1. `cli`: client object.
-2. `err`: error string. 
+2. `err`: error string.
 
 
 ## About the return values of client methods.
@@ -48,7 +52,7 @@ a `HTTP Response Entity` contains the following fields except `408` timeout stat
 **Note:** a client method will decode a response body as a JSON string if a `Content-Type` response header value is a `application/json`.
 
 
-please refer the **etcd API documentaion** at - https://github.com/coreos/etcd for more details of a response entity. 
+please refer the **etcd API documentaion** at - https://github.com/coreos/etcd for more details of a response entity.
 
 
 ## Key-value operations
@@ -224,7 +228,7 @@ local res, err = cli:waitdir('/path/to/dir')
 
 #### res, err = cli:push(key:string, val:JSON encodable value [, ttl:int])
 
-push a value into the specified directory.  
+push a value into the specified directory.
 
 ```lua
 local res, err = cli:mkdir('/path/to/dir')

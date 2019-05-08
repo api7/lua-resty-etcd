@@ -1,15 +1,11 @@
-# vim:set ft= ts=4 sw=4 et fdm=marker:
-
-use Test::Nginx::Socket::Lua;
+use Test::Nginx::Socket::Lua 'no_plan';
 
 log_level('warn');
-
 repeat_each(2);
 
-plan tests => repeat_each() * (blocks() * 3);
-
 our $HttpConfig = <<'_EOC_';
-    lua_package_path 'lib/?.lua;;';
+    lua_socket_log_errors off;
+    lua_package_path '/usr/share/lua/5.1/?.lua;lib/?.lua;;';
 _EOC_
 
 run_tests();
@@ -47,38 +43,38 @@ __DATA__
                 -- nil
                 {   chk = {
                         ['nil']     = true,
-                        ['non']     = true 
+                        ['non']     = true
                     }
                 },
 
                 -- boolean
                 {   val = true,
                     chk = {
-                        ['boolean'] = true 
+                        ['boolean'] = true
                     }
                 },
                 {   val = false,
                     chk = {
                         ['boolean'] = true,
-                        ['non']     = true 
+                        ['non']     = true
                     }
                 },
 
                 -- string
                 {   val = 'hello',
                     chk = {
-                        ['string']  = true 
+                        ['string']  = true
                     }
                 },
                 {   val = 'world',
                     chk = {
-                        ['string']  = true 
+                        ['string']  = true
                     }
                 },
                 {   val = '',
                     chk = {
                         ['string']  = true,
-                        ['non']     = true 
+                        ['non']     = true
                     }
                 },
 
@@ -96,7 +92,7 @@ __DATA__
                         ['uint8']       = true,
                         ['uint16']      = true,
                         ['uint32']      = true,
-                        ['non']         = true 
+                        ['non']         = true
                     }
                 },
                 {   val = 1,
@@ -128,28 +124,28 @@ __DATA__
                     chk = {
                         ['number']  = true,
                         ['finite']  = true,
-                        ['unsigned']= true 
+                        ['unsigned']= true
                     }
                 },
                 {   val = -0.1,
                     chk = {
                         ['number']  = true,
-                        ['finite']  = true 
+                        ['finite']  = true
                     }
                 },
                 {   val = 1/0,
                     chk = {
-                        ['number']  = true 
+                        ['number']  = true
                     }
                 },
                 {   val = 0/0,
                     chk = {
                         ['number']  = true,
                         ['nan']     = true,
-                        ['non']     = true 
+                        ['non']     = true
                     }
                 },
-                
+
                 -- integer
                 {   val = -128,
                     chk = {
@@ -158,7 +154,7 @@ __DATA__
                         ['int']     = true,
                         ['int8']    = true,
                         ['int16']   = true,
-                        ['int32']   = true 
+                        ['int32']   = true
                     }
                 },
                 {   val = 127,
@@ -203,7 +199,7 @@ __DATA__
                         ['number']  = true,
                         ['finite']  = true,
                         ['int']     = true,
-                        ['int32']   = true 
+                        ['int32']   = true
                     }
                 },
                 {   val = 2147483647,
@@ -229,7 +225,7 @@ __DATA__
                         ['uint']    = true,
                         ['uint8']   = true,
                         ['uint16']  = true,
-                        ['uint32']  = true 
+                        ['uint32']  = true
                     }
                 },
                 {   val = 65535,
@@ -251,35 +247,35 @@ __DATA__
                         ['unsigned']= true,
                         ['int']     = true,
                         ['uint']    = true,
-                        ['uint32']  = true 
+                        ['uint32']  = true
                     }
                 },
-                
+
                 -- function
                 {   val = function()end,
                     chk = {
-                        ['Function']= true 
+                        ['Function']= true
                     }
                 },
-                
+
                 -- table
                 {   val = {},
                     chk = {
-                        ['table']   = true 
+                        ['table']   = true
                     }
                 },
-                
+
                 -- thread
                 {   val = coroutine.create(function() end),
                     chk = {
-                        ['thread']  = true 
+                        ['thread']  = true
                     }
                 }
             }
             local nilVal
             local msg
 
-            for _, field in ipairs(data) do 
+            for _, field in ipairs(data) do
                 for method, res in pairs(DEFAULT_CMP) do
                     if field.chk[method] ~= nil then
                         res = field.chk[method]

@@ -1,16 +1,11 @@
-# vim:set ft= ts=4 sw=4 et fdm=marker:
-
-use Test::Nginx::Socket::Lua;
+use Test::Nginx::Socket::Lua 'no_plan';
 
 log_level('warn');
-
 repeat_each(2);
-
-plan tests => repeat_each() * (blocks() * 3);
 
 our $HttpConfig = <<'_EOC_';
     lua_socket_log_errors off;
-    lua_package_path 'lib/?.lua;;';
+    lua_package_path '/usr/share/lua/5.1/?.lua;lib/?.lua;;';
     init_by_lua_block {
         function check_res(data, err)
             if err then
@@ -86,7 +81,7 @@ followers type: table
             check_res(res, err)
 
             -- ngx.say(require "cjson" .encode(res.body))
-            
+
             assert(res.body.id)
             assert(res.body.startTime)
             assert(res.body.leaderInfo)
@@ -112,7 +107,7 @@ GET /t
             check_res(res, err)
 
             -- ngx.log(ngx.WARN, require "cjson" .encode(res.body))
-            
+
             assert(res.body.compareAndSwapFail)
             assert(res.body.updateFail)
             assert(res.body.getsFail)
