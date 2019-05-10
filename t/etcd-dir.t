@@ -1,6 +1,7 @@
 use Test::Nginx::Socket::Lua 'no_plan';
 
 log_level('warn');
+no_long_string();
 repeat_each(2);
 
 our $HttpConfig = <<'_EOC_';
@@ -268,3 +269,39 @@ GET /t
 checked [/dir] is dir.
 checked val as expect: a
 checked val as expect: b
+
+
+
+=== TEST 7: dir + json_val
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local etcd, err = require "resty.etcd" .new()
+            check_res(etcd, err)
+
+            local res, err = etcd:rmdir("/dir", true)
+            check_res(res, err)
+
+            res, err = etcd:mkdir("/dir")
+            check_res(res, err, nil, nil, true)
+
+            local json_val = require("cjson").encode({a = 1, b = 2})
+            res, err = etcd:set("/dir/a", json_val)
+            check_res(res, err)
+
+            res, err = etcd:readdir("/dir")
+            check_res(res, err)
+
+            ngx.say("item count: ", #res.body.node.nodes)
+            ngx.say("item value: ", require("cjson").encode(res.body.node.nodes[1].value))
+        }
+    }
+--- request
+GET /t
+--- no_error_log
+[error]
+--- response_body
+checked [/dir] is dir.
+item count: 1
+item value: {"a":1,"b":2}

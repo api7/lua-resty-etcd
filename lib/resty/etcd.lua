@@ -17,6 +17,7 @@ local tostring = tostring
 local select = select
 local ipairs = ipairs
 local type = type
+local str_sub = string.sub
 
 
 local _M = {}
@@ -273,7 +274,18 @@ local function get(self, key, attr)
                 if err then
                     return nil, err
                 end
+
+                if type(node.value) == "string" and
+                   str_sub(node.value, 1, 1) == "{" then
+                    local v
+                    v, err = decode_json(node.value)
+                    if err then
+                        return nil, err
+                    end
+                    node.value = v
+                end
             end
+
         else
             res.body.node.value, err = decode_json(res.body.node.value)
             if err then

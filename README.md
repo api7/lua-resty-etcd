@@ -161,7 +161,6 @@ local res, err = cli:wait('/path/to/key')
 - `timeout`: uint - request timeout seconds. set 0 to disable timeout.
 
 ```lua
-
 local res, err = cli:get('/path/to/key')
 
 -- Wait forever the update of key until that modifiedIndex of key has changed
