@@ -171,11 +171,9 @@ end
 
 local function set(self, key, val, attr)
     local err
-    if val ~= nil and type(val) ~= "number" then
-        val, err = encode_json(val)
-        if not val then
-            return nil, err
-        end
+    val, err = encode_json(val)
+    if not val then
+        return nil, err
     end
 
     local prev_exist
