@@ -295,6 +295,11 @@ checked val as expect: b
 
             ngx.say("item count: ", #res.body.node.nodes)
             ngx.say("item value: ", require("cjson").encode(res.body.node.nodes[1].value))
+
+            res, err = etcd:get("/dir")
+            check_res(res, err)
+            ngx.say("item count: ", #res.body.node.nodes)
+            ngx.say("item value: ", require("cjson").encode(res.body.node.nodes[1].value))
         }
     }
 --- request
@@ -303,5 +308,7 @@ GET /t
 [error]
 --- response_body
 checked [/dir] is dir.
+item count: 1
+item value: {"a":1,"b":2}
 item count: 1
 item value: {"a":1,"b":2}

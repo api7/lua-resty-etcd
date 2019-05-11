@@ -259,13 +259,13 @@ local function get(self, key, attr)
 
     -- readdir
     if attr and attr.dir then
-        -- set 404 not found if result node is not directory
         if res.status == 200 and res.body.node and
            not res.body.node.dir then
-            res.status = 404
             res.body.node.dir = false
         end
+    end
 
+    if res.status == 200 and res.body.node then
         if res.body.node.dir then
             for _, node in ipairs(res.body.node.nodes) do
                 node.value, err = decode_json(node.value)
@@ -275,12 +275,10 @@ local function get(self, key, attr)
 
                 if type(node.value) == "string" and
                    str_sub(node.value, 1, 1) == "{" then
-                    local v
-                    v, err = decode_json(node.value)
-                    if err then
-                        return nil, err
+                    local v = decode_json(node.value)
+                    if v then
+                        node.value = v
                     end
-                    node.value = v
                 end
             end
 
@@ -289,14 +287,6 @@ local function get(self, key, attr)
             if err then
                 return nil, err
             end
-        end
-
-    -- get
-    elseif res.status == 200 and res.body.node and
-           not res.body.node.dir then
-        res.body.node.value, err = decode_json(res.body.node.value)
-        if err then
-            return nil, err
         end
     end
 
