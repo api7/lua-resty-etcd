@@ -10,14 +10,21 @@ lua-resty-etcd
 - lua-resty-http: https://github.com/ledgetech/lua-resty-http
 - lua-typeof: https://github.com/iresty/lua-typeof
 
-```shell
-luarocks install lua-resty-http lua-typeof
-```
-
 ## Install
+
+> install by luarocks
 
 ```shell
 luarocks install lua-resty-etcd
+```
+
+> install by source
+
+```shell
+$ luarocks install lua-resty-http lua-typeof
+$ git clone https://github.com/iresty/lua-resty-etcd.git
+$ cd lua-resty-etcd
+$ sudo make install
 ```
 
 ## Create client object
@@ -161,7 +168,6 @@ local res, err = cli:wait('/path/to/key')
 - `timeout`: uint - request timeout seconds. set 0 to disable timeout.
 
 ```lua
-
 local res, err = cli:get('/path/to/key')
 
 -- Wait forever the update of key until that modifiedIndex of key has changed

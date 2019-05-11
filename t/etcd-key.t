@@ -245,3 +245,30 @@ checked val as expect: abc
 err: timeout, more than 1sec: true
 checked val as expect: bcd
 wait more than 1sec: true
+
+
+
+=== TEST 8: set(key, val), val is a Lua table
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local etcd, err = require "resty.etcd" .new()
+            check_res(etcd, err)
+
+            local res, err = etcd:set("/test", {a = "abc"})
+            check_res(res, err)
+
+            local data, err = etcd:get("/test")
+            check_res(data, err)
+
+            assert(data.body.node.value.a == "abc")
+            ngx.say("all done")
+        }
+    }
+--- request
+GET /t
+--- no_error_log
+[error]
+--- response_body
+all done
