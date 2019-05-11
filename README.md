@@ -10,14 +10,21 @@ lua-resty-etcd
 - lua-resty-http: https://github.com/ledgetech/lua-resty-http
 - lua-typeof: https://github.com/iresty/lua-typeof
 
-```shell
-luarocks install lua-resty-http lua-typeof
-```
-
 ## Install
+
+> install by luarocks
 
 ```shell
 luarocks install lua-resty-etcd
+```
+
+> install by source
+
+```shell
+$ luarocks install lua-resty-http lua-typeof
+$ git clone https://github.com/iresty/lua-resty-etcd.git
+$ cd lua-resty-etcd
+$ sudo make install
 ```
 
 ## Create client object
