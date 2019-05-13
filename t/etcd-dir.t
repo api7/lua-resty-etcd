@@ -62,6 +62,9 @@ __DATA__
             local res, err = etcd:rmdir("/dir", true)
             check_res(res, err)
 
+            res, err = etcd:readdir("/dir")
+            check_res(res, err, nil, "Key not found")
+
             res, err = etcd:mkdir("/dir")
             check_res(res, err, nil, nil, true)
 
@@ -77,6 +80,7 @@ GET /t
 --- no_error_log
 [error]
 --- response_body
+checked error msg as expect: Key not found
 checked [/dir] is dir.
 checked error msg as expect: Not a file
 
@@ -309,6 +313,89 @@ GET /t
 --- response_body
 checked [/dir] is dir.
 item count: 1
+item value: "{\"a\":1,\"b\":2}"
+item count: 1
+item value: "{\"a\":1,\"b\":2}"
+
+
+
+=== TEST 8: dir + lua table
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local etcd, err = require "resty.etcd" .new()
+            check_res(etcd, err)
+
+            local res, err = etcd:rmdir("/dir", true)
+            check_res(res, err)
+
+            res, err = etcd:mkdir("/dir")
+            check_res(res, err, nil, nil, true)
+
+            res, err = etcd:set("/dir/a", {a = 1, b = 2})
+            check_res(res, err)
+
+            res, err = etcd:readdir("/dir")
+            check_res(res, err)
+
+            ngx.say("item count: ", #res.body.node.nodes)
+            ngx.say("item value: ", require("cjson").encode(res.body.node.nodes[1].value))
+
+            res, err = etcd:get("/dir")
+            check_res(res, err)
+            ngx.say("item count: ", #res.body.node.nodes)
+            ngx.say("item value: ", require("cjson").encode(res.body.node.nodes[1].value))
+        }
+    }
+--- request
+GET /t
+--- no_error_log
+[error]
+--- response_body
+checked [/dir] is dir.
+item count: 1
 item value: {"a":1,"b":2}
 item count: 1
 item value: {"a":1,"b":2}
+
+
+
+=== TEST 9: dir + set + delete + readdir
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local etcd, err = require "resty.etcd" .new()
+            check_res(etcd, err)
+
+            local res, err = etcd:rmdir("/dir", true)
+            check_res(res, err)
+
+            res, err = etcd:mkdir("/dir")
+            check_res(res, err, nil, nil, true)
+
+            res, err = etcd:set("/dir/a", {a = 1})
+            check_res(res, err)
+
+            res, err = etcd:set("/dir/b", {b = 2})
+            check_res(res, err)
+
+            res, err = etcd:delete("/dir/a")
+            check_res(res, err)
+
+            res, err = etcd:readdir("/dir")
+            check_res(res, err)
+
+            ngx.say("item count: ", #res.body.node.nodes)
+            ngx.say("item value: ", require("cjson").encode(res.body.node.nodes[1].value))
+        }
+    }
+--- request
+GET /t
+--- no_error_log
+[error]
+--- response_body
+checked [/dir] is dir.
+item count: 1
+item value: {"b":2}

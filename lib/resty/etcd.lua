@@ -267,17 +267,11 @@ local function get(self, key, attr)
 
     if res.status == 200 and res.body.node then
         if res.body.node.dir then
-            for _, node in ipairs(res.body.node.nodes) do
-                node.value, err = decode_json(node.value)
-                if err then
-                    return nil, err
-                end
-
-                if type(node.value) == "string" and
-                   str_sub(node.value, 1, 1) == "{" then
-                    local v = decode_json(node.value)
-                    if v then
-                        node.value = v
+            if res.body.node.nodes then
+                for _, node in ipairs(res.body.node.nodes) do
+                    node.value, err = decode_json(node.value)
+                    if err then
+                        return nil, err
                     end
                 end
             end
