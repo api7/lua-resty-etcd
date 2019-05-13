@@ -17,7 +17,6 @@ local tostring = tostring
 local select = select
 local ipairs = ipairs
 local type = type
-local str_sub = string.sub
 
 
 local _M = {}
@@ -267,19 +266,25 @@ local function get(self, key, attr)
 
     if res.status == 200 and res.body.node then
         if res.body.node.dir then
-            if res.body.node.nodes then
+            if type(res.body.node.nodes) == "table" then
                 for _, node in ipairs(res.body.node.nodes) do
-                    node.value, err = decode_json(node.value)
-                    if err then
-                        return nil, err
+                    local val = node.value
+                    if type(val) == "string" then
+                        node.value, err = decode_json(val)
+                        if err then
+                            return nil, err
+                        end
                     end
                 end
             end
 
         else
-            res.body.node.value, err = decode_json(res.body.node.value)
-            if err then
-                return nil, err
+            local val = res.body.node.value
+            if type(val) == "string" then
+                res.body.node.value, err = decode_json(val)
+                if err then
+                    return nil, err
+                end
             end
         end
     end
