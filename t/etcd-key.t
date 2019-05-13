@@ -1,6 +1,7 @@
 use Test::Nginx::Socket::Lua 'no_plan';
 
 log_level('warn');
+no_long_string();
 repeat_each(2);
 
 our $HttpConfig = <<'_EOC_';
@@ -271,4 +272,35 @@ GET /t
 --- no_error_log
 [error]
 --- response_body
+all done
+
+
+
+=== TEST 9: set + delete + get
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local etcd, err = require "resty.etcd" .new()
+            check_res(etcd, err)
+
+            local res, err = etcd:set("/test", {a = "abc"})
+            check_res(res, err)
+
+            res, err = etcd:delete("/test")
+            check_res(res, err)
+
+            local data, err = etcd:get("/test")
+            check_res(data, err, nil, "Key not found")
+
+            -- ngx.log(ngx.ERR, "data: ", require("cjson").encode(data.body))
+            ngx.say("all done")
+        }
+    }
+--- request
+GET /t
+--- no_error_log
+[error]
+--- response_body
+checked error msg as expect: Key not found
 all done
