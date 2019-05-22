@@ -1,7 +1,31 @@
-lua-resty-etcd
-==============
+Name
+====
 
-[etcd](https://github.com/membphis/lua-resty-etcd) Nonblocking Lua etcd driver library for OpenResty, this module supports etcd API v2.
+[resty-etcd](https://github.com/membphis/lua-resty-etcd) Nonblocking Lua etcd driver library for OpenResty, this module supports etcd API v2.
+
+
+Table of Contents
+=================
+* [Name](#name)
+* [Dependencies](#dependencies)
+* [Install](#install)
+* [Methods](#methods)
+    * [new](#new)
+    * [get](#get)
+    * [set](#set)
+    * [setnx](#setnx)
+    * [setx](#setx)
+    * [delete](#delete)
+    * [wait](#wait)
+    * [readdir](#readdir)
+    * [mkdir](#mkdir)
+    * [rmdir](#rmdir)
+    * [waitdir](#waitdir)
+    * [push](#push)
+    * [version](#version)
+    * [stats_leader](#stats_leader)
+    * [stats_self](#stats_self)
+    * [stats_store](#stats_store)
 
 ---
 
@@ -27,15 +51,20 @@ $ cd lua-resty-etcd
 $ sudo make install
 ```
 
-## Create client object
+API Implemented
+===============
 
-#### cli, err = Etcd.new([option:table])
+## Method
+
+#### new
+
+`syntax: cli, err = etcd.new([option:table])`
 
 ```lua
 local cli, err = require('resty.etcd').new()
 ```
 
-**Parameters**
+
 
 - `option:table`
   - `host`: string - default `http://127.0.0.1:2379`
@@ -45,13 +74,6 @@ local cli, err = require('resty.etcd').new()
     append this prefix path string to key operation url `'/v2/keys'`.
   - `timeout`: int
     request timeout seconds.
-
-
-**Returns**
-
-1. `cli`: client object.
-2. `err`: error string.
-
 
 ## About the return values of client methods.
 
@@ -71,9 +93,9 @@ Please refer the **etcd API documentaion** at - https://github.com/coreos/etcd f
 
 ## Key-value operations
 
-### Get the key-value pair
+### get
 
-#### res, err = cli:get(key:string)
+`syntax: res, err = cli:get(key:string)`
 
 Gets the value for key.
 
@@ -81,9 +103,9 @@ Gets the value for key.
 local res, err = cli:get('/path/to/key')
 ```
 
-### Set the key-value pair
+### set
 
-#### res, err = cli:set(key:string, val:JSON value [, ttl:int])
+`syntax: res, err = cli:set(key:string, val:JSON value [, ttl:int])`
 
 Set a key-value pair.
 
@@ -91,7 +113,9 @@ Set a key-value pair.
 local res, err = cli:set('/path/to/key', 'val', 10)
 ```
 
-#### res, err = cli:setnx(key:string, val:JSON value [, ttl:int])
+### setnx
+
+`syntax: res, err = cli:setnx(key:string, val:JSON value [, ttl:int])`
 
 Set a key-value pair if that key does not exist.
 
@@ -100,17 +124,17 @@ local res, err = cli:setnx('/path/to/key', 'val', 10)
 ```
 
 
-#### res, err = cli:setx(key:string, val:JSON value [, ttl:int [, modified_index:uint] ])
+### setx
+
+`syntax: res, err = cli:setx(key:string, val:JSON value [, ttl:int [, modified_index:uint] ])`
+
+- `modified_index`: uint - this argument to use to the `prev_index` query of atomic operation.
 
 Set a key-value pair when that key is exists.
 
 ```lua
 local res, err = cli:setx('/path/to/key', 'val', 10)
 ```
-
-**Parameters**
-
-- `modified_index`: uint - this argument to use to the `prev_index` query of atomic operation.
 
 ```lua
 local res, err = cli:get('/path/to/key')
@@ -121,20 +145,18 @@ res, err = cli:setx('/path/to/key', 'val', 10, res.body.node.modifiedIndex)
 ```
 
 
-### Delete the key-value pair
+### delete
 
-#### res, err = cli:delete(key:string [, val:JSON value [, modified_index:uint] ])
+`syntax: res, err = cli:delete(key:string [, val:JSON value [, modified_index:uint] ])`
+
+- `val`: JSON value - this argument to use to the `prevValue` query of atomic operation.
+- `modified_index`: uint - this argument to use to the `prev_index` query of atomic operation.
 
 Deletes a key-value pair.
 
 ```lua
 local res, err = cli:delete('/path/to/key')
 ```
-
-**Parameters**
-
-- `val`: JSON value - this argument to use to the `prevValue` query of atomic operation.
-- `modified_index`: uint - this argument to use to the `prev_index` query of atomic operation.
 
 ```lua
 local res, err = cli:get('/path/to/key')
@@ -153,19 +175,18 @@ res, err = cli:delete('/path/to/key', nil, res.body.node.modifiedIndex)
 
 ```
 
+### wait
 
-### Wait the update of key.
+`syntax: res, err = cli:wait(key:string [, modified_index:uint [, timeout:uint] ]) `
 
-#### res, err = cli:wait(key:string [, modified_index:uint [, timeout:uint] ])
+- `modified_index`: uint - this argument to use to the `prev_index` query of atomic operation.
+- `timeout`: uint - request timeout seconds. set 0 to disable timeout.
+
+Wait the update of key.
 
 ```lua
 local res, err = cli:wait('/path/to/key')
 ```
-
-**Parameters**
-
-- `modified_index`: uint - this argument to use to the `prev_index` query of atomic operation.
-- `timeout`: uint - request timeout seconds. set 0 to disable timeout.
 
 ```lua
 local res, err = cli:get('/path/to/key')
@@ -179,25 +200,21 @@ res, err = cli:wait('/path/to/key', res.body.node.modifiedIndex + 1, 0)
 res, err = cli:wait('/path/to/key', res.body.node.modifiedIndex + 2, 10)
 ```
 
+### readdir
 
-## Directory operations
+`syntax: res, err = cli:readdir(key:string [, recursive:boolean])`
 
-### Read the directory
+- `recursive`: boolean - get all the contents under a directory.
 
-#### res, err = cli:readdir(key:string [, recursive:boolean])
+Read the directory.
 
 ```lua
 local res, err = cli:readdir('/path/to/dir')
 ```
 
-**Parameters**
+### mkdir
 
-- `recursive`: boolean - get all the contents under a directory.
-
-
-### Create the directory
-
-#### res, err = cli:mkdir(key:string [, ttl:int])
+`syntax: res, err = cli:mkdir(key:string [, ttl:int])`
 
 Creates a directory.
 
@@ -205,7 +222,9 @@ Creates a directory.
 local res, err = cli:mkdir('/path/to/dir', 10)
 ```
 
-#### res, err = cli:mkdirnx(key:string [, ttl:int])
+### mkdirnx
+
+`syntax: res, err = cli:mkdirnx(key:string [, ttl:int])`
 
 Creates a directory if that directory does not exist.
 
@@ -213,36 +232,33 @@ Creates a directory if that directory does not exist.
 local res, err = cli:mkdirnx('/path/to/dir', 10)
 ```
 
-### Remove the directory
+### rmdir
 
-#### res, err = cli:rmdir(key:string [, recursive:boolean])
+`syntax: res, err = cli:rmdir(key:string [, recursive:boolean])`
+
+- `recursive`: boolean - remove all the contents under a directory.
+
+Remove the directory
 
 ```lua
 local res, err = cli:rmdir('/path/to/dir')
 ```
 
-**Parameters**
+### waitdir
 
-- `recursive`: boolean - remove all the contents under a directory.
+`syntax: res, err = cli:waitdir(key:string [, modified_index:uint [, timeout:uint] ])`
 
-### Wait the update of directory
 
-#### res, err = cli:waitdir(key:string [, modified_index:uint [, timeout:uint] ])
+- `modified_index`: uint - this argument to use to the `prev_index` query of atomic operation.
+- `timeout`: uint - request timeout seconds. set 0 to disable timeout.
 
 ```lua
 local res, err = cli:waitdir('/path/to/dir')
 ```
 
-**Parameters**
+### push
 
-- `modified_index`: uint - this argument to use to the `prev_index` query of atomic operation.
-- `timeout`: uint - request timeout seconds. set 0 to disable timeout.
-
-
-### Push a value into the directory
-
-
-#### res, err = cli:push(key:string, val:JSON value [, ttl:int])
+`syntax: res, err = cli:push(key:string, val:JSON value [, ttl:int])`
 
 Pushs a value into the specified directory.
 
@@ -251,28 +267,26 @@ local res, err = cli:mkdir('/path/to/dir')
 res, err = cli:push('/path/to/dir', 'val', 10)
 ```
 
-## Get or set the cluster information
+### version
 
-The following client methods to use to get or set the cluster informations.
-
-### Get the etcd version
-
-#### res, err = cli:version()
+`syntax: res, err = cli:version()`
 
 Gets the etcd version info.
 
-### Get the cluster statistics
+### stats_leader
 
-the following client methods to use to get the cluster statistics information.
-
-#### res, err = cli:stats_leader()
+`syntax: res, err = cli:stats_leader()`
 
 Gets the leader statistics info.
 
-#### res, err = cli:stats_self()
+### stats_self
+
+`syntax: res, err = cli:stats_self()`
 
 Gets the self statistics info.
 
-#### res, err = cli:stats_store()
+### stats_store
+
+`syntax: res, err = cli:stats_store()`
 
 Gets the store statistics info.
