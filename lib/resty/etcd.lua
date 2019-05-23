@@ -293,9 +293,7 @@ local function get(self, key, attr)
     end
 
     if res.status == 200 and res.body.node then
-        if decode_dir_value(res.body.node) then
-
-        else
+        if not decode_dir_value(res.body.node) then
             local val = res.body.node.value
             if type(val) == "string" then
                 res.body.node.value, err = decode_json(val)
