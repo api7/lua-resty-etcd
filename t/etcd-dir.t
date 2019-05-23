@@ -219,6 +219,7 @@ checked val as expect: b
 
             cur_time = ngx.now()
             res, err = etcd:waitdir("/dir", res.body.node.modifiedIndex + 1, 5)
+
             check_res(res, err, "a")
             ngx.say("wait more than 1sec: ", ngx.now() - cur_time > 1)
         }
@@ -399,3 +400,40 @@ GET /t
 checked [/dir] is dir.
 item count: 1
 item value: {"b":2}
+
+
+
+=== TEST 10: dir + sub_dir + set + delete + readdir
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local etcd, err = require "resty.etcd" .new()
+            check_res(etcd, err)
+
+            local res, err = etcd:rmdir("/dir", true)
+            check_res(res, err)
+
+            res, err = etcd:mkdir("/dir")
+            check_res(res, err, nil, nil, true)
+
+            res, err = etcd:mkdir("/dir/sub_dir")
+            check_res(res, err, nil, nil, true)
+
+            res, err = etcd:set("/dir/sub_dir/a", {a = 1})
+            check_res(res, err)
+
+            res, err = etcd:readdir("/dir", true)
+            check_res(res, err)
+
+            ngx.say("item value: ", require("cjson").encode(res.body.node.nodes[1].nodes[1].value))
+        }
+    }
+--- request
+GET /t
+--- no_error_log
+[error]
+--- response_body
+checked [/dir] is dir.
+checked [/dir/sub_dir] is dir.
+item value: {"a":1}
