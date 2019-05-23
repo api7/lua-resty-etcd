@@ -5,8 +5,6 @@ Name
 
 Table of Contents
 =================
-* [Name](#name)
-* [Dependencies](#dependencies)
 * [Install](#install)
 * [Methods](#methods)
     * [new](#new)
@@ -26,16 +24,13 @@ Table of Contents
     * [stats_self](#stats_self)
     * [stats_store](#stats_store)
 
----
 
-## Dependencies
+## Install
+
+> Dependencies
 
 - lua-resty-http: https://github.com/ledgetech/lua-resty-http
 - lua-typeof: https://github.com/iresty/lua-typeof
-
-[Back to TOC](#table-of-contents)
-
-## Install
 
 > install by luarocks
 
