@@ -33,6 +33,8 @@ Table of Contents
 - lua-resty-http: https://github.com/ledgetech/lua-resty-http
 - lua-typeof: https://github.com/iresty/lua-typeof
 
+[Back to TOC](#table-of-contents)
+
 ## Install
 
 > install by luarocks
@@ -49,6 +51,8 @@ $ git clone https://github.com/iresty/lua-resty-etcd.git
 $ cd lua-resty-etcd
 $ sudo make install
 ```
+
+[Back to TOC](#table-of-contents)
 
 Method
 ======
