@@ -17,6 +17,7 @@ local tostring = tostring
 local select = select
 local ipairs = ipairs
 local type = type
+local error = error
 
 
 local _M = {}
@@ -226,6 +227,33 @@ local function set(self, key, val, attr)
 end
 
 
+local function decode_dir_value(body_node)
+    if not body_node.dir then
+        return false
+    end
+
+    if not type(body_node.nodes) == "table" then
+        return false
+    end
+
+    local err
+    for _, node in ipairs(body_node.nodes) do
+        local val = node.value
+        if type(val) == "string" then
+            node.value, err = decode_json(val)
+            if err then
+                error("failed to decode node[" .. node.key .. "] value: "
+                      .. err)
+            end
+        end
+
+        decode_dir_value(node)
+    end
+
+    return true
+end
+
+
 local function get(self, key, attr)
     local opts
     if attr then
@@ -265,18 +293,7 @@ local function get(self, key, attr)
     end
 
     if res.status == 200 and res.body.node then
-        if res.body.node.dir then
-            if type(res.body.node.nodes) == "table" then
-                for _, node in ipairs(res.body.node.nodes) do
-                    local val = node.value
-                    if type(val) == "string" then
-                        node.value, err = decode_json(val)
-                        if err then
-                            return nil, err
-                        end
-                    end
-                end
-            end
+        if decode_dir_value(res.body.node) then
 
         else
             local val = res.body.node.value
