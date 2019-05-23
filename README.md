@@ -3,7 +3,6 @@ Name
 
 [resty-etcd](https://github.com/membphis/lua-resty-etcd) Nonblocking Lua etcd driver library for OpenResty, this module supports etcd API v2.
 
-
 Table of Contents
 =================
 * [Name](#name)
@@ -51,20 +50,12 @@ $ cd lua-resty-etcd
 $ sudo make install
 ```
 
-API Implemented
-===============
+Method
+======
 
-## Method
-
-#### new
+### new
 
 `syntax: cli, err = etcd.new([option:table])`
-
-```lua
-local cli, err = require('resty.etcd').new()
-```
-
-
 
 - `option:table`
   - `host`: string - default `http://127.0.0.1:2379`
@@ -74,8 +65,6 @@ local cli, err = require('resty.etcd').new()
     append this prefix path string to key operation url `'/v2/keys'`.
   - `timeout`: int
     request timeout seconds.
-
-## About the return values of client methods.
 
 The client methods returns either a `HTTP Response Entity` or an `error string`.
 
@@ -87,11 +76,13 @@ The client methods returns either a `HTTP Response Entity` or an `error string`.
 
 **Note:** a client method will decode a response body as a JSON string if a `Content-Type` response header value is a `application/json`.
 
+```lua
+local cli, err = require('resty.etcd').new()
+```
 
 Please refer the **etcd API documentaion** at - https://github.com/coreos/etcd for more details of a response entity.
 
-
-## Key-value operations
+[Back to TOC](#table-of-contents)
 
 ### get
 
@@ -103,6 +94,8 @@ Gets the value for key.
 local res, err = cli:get('/path/to/key')
 ```
 
+[Back to TOC](#table-of-contents)
+
 ### set
 
 `syntax: res, err = cli:set(key:string, val:JSON value [, ttl:int])`
@@ -112,6 +105,8 @@ Set a key-value pair.
 ```lua
 local res, err = cli:set('/path/to/key', 'val', 10)
 ```
+
+[Back to TOC](#table-of-contents)
 
 ### setnx
 
@@ -123,6 +118,7 @@ Set a key-value pair if that key does not exist.
 local res, err = cli:setnx('/path/to/key', 'val', 10)
 ```
 
+[Back to TOC](#table-of-contents)
 
 ### setx
 
@@ -144,6 +140,7 @@ local res, err = cli:get('/path/to/key')
 res, err = cli:setx('/path/to/key', 'val', 10, res.body.node.modifiedIndex)
 ```
 
+[Back to TOC](#table-of-contents)
 
 ### delete
 
@@ -175,6 +172,8 @@ res, err = cli:delete('/path/to/key', nil, res.body.node.modifiedIndex)
 
 ```
 
+[Back to TOC](#table-of-contents)
+
 ### wait
 
 `syntax: res, err = cli:wait(key:string [, modified_index:uint [, timeout:uint] ]) `
@@ -200,6 +199,8 @@ res, err = cli:wait('/path/to/key', res.body.node.modifiedIndex + 1, 0)
 res, err = cli:wait('/path/to/key', res.body.node.modifiedIndex + 2, 10)
 ```
 
+[Back to TOC](#table-of-contents)
+
 ### readdir
 
 `syntax: res, err = cli:readdir(key:string [, recursive:boolean])`
@@ -212,6 +213,8 @@ Read the directory.
 local res, err = cli:readdir('/path/to/dir')
 ```
 
+[Back to TOC](#table-of-contents)
+
 ### mkdir
 
 `syntax: res, err = cli:mkdir(key:string [, ttl:int])`
@@ -222,6 +225,8 @@ Creates a directory.
 local res, err = cli:mkdir('/path/to/dir', 10)
 ```
 
+[Back to TOC](#table-of-contents)
+
 ### mkdirnx
 
 `syntax: res, err = cli:mkdirnx(key:string [, ttl:int])`
@@ -231,6 +236,8 @@ Creates a directory if that directory does not exist.
 ```lua
 local res, err = cli:mkdirnx('/path/to/dir', 10)
 ```
+
+[Back to TOC](#table-of-contents)
 
 ### rmdir
 
@@ -244,6 +251,8 @@ Remove the directory
 local res, err = cli:rmdir('/path/to/dir')
 ```
 
+[Back to TOC](#table-of-contents)
+
 ### waitdir
 
 `syntax: res, err = cli:waitdir(key:string [, modified_index:uint [, timeout:uint] ])`
@@ -256,6 +265,8 @@ local res, err = cli:rmdir('/path/to/dir')
 local res, err = cli:waitdir('/path/to/dir')
 ```
 
+[Back to TOC](#table-of-contents)
+
 ### push
 
 `syntax: res, err = cli:push(key:string, val:JSON value [, ttl:int])`
@@ -267,11 +278,15 @@ local res, err = cli:mkdir('/path/to/dir')
 res, err = cli:push('/path/to/dir', 'val', 10)
 ```
 
+[Back to TOC](#table-of-contents)
+
 ### version
 
 `syntax: res, err = cli:version()`
 
 Gets the etcd version info.
+
+[Back to TOC](#table-of-contents)
 
 ### stats_leader
 
@@ -279,14 +294,20 @@ Gets the etcd version info.
 
 Gets the leader statistics info.
 
+[Back to TOC](#table-of-contents)
+
 ### stats_self
 
 `syntax: res, err = cli:stats_self()`
 
 Gets the self statistics info.
 
+[Back to TOC](#table-of-contents)
+
 ### stats_store
 
 `syntax: res, err = cli:stats_store()`
 
 Gets the store statistics info.
+
+[Back to TOC](#table-of-contents)
