@@ -119,7 +119,8 @@ function _M.new(opts)
                 stats_store  = http_host .. '/v2/stats/store',
                 keys        = http_host .. '/v2/keys',
             }
-        },  mt)
+        },
+        mt)
 end
 
     local content_type = {
@@ -232,7 +233,7 @@ local function decode_dir_value(body_node)
         return false
     end
 
-    if not type(body_node.nodes) == "table" then
+    if type(body_node.nodes) ~= "table" then
         return false
     end
 
