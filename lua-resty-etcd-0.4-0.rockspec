@@ -11,9 +11,8 @@ description = {
    maintainer = "Yuansheng Wang <membphis@gmail.com>"
 }
 dependencies = {
-   "lua >= 5.1",
-   "lua-resty-http >= 0.13",
-   "lua-typeof >= 0.1"
+   "lua-resty-http = 0.13",
+   "lua-typeof = 0.1"
 }
 build = {
    type = "builtin",
