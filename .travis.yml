@@ -6,10 +6,7 @@ sudo: required
 addons:
   apt:
     packages:
-    - axel
     - build-essential
-    - cpanminus
-    - libgd-dev
     - liblist-moreutils-perl
     - libncurses5-dev
     - libpcre3-dev
