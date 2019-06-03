@@ -18,7 +18,8 @@ addons:
     - liburi-perl
     - libwww-perl
     - perl
-    - etcd
+    - etcd-server
+    - luarocks
 
 cache:
   directories:
@@ -27,6 +28,7 @@ cache:
 env:
   global:
   - JOBS=2
+  - LUAROCKS=3.1.2
   - OPENRESTY_PREFIX=/usr/local/openresty
   - OPENRESTY_VER=`curl -s  "https://api.github.com/repos/openresty/openresty/tags" | grep '"name"' | head -1 | grep -Po '([\d\.]+)'`
 
@@ -35,6 +37,8 @@ install:
     wget -P download-cache https://openresty.org/download/openresty-$OPENRESTY_VER.tar.gz;
   fi
 - git clone https://github.com/openresty/test-nginx.git ../test-nginx
+- luarocks install lua-resty-http
+- luarocks install lua-typeof
 
 script:
 - tar xzf download-cache/openresty-$OPENRESTY_VER.tar.gz &&
