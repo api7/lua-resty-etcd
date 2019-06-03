@@ -30,7 +30,7 @@ install:
   - if [ ! -f download-cache/openresty-$OPENRESTY_VER.tar.gz ]; then
       wget -P download-cache https://openresty.org/download/openresty-$OPENRESTY_VER.tar.gz;
     fi
-  - git clone https://github.com/openresty/test-nginx.git ../test-nginx
+  - git clone https://github.com/openresty/test-nginx.git test-nginx
   - sudo luarocks install lua-resty-http
   - sudo luarocks install lua-typeof
 
