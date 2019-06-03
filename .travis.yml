@@ -1,5 +1,5 @@
 os: linux
-dist: trusty
+dist: xenial
 
 sudo: required
 
@@ -18,7 +18,7 @@ addons:
     - liburi-perl
     - libwww-perl
     - perl
-    - etcd-server
+    - etcd
     - luarocks
 
 cache:
