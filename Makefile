@@ -15,4 +15,4 @@ help:
 	@grep -E '^### [-A-Za-z0-9_]+:' Makefile | sed 's/###/   /'
 
 test:
-	prove -I../test-nginx/lib -r $(test)
+	prove -I../test-nginx/lib -r -s t/

@@ -7,16 +7,10 @@ addons:
   apt:
     packages:
     - build-essential
-    - liblist-moreutils-perl
     - libncurses5-dev
     - libpcre3-dev
     - libreadline-dev
     - libssl-dev
-    - libtest-base-perl
-    - libtest-longstring-perl
-    - libtext-diff-perl
-    - liburi-perl
-    - libwww-perl
     - perl
     - etcd
     - luarocks
