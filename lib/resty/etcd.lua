@@ -131,7 +131,7 @@ end
         ["Content-Type"] = "application/x-www-form-urlencoded",
     }
 
-local function _request(method, uri, opts, timeout)
+local function _request(self, method, uri, opts, timeout)
     local body
     if opts and opts.body and tab_nkeys(opts.body) > 0 then
         body = encode_args(opts.body)
@@ -169,7 +169,7 @@ local function _request(method, uri, opts, timeout)
         return res
     end
 
-    res.body = _M.decode_json(res.body)
+    res.body = self.decode_json(res.body)
     return res
 end
 
@@ -212,7 +212,7 @@ local function set(self, key, val, attr)
     end
 
     local res
-    res, err = _request(attr.in_order and 'POST' or 'PUT',
+    res, err = _request(self, attr.in_order and 'POST' or 'PUT',
                         self.endpoints.full_prefix .. key,
                         opts, self.timeout)
     if err then
@@ -281,7 +281,7 @@ local function get(self, key, attr)
         }
     end
 
-    local res, err = _request("GET",
+    local res, err = _request(self, "GET",
                               self.endpoints.full_prefix .. normalize(key),
                               opts, attr and attr.timeout or self.timeout)
     if err then
@@ -342,7 +342,7 @@ local function delete(self, key, attr)
     }
 
     -- todo: check arguments
-    return _request("DELETE",
+    return _request(self, "DELETE",
                     self.endpoints.full_prefix .. normalize(key),
                     opts, self.timeout)
 end
@@ -389,20 +389,20 @@ end
 
 -- /version
 function _M.version(self)
-    return _request('GET', self.endpoints.version, nil, self.timeout)
+    return _request(self, 'GET', self.endpoints.version, nil, self.timeout)
 end
 
 -- /stats
 function _M.stats_leader(self)
-    return _request('GET', self.endpoints.stats_leader, nil, self.timeout)
+    return _request(self, 'GET', self.endpoints.stats_leader, nil, self.timeout)
 end
 
 function _M.stats_self(self)
-    return _request('GET', self.endpoints.stats_self, nil, self.timeout)
+    return _request(self, 'GET', self.endpoints.stats_self, nil, self.timeout)
 end
 
 function _M.stats_store(self)
-    return _request('GET', self.endpoints.stats_store, nil, self.timeout)
+    return _request(self, 'GET', self.endpoints.stats_store, nil, self.timeout)
 end
 
 end -- do
