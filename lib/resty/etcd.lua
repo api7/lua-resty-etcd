@@ -1,26 +1,23 @@
 -- https://github.com/ledgetech/lua-resty-http
-local http = require "resty.http"
-local typeof = require "typeof"
-local encode_args = ngx.encode_args
-local setmetatable = setmetatable
-local decode_json, encode_json
-do
-    local cjson = require "cjson.safe"
-    decode_json = cjson.decode
-    encode_json = cjson.encode
-end
-local clear_tab = require "table.clear"
-local tab_nkeys = require "table.nkeys"
-local split = require "ngx.re" .split
-local concat_tab = table.concat
-local tostring = tostring
-local select = select
-local ipairs = ipairs
-local type = type
-local error = error
+local http          = require("resty.http")
+local typeof        = require("typeof")
+local cjson         = require("cjson.safe")
+local encode_args   = ngx.encode_args
+local setmetatable  = setmetatable
+local clear_tab     = require "table.clear"
+local tab_nkeys     = require "table.nkeys"
+local split         = require "ngx.re" .split
+local concat_tab    = table.concat
+local tostring      = tostring
+local select        = select
+local ipairs        = ipairs
+local type          = type
 
 
-local _M = {}
+local _M = {
+    decode_json = cjson.decode,
+    encode_json = cjson.encode,
+}
 local mt = { __index = _M }
 
 
@@ -165,14 +162,14 @@ local function _request(method, uri, opts, timeout)
         return res
     end
 
-    res.body = decode_json(res.body)
+    res.body = _M.decode_json(res.body)
     return res
 end
 
 
 local function set(self, key, val, attr)
     local err
-    val, err = encode_json(val)
+    val, err = self.encode_json(val)
     if not val then
         return nil, err
     end
@@ -218,7 +215,7 @@ local function set(self, key, val, attr)
     -- get
     if res.status < 300 and res.body.node and
            not res.body.node.dir then
-        res.body.node.value, err = decode_json(res.body.node.value)
+        res.body.node.value, err = self.decode_json(res.body.node.value)
         if err then
             return nil, err
         end
@@ -228,7 +225,7 @@ local function set(self, key, val, attr)
 end
 
 
-local function decode_dir_value(body_node)
+local function decode_dir_value(self, body_node)
     if not body_node.dir then
         return false
     end
@@ -241,14 +238,16 @@ local function decode_dir_value(body_node)
     for _, node in ipairs(body_node.nodes) do
         local val = node.value
         if type(val) == "string" then
-            node.value, err = decode_json(val)
+            node.value, err = self.decode_json(val)
             if err then
-                error("failed to decode node[" .. node.key .. "] value: "
-                      .. err)
+                return false, err
             end
         end
 
-        decode_dir_value(node)
+        _, err = decode_dir_value(self, node)
+        if err then
+            return false, err
+        end
     end
 
     return true
@@ -282,7 +281,7 @@ local function get(self, key, attr)
                               self.endpoints.full_prefix .. normalize(key),
                               opts, attr and attr.timeout or self.timeout)
     if err then
-        return nil, err
+        return res, err
     end
 
     -- readdir
@@ -294,12 +293,18 @@ local function get(self, key, attr)
     end
 
     if res.status == 200 and res.body.node then
-        if not decode_dir_value(res.body.node) then
+        local ok
+        ok, err = decode_dir_value(self, res.body.node)
+        if err then
+            return res, err
+        end
+
+        if not ok then
             local val = res.body.node.value
             if type(val) == "string" then
-                res.body.node.value, err = decode_json(val)
+                res.body.node.value, err = self.decode_json(val)
                 if err then
-                    return nil, err
+                    return res, err
                 end
             end
         end
@@ -312,7 +317,7 @@ end
 local function delete(self, key, attr)
     local val, err = attr.prev_value
     if val ~= nil and type(val) ~= "number" then
-        val, err = encode_json(val)
+        val, err = self.encode_json(val)
         if not val then
             return nil, err
         end
