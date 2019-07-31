@@ -1,27 +1,31 @@
 -- https://github.com/ledgetech/lua-resty-http
-local http = require "resty.http"
-local typeof = require "typeof"
-local encode_args = ngx.encode_args
-local setmetatable = setmetatable
-local decode_json, encode_json
-do
-    local cjson = require "cjson.safe"
-    decode_json = cjson.decode
-    encode_json = cjson.encode
-end
-local clear_tab = require "table.clear"
-local tab_nkeys = require "table.nkeys"
-local split = require "ngx.re" .split
-local concat_tab = table.concat
-local tostring = tostring
-local select = select
-local ipairs = ipairs
-local type = type
-local error = error
+local http          = require("resty.http")
+local typeof        = require("typeof")
+local cjson         = require("cjson.safe")
+local encode_args   = ngx.encode_args
+local setmetatable  = setmetatable
+local clear_tab     = require "table.clear"
+local tab_nkeys     = require "table.nkeys"
+local split         = require "ngx.re" .split
+local concat_tab    = table.concat
+local tostring      = tostring
+local select        = select
+local ipairs        = ipairs
+local type          = type
 
 
-local _M = {}
+local _M = {
+    decode_json = cjson.decode,
+    encode_json = cjson.encode,
+}
 local mt = { __index = _M }
+
+
+local ngx_log = ngx.log
+local ngx_ERR = ngx.ERR
+local function log_error(...)
+    return ngx_log(ngx_ERR, ...)
+end
 
 
 local normalize
@@ -127,7 +131,7 @@ end
         ["Content-Type"] = "application/x-www-form-urlencoded",
     }
 
-local function _request(method, uri, opts, timeout)
+local function _request(self, method, uri, opts, timeout)
     local body
     if opts and opts.body and tab_nkeys(opts.body) > 0 then
         body = encode_args(opts.body)
@@ -165,14 +169,14 @@ local function _request(method, uri, opts, timeout)
         return res
     end
 
-    res.body = decode_json(res.body)
+    res.body = self.decode_json(res.body)
     return res
 end
 
 
 local function set(self, key, val, attr)
     local err
-    val, err = encode_json(val)
+    val, err = self.encode_json(val)
     if not val then
         return nil, err
     end
@@ -208,7 +212,7 @@ local function set(self, key, val, attr)
     end
 
     local res
-    res, err = _request(attr.in_order and 'POST' or 'PUT',
+    res, err = _request(self, attr.in_order and 'POST' or 'PUT',
                         self.endpoints.full_prefix .. key,
                         opts, self.timeout)
     if err then
@@ -216,11 +220,11 @@ local function set(self, key, val, attr)
     end
 
     -- get
-    if res.status < 300 and res.body.node and
-           not res.body.node.dir then
-        res.body.node.value, err = decode_json(res.body.node.value)
+    if res.status < 300 and res.body.node and not res.body.node.dir then
+        res.body.node.value, err = self.decode_json(res.body.node.value)
         if err then
-            return nil, err
+            log_error("failed to json decode value of node: ", err)
+            return res, err
         end
     end
 
@@ -228,7 +232,7 @@ local function set(self, key, val, attr)
 end
 
 
-local function decode_dir_value(body_node)
+local function decode_dir_value(self, body_node)
     if not body_node.dir then
         return false
     end
@@ -241,14 +245,13 @@ local function decode_dir_value(body_node)
     for _, node in ipairs(body_node.nodes) do
         local val = node.value
         if type(val) == "string" then
-            node.value, err = decode_json(val)
+            node.value, err = self.decode_json(val)
             if err then
-                error("failed to decode node[" .. node.key .. "] value: "
-                      .. err)
+                log_error("failed to decode json: ", err)
             end
         end
 
-        decode_dir_value(node)
+        decode_dir_value(self, node)
     end
 
     return true
@@ -278,11 +281,11 @@ local function get(self, key, attr)
         }
     end
 
-    local res, err = _request("GET",
+    local res, err = _request(self, "GET",
                               self.endpoints.full_prefix .. normalize(key),
                               opts, attr and attr.timeout or self.timeout)
     if err then
-        return nil, err
+        return res, err
     end
 
     -- readdir
@@ -294,12 +297,13 @@ local function get(self, key, attr)
     end
 
     if res.status == 200 and res.body.node then
-        if not decode_dir_value(res.body.node) then
+        local ok = decode_dir_value(self, res.body.node)
+        if not ok then
             local val = res.body.node.value
             if type(val) == "string" then
-                res.body.node.value, err = decode_json(val)
+                res.body.node.value, err = self.decode_json(val)
                 if err then
-                    return nil, err
+                    log_error("failed to json decode: ", err)
                 end
             end
         end
@@ -312,7 +316,7 @@ end
 local function delete(self, key, attr)
     local val, err = attr.prev_value
     if val ~= nil and type(val) ~= "number" then
-        val, err = encode_json(val)
+        val, err = self.encode_json(val)
         if not val then
             return nil, err
         end
@@ -338,7 +342,7 @@ local function delete(self, key, attr)
     }
 
     -- todo: check arguments
-    return _request("DELETE",
+    return _request(self, "DELETE",
                     self.endpoints.full_prefix .. normalize(key),
                     opts, self.timeout)
 end
@@ -385,20 +389,20 @@ end
 
 -- /version
 function _M.version(self)
-    return _request('GET', self.endpoints.version, nil, self.timeout)
+    return _request(self, 'GET', self.endpoints.version, nil, self.timeout)
 end
 
 -- /stats
 function _M.stats_leader(self)
-    return _request('GET', self.endpoints.stats_leader, nil, self.timeout)
+    return _request(self, 'GET', self.endpoints.stats_leader, nil, self.timeout)
 end
 
 function _M.stats_self(self)
-    return _request('GET', self.endpoints.stats_self, nil, self.timeout)
+    return _request(self, 'GET', self.endpoints.stats_self, nil, self.timeout)
 end
 
 function _M.stats_store(self)
-    return _request('GET', self.endpoints.stats_store, nil, self.timeout)
+    return _request(self, 'GET', self.endpoints.stats_store, nil, self.timeout)
 end
 
 end -- do
