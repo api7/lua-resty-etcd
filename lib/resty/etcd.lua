@@ -21,6 +21,13 @@ local _M = {
 local mt = { __index = _M }
 
 
+local ngx_log = ngx.log
+local ngx_ERR = ngx.ERR
+local function log_error(...)
+    return ngx_log(ngx_ERR, ...)
+end
+
+
 local normalize
 do
     local items = {}
@@ -213,11 +220,11 @@ local function set(self, key, val, attr)
     end
 
     -- get
-    if res.status < 300 and res.body.node and
-           not res.body.node.dir then
+    if res.status < 300 and res.body.node and not res.body.node.dir then
         res.body.node.value, err = self.decode_json(res.body.node.value)
         if err then
-            return nil, err
+            log_error("failed to json decode value of node: ", err)
+            return res, err
         end
     end
 
@@ -240,14 +247,11 @@ local function decode_dir_value(self, body_node)
         if type(val) == "string" then
             node.value, err = self.decode_json(val)
             if err then
-                return false, err
+                log_error("failed to decode json: ", err)
             end
         end
 
-        _, err = decode_dir_value(self, node)
-        if err then
-            return false, err
-        end
+        decode_dir_value(self, node)
     end
 
     return true
@@ -293,18 +297,13 @@ local function get(self, key, attr)
     end
 
     if res.status == 200 and res.body.node then
-        local ok
-        ok, err = decode_dir_value(self, res.body.node)
-        if err then
-            return res, err
-        end
-
+        local ok = decode_dir_value(self, res.body.node)
         if not ok then
             local val = res.body.node.value
             if type(val) == "string" then
                 res.body.node.value, err = self.decode_json(val)
                 if err then
-                    return res, err
+                    log_error("failed to json decode: ", err)
                 end
             end
         end

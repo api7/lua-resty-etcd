@@ -76,18 +76,17 @@ __DATA__
             ngx.say("done set")
 
             res, err = etcd:readdir("/dir")
-            check_res(res, err) -- err
+            check_res(res, err) -- error log
             ngx.say("done readdir")
         }
     }
 --- request
 GET /t
---- no_error_log
-[error]
+--- error_log
+failed to json decode value of node: Expected object key string but found invalid token at character 2
 --- response_body
 first
 checked [/dir] is dir.
 err: Expected object key string but found invalid token at character 2
 done set
-err: Expected object key string but found invalid token at character 2
 done readdir
