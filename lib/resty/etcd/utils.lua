@@ -145,7 +145,7 @@ local function request(self, method, host, port, path, opts)
     end
 
 
-    httpc:connect(host, port)
+    http_cli:connect(host, port)
 
 
     local res
@@ -156,20 +156,24 @@ local function request(self, method, host, port, path, opts)
         query  = query,
     })
 
-    if err then
-        return nil, err
-    end
 
-    if res.status >= 500 then
-        return nil, "invalid response code: " .. res.status
-    end
+    local body = res:read_body();
+    log_error('err:', err, ' body:', body)
 
-    if not typeof.string(res.body) then
-        return res
-    end
+    -- if err then
+    --     return nil, err
+    -- end
 
-    res.body = self.decode_json(res.body)
-    return res
+    -- if res.status >= 500 then
+    --     return nil, "invalid response code: " .. res.status
+    -- end
+
+    -- if not typeof.string(res.body) then
+    --     return res
+    -- end
+
+    -- res.body = self.decode_json(res.body)
+    return nil, nil
 end
 
 _M.request = request

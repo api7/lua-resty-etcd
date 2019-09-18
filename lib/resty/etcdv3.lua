@@ -329,9 +329,13 @@ local function watch(self, key, attr)
     }
 
     local res, err
-    res, err = utils.request_uri(self, 'POST',
-                        self.endpoints.full_prefix .. "/kv/watch",
-                        opts, self.timeout)
+    -- res, err = utils.request_uri(self, 'POST',
+    --                     self.endpoints.full_prefix .. "/kv/watch",
+    --                     opts, self.timeout)
+
+
+    res, err = utils.request(self, 'POST', '127.0.0.1', '2379', '/v3/kv/watch', opts)
+
     return res, err
 end
 
