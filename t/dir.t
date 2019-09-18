@@ -213,7 +213,7 @@ checked val as expect: b
             local res2, err = etcd:wait("/dir", res.body.node.modifiedIndex + 1, 1)
             ngx.say("err: ", err, ", more than 1sec: ", ngx.now() - cur_time > 1)
 
-            ngx.timer.at(1.1, function ()
+            ngx.timer.at(1.5, function ()
                 etcd:set("/dir/a", "a")
             end)
 

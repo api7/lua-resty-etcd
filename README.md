@@ -60,7 +60,7 @@ Method
 `syntax: cli, err = etcd.new([option:table])`
 
 - `option:table`
-  - `host`: string - default `http://127.0.0.1:2379`
+  - `http_host`: string - default `http://127.0.0.1:2379`
   - `ttl`: int - default `-1`
     default ttl for key operation. set -1 to disable ttl.
   - `prefix`: string

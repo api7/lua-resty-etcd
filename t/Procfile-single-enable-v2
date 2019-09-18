@@ -1,0 +1,3 @@
+# Use goreman to run `go get github.com/mattn/goreman`
+etcd1: etcd --enable-v2=true
+# A learner node can be started using Procfile.learner
