@@ -1,17 +1,11 @@
 -- https://github.com/ledgetech/lua-resty-http
-local http          = require("resty.http")
 local typeof        = require("typeof")
 local cjson         = require("cjson.safe")
-local encode_args   = ngx.encode_args
 local setmetatable  = setmetatable
 local clear_tab     = require "table.clear"
-local tab_nkeys     = require "table.nkeys"
-local split         = require "ngx.re" .split
-local concat_tab    = table.concat
-local tostring      = tostring
-local select        = select
 local ipairs        = ipairs
 local type          = type
+local utils         = require("resty.etcd.utils")
 
 
 local _M = {
@@ -19,66 +13,6 @@ local _M = {
     encode_json = cjson.encode,
 }
 local mt = { __index = _M }
-
-
-local ngx_log = ngx.log
-local ngx_ERR = ngx.ERR
-local function log_error(...)
-    return ngx_log(ngx_ERR, ...)
-end
-
-
-local normalize
-do
-    local items = {}
-    local function concat(sep, ...)
-        local argc = select('#', ...)
-        clear_tab(items)
-        local len = 0
-
-        for i = 1, argc do
-            local v = select(i, ...)
-            if v ~= nil then
-                len = len + 1
-                items[len] = tostring(v)
-            end
-        end
-
-        return concat_tab(items, sep);
-    end
-
-
-    local segs = {}
-    function normalize(...)
-        local path = concat('/', ...)
-        local names = {}
-        local err
-
-        segs, err = split(path, [[/]], "jo", nil, nil, segs)
-        if not segs then
-            return nil, err
-        end
-
-        local len = 0
-        for _, seg in ipairs(segs) do
-            if seg == '..' then
-                if len > 0 then
-                    len = len - 1
-                end
-
-            elseif seg == '' or seg == '/' and names[len] == '/' then
-                -- do nothing
-
-            elseif seg ~= '.' then
-                len = len + 1
-                names[len] = seg
-            end
-        end
-
-        return '/' .. concat_tab(names, '/', 1, len);
-    end
-end
-_M.normalize = normalize
 
 
 function _M.new(opts)
@@ -114,7 +48,7 @@ function _M.new(opts)
             timeout = timeout,
             ttl = ttl,
             endpoints = {
-                full_prefix = http_host .. normalize(prefix),
+                full_prefix = http_host .. utils.normalize(prefix),
                 http_host = http_host,
                 prefix = prefix,
                 version     = http_host .. '/version',
@@ -125,52 +59,6 @@ function _M.new(opts)
             }
         },
         mt)
-end
-
-    local content_type = {
-        ["Content-Type"] = "application/x-www-form-urlencoded",
-    }
-
-local function _request(self, method, uri, opts, timeout)
-    local body
-    if opts and opts.body and tab_nkeys(opts.body) > 0 then
-        body = encode_args(opts.body)
-    end
-
-    if opts and opts.query and tab_nkeys(opts.query) > 0 then
-        uri = uri .. '?' .. encode_args(opts.query)
-    end
-
-    local http_cli, err = http.new()
-    if err then
-        return nil, err
-    end
-
-    if timeout then
-        http_cli:set_timeout(timeout * 1000)
-    end
-
-    local res
-    res, err = http_cli:request_uri(uri, {
-        method = method,
-        body = body,
-        headers = content_type,
-    })
-
-    if err then
-        return nil, err
-    end
-
-    if res.status >= 500 then
-        return nil, "invalid response code: " .. res.status
-    end
-
-    if not typeof.string(res.body) then
-        return res
-    end
-
-    res.body = self.decode_json(res.body)
-    return res
 end
 
 
@@ -206,13 +94,13 @@ local function set(self, key, val, attr)
     -- todo: check arguments
 
     -- verify key
-    key = normalize(key)
+    key = utils.normalize(key)
     if key == '/' then
         return nil, "key should not be a slash"
     end
 
     local res
-    res, err = _request(self, attr.in_order and 'POST' or 'PUT',
+    res, err = utils.request_uri(self, attr.in_order and 'POST' or 'PUT',
                         self.endpoints.full_prefix .. key,
                         opts, self.timeout)
     if err then
@@ -223,7 +111,7 @@ local function set(self, key, val, attr)
     if res.status < 300 and res.body.node and not res.body.node.dir then
         res.body.node.value, err = self.decode_json(res.body.node.value)
         if err then
-            log_error("failed to json decode value of node: ", err)
+            utils.log_error("failed to json decode value of node: ", err)
             return res, err
         end
     end
@@ -247,7 +135,7 @@ local function decode_dir_value(self, body_node)
         if type(val) == "string" then
             node.value, err = self.decode_json(val)
             if err then
-                log_error("failed to decode json: ", err)
+                utils.log_error("failed to decode json: ", err)
             end
         end
 
@@ -281,8 +169,8 @@ local function get(self, key, attr)
         }
     end
 
-    local res, err = _request(self, "GET",
-                              self.endpoints.full_prefix .. normalize(key),
+    local res, err = utils.request_uri(self, "GET",
+                              self.endpoints.full_prefix .. utils.normalize(key),
                               opts, attr and attr.timeout or self.timeout)
     if err then
         return res, err
@@ -303,7 +191,7 @@ local function get(self, key, attr)
             if type(val) == "string" then
                 res.body.node.value, err = self.decode_json(val)
                 if err then
-                    log_error("failed to json decode: ", err)
+                    utils.log_error("failed to json decode: ", err)
                 end
             end
         end
@@ -342,8 +230,8 @@ local function delete(self, key, attr)
     }
 
     -- todo: check arguments
-    return _request(self, "DELETE",
-                    self.endpoints.full_prefix .. normalize(key),
+    return utils.request_uri(self, "DELETE",
+                    self.endpoints.full_prefix .. utils.normalize(key),
                     opts, self.timeout)
 end
 
@@ -389,20 +277,20 @@ end
 
 -- /version
 function _M.version(self)
-    return _request(self, 'GET', self.endpoints.version, nil, self.timeout)
+    return utils.request_uri(self, 'GET', self.endpoints.version, nil, self.timeout)
 end
 
 -- /stats
 function _M.stats_leader(self)
-    return _request(self, 'GET', self.endpoints.stats_leader, nil, self.timeout)
+    return utils.request_uri(self, 'GET', self.endpoints.stats_leader, nil, self.timeout)
 end
 
 function _M.stats_self(self)
-    return _request(self, 'GET', self.endpoints.stats_self, nil, self.timeout)
+    return utils.request_uri(self, 'GET', self.endpoints.stats_self, nil, self.timeout)
 end
 
 function _M.stats_store(self)
-    return _request(self, 'GET', self.endpoints.stats_store, nil, self.timeout)
+    return utils.request_uri(self, 'GET', self.endpoints.stats_store, nil, self.timeout)
 end
 
 end -- do

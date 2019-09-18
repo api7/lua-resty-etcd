@@ -17,7 +17,7 @@ __DATA__
 --- config
     location /t {
         content_by_lua_block {
-            local normalize = require "resty.etcd" .normalize
+            local normalize = require "resty.etcd.utils" .normalize
 
             local function ifNotEqual(l, r)
                 if l ~= r then

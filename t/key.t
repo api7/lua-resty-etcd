@@ -247,7 +247,7 @@ err: timeout, more than 1sec: true
 checked val as expect: bcd
 wait more than 1sec: true
 --- timeout: 5
-
+--- ONLY
 
 
 === TEST 8: set(key, val), val is a Lua table
