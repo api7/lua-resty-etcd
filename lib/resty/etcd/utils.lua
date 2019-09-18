@@ -156,9 +156,17 @@ local function request(self, method, host, port, path, opts)
         query  = query,
     })
 
-
-    local body = res:read_body();
-    log_error('err:', err, ' body:', body)
+    local chunks = {}
+    local c = 1
+    repeat
+        local chunk, err = res.body_reader()
+        log_error('err:', err, ' chunk:', chunk)
+        if chunk then
+            chunks[c] = chunk
+            c = c + 1
+        end
+    until not chunk
+    
 
     -- if err then
     --     return nil, err
