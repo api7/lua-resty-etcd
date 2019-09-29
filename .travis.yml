@@ -15,6 +15,8 @@ addons:
       - perl
       - etcd
       - luarocks
+      # install golang environment
+      - golang-go
 
 cache:
   directories:
@@ -34,9 +36,13 @@ install:
   - sudo add-apt-repository -y "deb http://openresty.org/package/ubuntu $(lsb_release -sc) main"
   - sudo apt-get update
   - sudo apt-get install openresty
+  # run etcd local cluster, startup at localhost:2379, localhost:22379, and localhost:32379
+  # see more https://github.com/etcd-io/etcd/blob/master/Documentation/dev-guide/local_cluster.md
+  - go get github.com/mattn/goreman
 
 script:
   - cd test-nginx && (sudo cpanm . > build.log 2>&1 || (cat build.log && exit 1)) && cd ..
   - export PATH=$OPENRESTY_PREFIX/nginx/sbin:$PATH
   - sudo service etcd start
+  - goreman -f ./t/Procfile start > goreman.log 2>&1 &
   - make test jobs=$JOBS

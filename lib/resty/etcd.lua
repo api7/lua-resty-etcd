@@ -110,8 +110,8 @@ function _M.new(opts)
     local http_host = opts.host or "http://127.0.0.1:2379"
     local ttl = opts.ttl or -1
     local prefix = opts.prefix or "/v2/keys"
-    local user = opts.user or ""
-    local password = opts.password or ""
+    local user = opts.user
+    local password = opts.password
 
     if not typeof.uint(timeout) then
         return nil, 'opts.timeout must be unsigned integer'
@@ -129,11 +129,11 @@ function _M.new(opts)
         return nil, 'opts.prefix must be string'
     end
 
-    if not typeof.string(user) then
+    if user and not typeof.string(user) then
         return nil, 'opts.user must be string or ignore'
     end
 
-    if not typeof.string(password) then
+    if password and not typeof.string(password) then
         return nil, 'opts.password must be string or ignore'
     end
 
@@ -196,10 +196,12 @@ local function choose_one_endpoint(self, endpoints)
     if #endpoints == 0 then
         return endpoints
     end
+
     local endpoints_len = #endpoints
     if endpoints_len == 1 then
         return endpoints[1]
     end
+
     self.init_count = (self.init_count or 0) + 1
     local pos = self.init_count % endpoints_len + 1
     if self.init_count >= INIT_COUNT_RESIZE then
@@ -214,9 +216,9 @@ end
 -- return key, value
 -- example: 'Authorization', 'Basic dsfsfsddsfddsdsffd=='
 local function create_basicauth(user, password)
-    local userPwd = string.format('%s:%s', user, password)
+    local userPwd = user .. ':' .. password
     local base64Str = encode_base64(userPwd)
-    return 'Authorization', string.format('Basic %s', base64Str)
+    return 'Authorization', 'Basic ' .. base64Str
 end
 
 local function _request(self, method, uri, opts, timeout)
@@ -232,6 +234,9 @@ local function _request(self, method, uri, opts, timeout)
 
     local http_cli, err = http.new()
     if err then
+        if self.is_cluster then
+            err = 'fail to instance Http, request url:' .. uri .. ' err:' .. tostring(err)
+        end
         return nil, err
     end
 
@@ -242,7 +247,7 @@ local function _request(self, method, uri, opts, timeout)
     local headers = {
         ['Content-Type'] = content_type['Content-Type'],
     }
-    if self.user ~= '' and self.password ~= '' then
+    if self.user and self.password then
         local bauth_key, bauth_val = create_basicauth(self.user, self.password)
         headers[bauth_key] = bauth_val
     end
@@ -255,6 +260,9 @@ local function _request(self, method, uri, opts, timeout)
     })
 
     if err then
+        if self.is_cluster then
+            err = 'fail request to: ' .. uri .. ' err:' .. tostring(err)
+        end
         return nil, err
     end
 
@@ -384,7 +392,7 @@ local function get(self, key, attr)
 
     local res, err = _request(self, "GET",
                             choose_one_endpoint(self, self.endpoints).full_prefix .. normalize(key),
-                              opts, attr and attr.timeout or self.timeout)
+                            opts, attr and attr.timeout or self.timeout)
     if err then
         return res, err
     end
