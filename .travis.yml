@@ -36,7 +36,7 @@ install:
   - sudo apt-get install openresty
 
 script:
-  - cd test-nginx && (sudo cpanm . > build.log 2>&1 || (cat build.log && exit 1)) && cd ..
+  - cd test-nginx && (sudo cpanm --notest . > build.log 2>&1 || (cat build.log && exit 1)) && cd ..
   - export PATH=$OPENRESTY_PREFIX/nginx/sbin:$PATH
   - sudo service etcd start
   - make test jobs=$JOBS
