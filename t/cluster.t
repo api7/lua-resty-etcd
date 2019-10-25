@@ -48,7 +48,7 @@ __DATA__
     location /t {
         content_by_lua_block {
             local etcd, err = require "resty.etcd" .new({
-                host = {
+                http_host = {
                     "http://127.0.0.1:2379",
                     "http://127.0.0.1:2379",
                     "http://127.0.0.1:2379",
@@ -88,7 +88,7 @@ all done
     location /t {
         content_by_lua_block {
             local etcd, err = require "resty.etcd" .new({
-                host = {
+                http_host = {
                     "http://127.0.0.1:12379",
                     "http://127.0.0.1:22379",
                     "http://127.0.0.1:32379",
