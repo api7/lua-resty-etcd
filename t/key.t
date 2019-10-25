@@ -305,3 +305,96 @@ GET /t
 --- response_body
 checked error msg as expect: Key not found
 all done
+
+
+
+=== TEST 10: invalid cluster arguments
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local etcd, err = require "resty.etcd" .new({
+                host = true
+            })
+            ngx.say("res: ", res, " err: ", err)
+        }
+    }
+--- request
+GET /t
+--- no_error_log
+[error]
+--- response_body
+res: nil err: opts.host must be string or table
+
+
+
+=== TEST 11: invalid basicauth arguments
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local etcd, err = require "resty.etcd" .new({
+                user = true,
+                password = "pwd",
+            })
+            ngx.print("res: ", res, " err: ", err)
+
+            ngx.print("\n")
+
+            local etcd, err = require "resty.etcd" .new({
+                user = "user",
+                password = true,
+            })
+            ngx.print("res: ", res, " err: ", err)
+
+            ngx.print("\n")
+        }
+    }
+--- request
+GET /t
+--- no_error_log
+[error]
+--- response_body
+res: nil err: opts.user must be string or ignore
+res: nil err: opts.password must be string or ignore
+--- timeout: 5
+
+
+
+=== TEST 12: cluster set + delete + get
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local etcd, err = require "resty.etcd" .new({
+                host = {
+                    "http://127.0.0.1:12379", 
+                    "http://127.0.0.1:22379",
+                    "http://127.0.0.1:32379",
+                }
+            })
+            check_res(etcd, err)
+
+            local res, err = etcd:set("/test", {a = "abc"})
+            check_res(res, err)
+
+            ngx.sleep(1)
+
+            res, err = etcd:delete("/test")
+            check_res(res, err)
+
+            ngx.sleep(1)
+
+            local data, err = etcd:get("/test")
+            check_res(data, err, nil, "Key not found")
+
+            ngx.say("all done")
+        }
+    }
+--- request
+GET /t
+--- no_error_log
+[error]
+--- response_body
+checked error msg as expect: Key not found
+all done
