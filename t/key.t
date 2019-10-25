@@ -324,7 +324,7 @@ GET /t
 --- no_error_log
 [error]
 --- response_body
-res: nil err: opts.host must be string or table
+res: nil err: opts.host must be string
 
 
 

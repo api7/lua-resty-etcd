@@ -7,6 +7,11 @@ INSTALL ?= install
 install:
 	$(INSTALL) lib/resty/*.lua $(LUA_LIB_DIR)/resty/
 
+### dev:          Create a development ENV
+.PHONY: dev
+dev:
+	luarocks install rockspec/lua-resty-etcd-dev-0.1-0.rockspec --only-deps
+
 ### help:         Show Makefile rules
 .PHONY: help
 help:
