@@ -12,13 +12,19 @@ local select        = select
 local ipairs        = ipairs
 local type          = type
 local encode_base64 = ngx.encode_base64
+local require = require
+local next = next
+local table = table
+
 
 local INIT_COUNT_RESIZE = 2e8
+
 
 local _M = {
     decode_json = cjson.decode,
     encode_json = cjson.encode,
 }
+
 local mt = { __index = _M }
 
 
@@ -192,7 +198,8 @@ end
     }
 
 
-local function choose_one_endpoint(self, endpoints)
+local function choose_endpoint(self)
+    local endpoints = self.endpoints
     if #endpoints == 0 then
         return endpoints
     end
@@ -235,7 +242,8 @@ local function _request(self, method, uri, opts, timeout)
     local http_cli, err = http.new()
     if err then
         if self.is_cluster then
-            err = 'fail to instance Http, request url:' .. uri .. ' err:' .. tostring(err)
+            err = 'fail to instance Http, request url:' .. uri .. ' err:'
+                  .. tostring(err)
         end
         return nil, err
     end
@@ -322,7 +330,7 @@ local function set(self, key, val, attr)
 
     local res
     res, err = _request(self, attr.in_order and 'POST' or 'PUT',
-                        choose_one_endpoint(self, self.endpoints).full_prefix .. key,
+                        choose_endpoint(self).full_prefix .. key,
                         opts, self.timeout)
     if err then
         return nil, err
@@ -391,7 +399,7 @@ local function get(self, key, attr)
     end
 
     local res, err = _request(self, "GET",
-                            choose_one_endpoint(self, self.endpoints).full_prefix .. normalize(key),
+                            choose_endpoint(self).full_prefix .. normalize(key),
                             opts, attr and attr.timeout or self.timeout)
     if err then
         return res, err
@@ -452,7 +460,7 @@ local function delete(self, key, attr)
 
     -- todo: check arguments
     return _request(self, "DELETE",
-                    choose_one_endpoint(self, self.endpoints).full_prefix .. normalize(key),
+                    choose_endpoint(self).full_prefix .. normalize(key),
                     opts, self.timeout)
 end
 
@@ -498,20 +506,24 @@ end
 
 -- /version
 function _M.version(self)
-    return _request(self, 'GET', choose_one_endpoint(self, self.endpoints).version, nil, self.timeout)
+    return _request(self, 'GET', choose_endpoint(self).version, nil,
+                    self.timeout)
 end
 
 -- /stats
 function _M.stats_leader(self)
-    return _request(self, 'GET', choose_one_endpoint(self, self.endpoints).stats_leader, nil, self.timeout)
+    return _request(self, 'GET', choose_endpoint(self).stats_leader, nil,
+                    self.timeout)
 end
 
 function _M.stats_self(self)
-    return _request(self, 'GET', choose_one_endpoint(self, self.endpoints).stats_self, nil, self.timeout)
+    return _request(self, 'GET', choose_endpoint(self).stats_self, nil,
+                    self.timeout)
 end
 
 function _M.stats_store(self)
-    return _request(self, 'GET', choose_one_endpoint(self, self.endpoints).stats_store, nil, self.timeout)
+    return _request(self, 'GET', choose_endpoint(self).stats_store, nil,
+                    self.timeout)
 end
 
 end -- do
