@@ -12,13 +12,19 @@ local select        = select
 local ipairs        = ipairs
 local type          = type
 local encode_base64 = ngx.encode_base64
+local require = require
+local next = next
+local table = table
+
 
 local INIT_COUNT_RESIZE = 2e8
+
 
 local _M = {
     decode_json = cjson.decode,
     encode_json = cjson.encode,
 }
+
 local mt = { __index = _M }
 
 
@@ -137,40 +143,24 @@ function _M.new(opts)
         return nil, 'opts.password must be string or ignore'
     end
 
-    -- signle node
-    if type(http_host) == 'string' then
-        return setmetatable({
-                init_count = 0,
-                timeout = timeout,
-                ttl = ttl,
-                user = user,
-                password = password,
-                is_cluster = false,
-                endpoints = {
-                    full_prefix = http_host .. normalize(prefix),
-                    http_host = http_host,
-                    prefix = prefix,
-                    version     = http_host .. '/version',
-                    stats_leader = http_host .. '/v2/stats/leader',
-                    stats_self   = http_host .. '/v2/stats/self',
-                    stats_store  = http_host .. '/v2/stats/store',
-                    keys        = http_host .. '/v2/keys',
-                }
-            },
-            mt)
+    local endpoints = {}
+    local http_hosts
+    if type(http_host) == 'string' then -- signle node
+        http_hosts = {http_host}
+    else
+        http_hosts = http_host
     end
 
-    local endpoints = {}
-    for _, http_host_item in ipairs(http_host) do
+    for _, host in ipairs(http_hosts) do
         table.insert(endpoints, {
-            full_prefix = http_host_item .. normalize(prefix),
-            http_host = http_host_item,
+            full_prefix = host .. normalize(prefix),
+            http_host = host,
             prefix = prefix,
-            version     = http_host_item .. '/version',
-            stats_leader = http_host_item .. '/v2/stats/leader',
-            stats_self   = http_host_item .. '/v2/stats/self',
-            stats_store  = http_host_item .. '/v2/stats/store',
-            keys        = http_host_item .. '/v2/keys',
+            version     = host .. '/version',
+            stats_leader = host .. '/v2/stats/leader',
+            stats_self   = host .. '/v2/stats/self',
+            stats_store  = host .. '/v2/stats/store',
+            keys        = host .. '/v2/keys',
         })
     end
 
@@ -178,7 +168,7 @@ function _M.new(opts)
         init_count = 0,
         timeout = timeout,
         ttl = ttl,
-        is_cluster = true,
+        is_cluster = #endpoints > 1,
         user = user,
         password = password,
         endpoints = endpoints
@@ -191,12 +181,8 @@ end
         ["Content-Type"] = "application/x-www-form-urlencoded",
     }
 
-
-local function choose_one_endpoint(self, endpoints)
-    if #endpoints == 0 then
-        return endpoints
-    end
-
+local function choose_endpoint(self)
+    local endpoints = self.endpoints
     local endpoints_len = #endpoints
     if endpoints_len == 1 then
         return endpoints[1]
@@ -212,7 +198,7 @@ local function choose_one_endpoint(self, endpoints)
 end
 
 
-
+-- todo: test cover
 -- return key, value
 -- example: 'Authorization', 'Basic dsfsfsddsfddsdsffd=='
 local function create_basicauth(user, password)
@@ -221,8 +207,8 @@ local function create_basicauth(user, password)
     return 'Authorization', 'Basic ' .. base64Str
 end
 
-local function _request(self, method, uri, opts, timeout)
 
+local function _request(self, method, uri, opts, timeout)
     local body
     if opts and opts.body and table_exist_keys(opts.body) then
         body = encode_args(opts.body)
@@ -235,7 +221,8 @@ local function _request(self, method, uri, opts, timeout)
     local http_cli, err = http.new()
     if err then
         if self.is_cluster then
-            err = 'fail to instance Http, request url:' .. uri .. ' err:' .. tostring(err)
+            err = 'fail to instance Http, request url:' .. uri .. ' err:'
+                  .. tostring(err)
         end
         return nil, err
     end
@@ -312,8 +299,6 @@ local function set(self, key, val, attr)
         }
     }
 
-    -- todo: check arguments
-
     -- verify key
     key = normalize(key)
     if key == '/' then
@@ -322,7 +307,7 @@ local function set(self, key, val, attr)
 
     local res
     res, err = _request(self, attr.in_order and 'POST' or 'PUT',
-                        choose_one_endpoint(self, self.endpoints).full_prefix .. key,
+                        choose_endpoint(self).full_prefix .. key,
                         opts, self.timeout)
     if err then
         return nil, err
@@ -391,7 +376,7 @@ local function get(self, key, attr)
     end
 
     local res, err = _request(self, "GET",
-                            choose_one_endpoint(self, self.endpoints).full_prefix .. normalize(key),
+                            choose_endpoint(self).full_prefix .. normalize(key),
                             opts, attr and attr.timeout or self.timeout)
     if err then
         return res, err
@@ -452,7 +437,7 @@ local function delete(self, key, attr)
 
     -- todo: check arguments
     return _request(self, "DELETE",
-                    choose_one_endpoint(self, self.endpoints).full_prefix .. normalize(key),
+                    choose_endpoint(self).full_prefix .. normalize(key),
                     opts, self.timeout)
 end
 
@@ -498,20 +483,24 @@ end
 
 -- /version
 function _M.version(self)
-    return _request(self, 'GET', choose_one_endpoint(self, self.endpoints).version, nil, self.timeout)
+    return _request(self, 'GET', choose_endpoint(self).version, nil,
+                    self.timeout)
 end
 
 -- /stats
 function _M.stats_leader(self)
-    return _request(self, 'GET', choose_one_endpoint(self, self.endpoints).stats_leader, nil, self.timeout)
+    return _request(self, 'GET', choose_endpoint(self).stats_leader, nil,
+                    self.timeout)
 end
 
 function _M.stats_self(self)
-    return _request(self, 'GET', choose_one_endpoint(self, self.endpoints).stats_self, nil, self.timeout)
+    return _request(self, 'GET', choose_endpoint(self).stats_self, nil,
+                    self.timeout)
 end
 
 function _M.stats_store(self)
-    return _request(self, 'GET', choose_one_endpoint(self, self.endpoints).stats_store, nil, self.timeout)
+    return _request(self, 'GET', choose_endpoint(self).stats_store, nil,
+                    self.timeout)
 end
 
 end -- do
