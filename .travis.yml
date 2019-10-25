@@ -49,10 +49,8 @@ script:
   - cd test-nginx && (sudo cpanm --notest . > build.log 2>&1 || (cat build.log && exit 1)) && cd ..
   - export PATH=$OPENRESTY_PREFIX/nginx/sbin:$PWD/etcd-v$ETCD_VER-linux-amd64:$PATH
   - etcd --version
-  - goreman -f ./t/$GOREMAN_CONF start > goreman1.log 2>&1 &
-  - goreman -f ./t/Procfile start > goreman2.log 2>&1 &
+  - goreman -f ./t/$GOREMAN_CONF start > goreman.log 2>&1 &
   - sleep 5
-  - cat goreman1.log
-  - cat goreman2.log
+  - cat goreman.log
   - ps -ef | grep etcd
   - make test
