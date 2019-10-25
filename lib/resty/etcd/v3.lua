@@ -114,10 +114,11 @@ function _M.new(opts)
 
         table.insert(endpoints, {
             full_prefix = host .. utils.normalize(api_prefix),
-                host        = m[1] or "127.0.0.1",
-                port        = m[2] or "2379",
-                api_prefix  = api_prefix,
-                key_prefix  = key_prefix
+            http_host   = host,
+            host        = m[1] or "127.0.0.1",
+            port        = m[2] or "2379",
+            api_prefix  = api_prefix,
+            key_prefix  = key_prefix,
         })
     end
 
@@ -649,6 +650,33 @@ function _M.setx(self, key, val, opts)
 end
 
 end -- do
+
+
+-- /version
+function _M.version(self)
+    return _request_uri(self, "GET",
+                        choose_endpoint(self).http_host .. "/version",
+                        nil, self.timeout)
+end
+
+-- /stats
+function _M.stats_leader(self)
+    return _request_uri(self, "GET",
+                        choose_endpoint(self).http_host .. "/v2/stats/leader",
+                        nil, self.timeout)
+end
+
+function _M.stats_self(self)
+    return _request_uri(self, "GET",
+                        choose_endpoint(self).http_host .. "/v2/stats/self",
+                        nil, self.timeout)
+end
+
+function _M.stats_store(self)
+    return _request_uri(self, "GET",
+                        choose_endpoint(self).http_host .. "/v2/stats/store",
+                        nil, self.timeout)
+end
 
 
 do
