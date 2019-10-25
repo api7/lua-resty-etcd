@@ -143,40 +143,24 @@ function _M.new(opts)
         return nil, 'opts.password must be string or ignore'
     end
 
-    -- signle node
-    if type(http_host) == 'string' then
-        return setmetatable({
-                init_count = 0,
-                timeout = timeout,
-                ttl = ttl,
-                user = user,
-                password = password,
-                is_cluster = false,
-                endpoints = {
-                    full_prefix = http_host .. normalize(prefix),
-                    http_host = http_host,
-                    prefix = prefix,
-                    version     = http_host .. '/version',
-                    stats_leader = http_host .. '/v2/stats/leader',
-                    stats_self   = http_host .. '/v2/stats/self',
-                    stats_store  = http_host .. '/v2/stats/store',
-                    keys        = http_host .. '/v2/keys',
-                }
-            },
-            mt)
+    local endpoints = {}
+    local http_hosts
+    if type(http_host) == 'string' then -- signle node
+        http_hosts = {http_host}
+    else
+        http_hosts = http_host
     end
 
-    local endpoints = {}
-    for _, http_host_item in ipairs(http_host) do
+    for _, host in ipairs(http_hosts) do
         table.insert(endpoints, {
-            full_prefix = http_host_item .. normalize(prefix),
-            http_host = http_host_item,
+            full_prefix = host .. normalize(prefix),
+            http_host = host,
             prefix = prefix,
-            version     = http_host_item .. '/version',
-            stats_leader = http_host_item .. '/v2/stats/leader',
-            stats_self   = http_host_item .. '/v2/stats/self',
-            stats_store  = http_host_item .. '/v2/stats/store',
-            keys        = http_host_item .. '/v2/keys',
+            version     = host .. '/version',
+            stats_leader = host .. '/v2/stats/leader',
+            stats_self   = host .. '/v2/stats/self',
+            stats_store  = host .. '/v2/stats/store',
+            keys        = host .. '/v2/keys',
         })
     end
 
@@ -184,7 +168,7 @@ function _M.new(opts)
         init_count = 0,
         timeout = timeout,
         ttl = ttl,
-        is_cluster = true,
+        is_cluster = #endpoints > 1,
         user = user,
         password = password,
         endpoints = endpoints
@@ -197,13 +181,8 @@ end
         ["Content-Type"] = "application/x-www-form-urlencoded",
     }
 
-
 local function choose_endpoint(self)
     local endpoints = self.endpoints
-    if #endpoints == 0 then
-        return endpoints
-    end
-
     local endpoints_len = #endpoints
     if endpoints_len == 1 then
         return endpoints[1]
@@ -219,7 +198,7 @@ local function choose_endpoint(self)
 end
 
 
-
+-- todo: test cover
 -- return key, value
 -- example: 'Authorization', 'Basic dsfsfsddsfddsdsffd=='
 local function create_basicauth(user, password)
@@ -228,8 +207,8 @@ local function create_basicauth(user, password)
     return 'Authorization', 'Basic ' .. base64Str
 end
 
-local function _request(self, method, uri, opts, timeout)
 
+local function _request(self, method, uri, opts, timeout)
     local body
     if opts and opts.body and table_exist_keys(opts.body) then
         body = encode_args(opts.body)
@@ -319,8 +298,6 @@ local function set(self, key, val, attr)
             prevIndex = attr.prev_index,
         }
     }
-
-    -- todo: check arguments
 
     -- verify key
     key = normalize(key)
