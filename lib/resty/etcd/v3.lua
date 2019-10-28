@@ -4,7 +4,7 @@ local cjson         = require("cjson.safe")
 local setmetatable  = setmetatable
 local clear_tab     = require("table.clear")
 local utils         = require("resty.etcd.utils")
-local tab_nkeys     = require "table.nkeys"
+local tab_nkeys     = require("table.nkeys")
 local encode_args   = ngx.encode_args
 local sub_str       = string.sub
 local str_byte      = string.byte
@@ -70,6 +70,16 @@ local function _request_uri(self, method, uri, opts, timeout)
 
     res.body = decode_json(res.body)
     return res
+end
+
+
+local function encode_json_base64(data)
+    local err
+    data, err = encode_json(data)
+    if not data then
+        return nil, err
+    end
+    return encode_base64(data)
 end
 
 
@@ -152,12 +162,6 @@ end
 
 
 local function set(self, key, val, attr)
-    local err
-    val, err = encode_json(val)
-    if not val then
-        return nil, err
-    end
-
     -- verify key
     key = utils.normalize(key)
     if key == '/' then
@@ -165,9 +169,13 @@ local function set(self, key, val, attr)
     end
 
     key = encode_base64(key)
-    val = encode_base64(val)
+    local err
+    val, err = encode_json_base64(val)
+    if not val then
+        return nil, err
+    end
 
-    attr = attr and attr or {}
+    attr = attr or {}
 
     local lease
     if attr.lease then
@@ -210,6 +218,7 @@ local function set(self, key, val, attr)
 
     -- get
     if res.status < 300  then
+        -- TODO(optimize): delay json encode
         utils.log_info("v3 set body: ", encode_json(res.body))
     end
 
@@ -374,9 +383,12 @@ end
 
 
 local function request_chunk(self, method, host, port, path, opts, timeout)
-    local body
+    local body, err
     if opts and opts.body and tab_nkeys(opts.body) > 0 then
-        body = encode_json(opts.body)
+        body, err = encode_json(opts.body)
+        if not body then
+            return nil, err
+        end
     end
 
     local query
@@ -384,7 +396,8 @@ local function request_chunk(self, method, host, port, path, opts, timeout)
         query = encode_args(opts.query)
     end
 
-    local http_cli, err = utils.http.new()
+    local http_cli
+    http_cli, err = utils.http.new()
     if err then
         return nil, err
     end
@@ -628,8 +641,13 @@ function _M.setnx(self, key, val, opts)
     success[1] = {}
     success[1].requestPut = {}
     success[1].requestPut.key = encode_base64(key)
-    val = encode_json(val)
-    success[1].requestPut.value = encode_base64(val)
+
+    local err
+    val, err = encode_json_base64(val)
+    if not val then
+        return nil, "failed to encode val: " .. err
+    end
+    success[1].requestPut.value = val
 
     return txn(self, opts, compare, success, nil)
 end
@@ -646,8 +664,13 @@ function _M.setx(self, key, val, opts)
     failure[1] = {}
     failure[1].requestPut = {}
     failure[1].requestPut.key = encode_base64(key)
-    val = encode_json(val)
-    failure[1].requestPut.value = encode_base64(val)
+
+    local err
+    val, err = encode_json_base64(val)
+    if not val then
+        return nil, "failed to encode val: " .. err
+    end
+    failure[1].requestPut.value = val
 
     return txn(self, opts, compare, nil, failure)
 end
@@ -656,15 +679,21 @@ end -- do
 
 
 function _M.txn(self, compare, success, failure, opts)
+    local err
+
     if compare then
         local new_rules = tab_clone(compare)
         for i, rule in ipairs(compare) do
             rule = tab_clone(rule)
             rule.key = encode_base64(rule.key)
+
             if rule.value then
-                rule.value = encode_json(rule.value)
-                rule.value = encode_base64(rule.value)
+                rule.value, err = encode_json_base64(rule.value)
+                if not rule.value then
+                    return nil, "failed to encode value: " .. err
+                end
             end
+
             new_rules[i] = rule
         end
         compare = new_rules
@@ -678,14 +707,18 @@ function _M.txn(self, compare, success, failure, opts)
                 local requestPut = tab_clone(rule.requestPut)
                 requestPut.key = encode_base64(requestPut.key)
 
-                requestPut.value = encode_json(requestPut.value)
-                requestPut.value = encode_base64(requestPut.value)
+                requestPut.value, err = encode_json_base64(requestPut.value)
+                if not requestPut.value then
+                    return nil, "failed to encode value: " .. err
+                end
+
                 rule.requestPut = requestPut
             end
             new_rules[i] = rule
         end
         success = new_rules
     end
+
     return txn(self, opts, compare, success, failure)
 end
 
