@@ -29,7 +29,7 @@ our $HttpConfig = <<'_EOC_';
                 end
                 if data.body.kvs and val ~= data.body.kvs[1].value then
                     ngx.say("failed to check value")
-                    ngx.log(ngx.ERR, "failed to check value, got: ",data.body.kvs[1].value,
+                    ngx.log(ngx.ERR, "failed to check value, got: ", data.body.kvs[1].value,
                             ", expect: ", val)
                     ngx.exit(200)
                 else
@@ -264,16 +264,22 @@ checked val as expect: abd
             local etcd, err = require "resty.etcd" .new({protocol = "v3"})
             check_res(etcd, err)
 
-            local res, err = etcd:setnx("/setnx", "abc")
+            local res, err = etcd:delete("/setnx")
             check_res(res, err, nil, 200)
 
-            local res, err = etcd:setnx("/setnx", "abd")
+            local res, err = etcd:setnx("/setnx", "aaa")
+            check_res(res, err, nil, 200)
+
+            local res, err = etcd:setnx("/setnx", "bbb")
             check_res(res, err, nil, 200)
 
             local data, err = etcd:get("/setnx")
-            check_res(data, err, "abd")
+            check_res(data, err, "aaa", 200)
         }
     }
 --- request
 GET /t
 --- no_error_log
+[error]
+--- response_body
+checked val as expect: aaa
