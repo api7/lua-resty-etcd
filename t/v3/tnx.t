@@ -63,13 +63,13 @@ __DATA__
             check_res(data, err, "abc")
 
             local data, err = etcd:txn(
-                {{key = "/test", result = "EQUAL", value = "abc"}},
+                {{key = "/test", result = "EQUAL", value = "abc", target = "VALUE"}},
                 {{requestPut = {key = "/test", value = "ddd"}}}
             )
             check_res(data, err)
 
-            -- local data, err = etcd:get("/test")
-            -- check_res(data, err, "ddd")
+            local data, err = etcd:get("/test")
+            check_res(data, err, "ddd")
         }
     }
 --- request
@@ -77,4 +77,39 @@ GET /t
 --- no_error_log
 [error]
 --- response_body
+checked val as expect: abc
+checked val as expect: ddd
+
+
+
+=== TEST 2: txn(not "EQUAL") and get
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local etcd, err = require "resty.etcd" .new({protocol = "v3"})
+            check_res(etcd, err)
+
+            local res, err = etcd:set("/test", "abc")
+            check_res(res, err)
+
+            local data, err = etcd:get("/test")
+            check_res(data, err, "abc")
+
+            local data, err = etcd:txn(
+                {{key = "/test", result = "EQUAL", value = "not equal", target = "VALUE"}},
+                {{requestPut = {key = "/test", value = "ddd"}}}
+            )
+            check_res(data, err)
+
+            local data, err = etcd:get("/test")
+            check_res(data, err, "abc")
+        }
+    }
+--- request
+GET /t
+--- no_error_log
+[error]
+--- response_body
+checked val as expect: abc
 checked val as expect: abc

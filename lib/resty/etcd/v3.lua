@@ -624,11 +624,11 @@ function _M.setnx(self, key, val, opts)
     compare[1].key    = encode_base64(key)
     compare[1].createRevision = 0
 
-
     clear_tab(success)
     success[1] = {}
     success[1].requestPut = {}
     success[1].requestPut.key = encode_base64(key)
+    val = encode_json(val)
     success[1].requestPut.value = encode_base64(val)
 
     return txn(self, opts, compare, success, nil)
@@ -646,6 +646,7 @@ function _M.setx(self, key, val, opts)
     failure[1] = {}
     failure[1].requestPut = {}
     failure[1].requestPut.key = encode_base64(key)
+    val = encode_json(val)
     failure[1].requestPut.value = encode_base64(val)
 
     return txn(self, opts, compare, nil, failure)
@@ -661,6 +662,7 @@ function _M.txn(self, compare, success, failure, opts)
             rule = tab_clone(rule)
             rule.key = encode_base64(rule.key)
             if rule.value then
+                rule.value = encode_json(rule.value)
                 rule.value = encode_base64(rule.value)
             end
             new_rules[i] = rule
@@ -675,6 +677,8 @@ function _M.txn(self, compare, success, failure, opts)
             if rule.requestPut then
                 local requestPut = tab_clone(rule.requestPut)
                 requestPut.key = encode_base64(requestPut.key)
+
+                requestPut.value = encode_json(requestPut.value)
                 requestPut.value = encode_base64(requestPut.value)
                 rule.requestPut = requestPut
             end

@@ -251,6 +251,8 @@ GET /t
 --- request
 GET /t
 --- no_error_log
+--- response_body
+checked val as expect: abd
 
 
 
@@ -269,7 +271,7 @@ GET /t
             check_res(res, err, nil, 200)
 
             local data, err = etcd:get("/setnx")
-            check_res(data, err, "abc", 200)
+            check_res(data, err, "abd")
         }
     }
 --- request
