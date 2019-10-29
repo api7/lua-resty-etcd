@@ -54,7 +54,8 @@ function _M.new(opts)
     local protocol = opts and opts.protocol or "v2"
     if protocol == "v3" then
         local sub_ver = ver.etcdserver:sub(1, 4)
-        opts.api_prefix = prefix_v3[sub_ver] or "/v3beta"
+        local etcd_prefix = prefix_v3[sub_ver] or "/v3beta"
+        opts.api_prefix = etcd_prefix .. (opts.api_prefix or "")
         return etcdv3.new(opts)
     end
 
