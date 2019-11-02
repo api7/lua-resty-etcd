@@ -13,6 +13,7 @@ API V3
     * [readdir](#readdir)
     * [watchdir](#watchdir)
     * [rmdir](#rmdir)
+    * [txn](#txn)
 
 Method
 ======
@@ -217,3 +218,34 @@ local res, err = cli:rmdir('/path/to/dir')
 ```
 
 [Back to TOP](#api-v3)
+
+
+### txn
+
+`syntax: res, err = cli:txn(compare:array, success:array, failure:array [, opts:table])`
+
+* `compare`: array of [table](https://github.com/etcd-io/etcd/blob/master/Documentation/dev-guide/api_reference_v3.md#message-compare-etcdserveretcdserverpbrpcproto).
+* `success`: array of [table](https://github.com/etcd-io/etcd/blob/master/Documentation/dev-guide/api_reference_v3.md#message-requestop-etcdserveretcdserverpbrpcproto).
+* `failure`: array of [table](https://github.com/etcd-io/etcd/blob/master/Documentation/dev-guide/api_reference_v3.md#message-requestop-etcdserveretcdserverpbrpcproto).
+* `opts`: optional options.
+    * `timeout`: (int) request timeout seconds. set 0 to disable timeout.
+
+Remove the directory
+
+```lua
+local compare = {}
+compare[1] = {}
+compare[1].target = "CREATE"
+compare[1].key    = encode_base64("test")
+compare[1].createRevision = 0
+
+local success = {}
+success[1] = {}
+success[1].requestPut = {}
+success[1].requestPut.key = encode_base64("test")
+
+local res, err = cli:txn(compare, success, nil)
+```
+
+[Back to TOP](#api-v3)
+
