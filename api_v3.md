@@ -249,3 +249,11 @@ local res, err = cli:txn(compare, success, nil)
 
 [Back to TOP](#api-v3)
 
+
+### version
+
+`syntax: res, err = cli:version()`
+
+Gets the etcd version info.
+
+[Back to TOP](#api-v3)
