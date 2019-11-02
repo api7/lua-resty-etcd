@@ -5,6 +5,14 @@ API V3
     * [new](#new)
     * [get](#get)
     * [set](#set)
+    * [setnx](#setnx)
+    * [setx](#setx)
+    * [delete](#delete)
+    * [watch](#watch)
+    * [watchdir](#watchdir)
+    * [readdir](#readdir)
+    * [watchdir](#watchdir)
+    * [rmdir](#rmdir)
 
 Method
 ======
@@ -168,23 +176,6 @@ local res, err = cli:readdir('/path/to/dir')
 [Back to TOP](#api-v3)
 
 
-### rmdir
-
-`syntax: res, err = cli:rmdir(key:string [, opts:table])`
-
-* `key`: string value.
-* `opts`: optional options.
-    * `timeout`: (int) request timeout seconds. set 0 to disable timeout.
-    * `prev_kv`: (bool) If prev_kv is set, etcd gets the previous key-value pairs before deleting it. The previous key-value pairs will be returned in the delete response.
-
-Remove the directory
-
-```lua
-local res, err = cli:rmdir('/path/to/dir')
-```
-
-[Back to TOP](#api-v3)
-
 ### watchdir
 
 `syntax: res, err = cli:watchdir(key:string [, opts:table])`
@@ -205,6 +196,24 @@ Watch the update of directory.
 
 ```lua
 local res, err = cli:watchdir('/path/to/dir')
+```
+
+[Back to TOP](#api-v3)
+
+
+### rmdir
+
+`syntax: res, err = cli:rmdir(key:string [, opts:table])`
+
+* `key`: string value.
+* `opts`: optional options.
+    * `timeout`: (int) request timeout seconds. set 0 to disable timeout.
+    * `prev_kv`: (bool) If prev_kv is set, etcd gets the previous key-value pairs before deleting it. The previous key-value pairs will be returned in the delete response.
+
+Remove the directory
+
+```lua
+local res, err = cli:rmdir('/path/to/dir')
 ```
 
 [Back to TOP](#api-v3)
