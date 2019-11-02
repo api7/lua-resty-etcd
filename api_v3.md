@@ -230,7 +230,7 @@ local res, err = cli:rmdir('/path/to/dir')
 * `opts`: optional options.
     * `timeout`: (int) request timeout seconds. set 0 to disable timeout.
 
-Remove the directory
+Transaction
 
 ```lua
 local compare = {}
