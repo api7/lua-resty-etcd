@@ -1,4 +1,4 @@
-package = "lua-resty-etcd-dev"
+package = "lua-resty-etcd-master"
 version = "0.1-0"
 source = {
    url = "git://github.com/iresty/lua-resty-etcd",
