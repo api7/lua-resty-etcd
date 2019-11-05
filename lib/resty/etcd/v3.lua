@@ -20,7 +20,6 @@ local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
 local INIT_COUNT_RESIZE = 2e8
 
-
 local _M = {}
 
 
@@ -321,6 +320,7 @@ local function get(self, key, attr)
     if res.status==200 then
         if res.body.kvs and tab_nkeys(res.body.kvs)>0 then
             for _, kv in ipairs(res.body.kvs) do
+                kv.key = decode_base64(kv.key)
                 kv.value = decode_base64(kv.value)
                 kv.value = decode_json(kv.value)
             end
@@ -446,8 +446,10 @@ local function request_chunk(self, method, host, port, path, opts, timeout)
 
         if body.result.events then
             for _, event in ipairs(body.result.events) do
-                event.kv.value = decode_base64(event.kv.value)
-                event.kv.value = decode_json(event.kv.value)
+                if event.kv.value then   -- DELETE not have value
+                    event.kv.value = decode_base64(event.kv.value)
+                    event.kv.value = decode_json(event.kv.value)
+                end
                 event.kv.key = decode_base64(event.kv.key)
             end
         end

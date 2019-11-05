@@ -174,6 +174,10 @@ timeout/
                 etcd:set("/wdir/a", "bcd4a")
             end)
 
+            ngx.timer.at(0.3, function ()
+                etcd:delete("/wdir/a")
+            end)
+
             local cur_time = ngx.now()
             local body_chunk_fun, err = etcd:watchdir("/wdir", {timeout = 1.5})
             if not body_chunk_fun then
@@ -204,6 +208,7 @@ GET /t
 qr/1:.*"created":true.*
 2:.*"value":"bcd4".*
 3:.*"value":"bcd4a".*
+4:.*"type":"DELETE".*
 timeout/
 --- timeout: 5
 
