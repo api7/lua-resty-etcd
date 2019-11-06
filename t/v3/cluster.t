@@ -9,15 +9,21 @@ our $HttpConfig = <<'_EOC_';
     lua_socket_log_errors off;
     lua_package_path 'lib/?.lua;/usr/local/share/lua/5.3/?.lua;/usr/share/lua/5.1/?.lua;;';
     init_by_lua_block {
-        function check_res(data, err, val, err_msg)
+        local cjson = require("cjson.safe")
+
+        function check_res(data, err, val, status)
             if err then
                 ngx.say("err: ", err)
                 ngx.exit(200)
             end
 
             if val then
-                if val ~= data.body.node.value then
-                    ngx.say("failed to check value, got:", data.body.node.value,
+                if data.body.kvs==nil then
+                    ngx.exit(404)
+                end
+                if data.body.kvs and val ~= data.body.kvs[1].value then
+                    ngx.say("failed to check value")
+                    ngx.log(ngx.ERR, "failed to check value, got: ", data.body.kvs[1].value,
                             ", expect: ", val)
                     ngx.exit(200)
                 else
@@ -25,14 +31,8 @@ our $HttpConfig = <<'_EOC_';
                 end
             end
 
-            if err_msg then
-                if err_msg ~= data.body.message then
-                    ngx.say("failed to check error msg, got:",
-                            data.body.message, ", expect: ", val)
-                    ngx.exit(200)
-                else
-                    ngx.say("checked error msg as expect: ", err_msg)
-                end
+            if status and status ~= data.status then
+                ngx.exit(data.status)
             end
         end
     }
@@ -42,51 +42,13 @@ run_tests();
 
 __DATA__
 
-=== TEST 1: cluster(one etcd instance) set + delete + get
+=== TEST 1: cluster set + delete + get + auth
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
         content_by_lua_block {
             local etcd, err = require "resty.etcd" .new({
-                http_host = {
-                    "http://127.0.0.1:2379",
-                    "http://127.0.0.1:2379",
-                    "http://127.0.0.1:2379",
-                }
-            })
-            check_res(etcd, err)
-
-            local res, err = etcd:set("/test", {a = "abc"})
-            check_res(res, err)
-
-            ngx.sleep(1)
-
-            res, err = etcd:delete("/test")
-            check_res(res, err)
-
-            ngx.sleep(1)
-
-            local data, err = etcd:get("/test")
-            check_res(data, err, nil, "Key not found")
-
-            ngx.say("all done")
-        }
-    }
---- request
-GET /t
---- no_error_log
-[error]
---- response_body
-checked error msg as expect: Key not found
-all done
-
-
-=== TEST 2: cluster set + delete + get + auth
---- http_config eval: $::HttpConfig
---- config
-    location /t {
-        content_by_lua_block {
-            local etcd, err = require "resty.etcd" .new({
+                protocol = "v3",
                 host = {
                     "http://127.0.0.1:12379", 
                     "http://127.0.0.1:22379",
@@ -97,11 +59,11 @@ all done
             })
             check_res(etcd, err)
 
-            local res, err = etcd:set("/test", {a = "abc"})
+            local res, err = etcd:set("/test", "abc")
             check_res(res, err)
 
             local res, err = etcd:get("/test")
-            check_res(res, err)
+            check_res(res, err, "abc")
 
             ngx.sleep(1)
 
@@ -111,7 +73,7 @@ all done
             ngx.sleep(1)
 
             local data, err = etcd:get("/test")
-            check_res(data, err, nil, "Key not found")
+            assert(not data.body.kvs)
 
             etcd, err = require "resty.etcd" .new({
                 host = {
@@ -123,7 +85,7 @@ all done
                 password = 'wrong_password',
             })
             data, err = etcd:get("/test")
-            check_res(data, err, nil, "The request requires user authentication")
+            check_res(data, err)
 
             ngx.say("all done")
         }
@@ -133,6 +95,6 @@ GET /t
 --- no_error_log
 [error]
 --- response_body
-checked error msg as expect: Key not found
-checked error msg as expect: The request requires user authentication
+checked val as expect: abc
+err: authenticate refresh token fail
 all done

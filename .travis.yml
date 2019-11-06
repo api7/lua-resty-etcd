@@ -29,6 +29,10 @@ matrix:
 env:
   global:
     - OPENRESTY_PREFIX=/usr/local/openresty
+    - AUTH_ENDPOINT_V2=http://127.0.0.1:12379
+    - AUTH_ENDPOINT_V3=127.0.0.1:12379
+    - AUTH_USER=root
+    - AUTH_PWD=abc123
 
 install:
   - git clone https://github.com/openresty/test-nginx.git test-nginx
@@ -51,6 +55,10 @@ script:
   - etcd --version
   - goreman -f ./t/$GOREMAN_CONF start > goreman.log 2>&1 &
   - sleep 5
+  - chmod +x ./t/v2/add-auth.sh
+  - chmod +x ./t/v3/add-auth.sh
+  - ./t/v2/add-auth.sh
+  - ./t/v3/add-auth.sh
   - cat goreman.log
   - ps -ef | grep etcd
   - make test
