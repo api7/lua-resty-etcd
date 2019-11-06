@@ -6,6 +6,7 @@ local clear_tab     = require("table.clear")
 local utils         = require("resty.etcd.utils")
 local tab_nkeys     = require("table.nkeys")
 local encode_args   = ngx.encode_args
+local now           = ngx.now
 local sub_str       = string.sub
 local str_byte      = string.byte
 local str_char      = string.char
@@ -22,11 +23,13 @@ local INIT_COUNT_RESIZE = 2e8
 
 local _M = {}
 
-
 local mt = { __index = _M }
 
+-- define local refresh function variable
+local refresh_jwt_token
 
-local function _request_uri(self, method, uri, opts, timeout)
+local function _request_uri(self, method, uri, opts, timeout, ignore_auth)
+
     local body
     if opts and opts.body and tab_nkeys(opts.body) > 0 then
         body = encode_json(opts.body) --encode_args(opts.body)
@@ -34,6 +37,18 @@ local function _request_uri(self, method, uri, opts, timeout)
 
     if opts and opts.query and tab_nkeys(opts.query) > 0 then
         uri = uri .. '?' .. encode_args(opts.query)
+    end
+
+    local headers = {}
+    if self.is_auth then
+        -- authentication reqeust not need auth request
+        if not ignore_auth then
+            local _, err = refresh_jwt_token(self)
+            if err then
+                return nil, err
+            end
+        end
+        headers.Authorization = self.jwt_token
     end
 
     local http_cli, err = utils.http.new()
@@ -51,6 +66,7 @@ local function _request_uri(self, method, uri, opts, timeout)
     res, err = http_cli:request_uri(uri, {
         method = method,
         body = body,
+        headers = headers,
     })
 
     if err then
@@ -88,6 +104,8 @@ function _M.new(opts)
     local api_prefix = opts.api_prefix
     local key_prefix = opts.key_prefix or "/apisix"
     local http_host  = opts.http_host
+    local user = opts.user
+    local password = opts.password
 
     if not typeof.uint(timeout) then
         return nil, 'opts.timeout must be unsigned integer'
@@ -109,6 +127,14 @@ function _M.new(opts)
         return nil, 'opts.key_prefix must be string'
     end
 
+    if user and not typeof.string(user) then
+        return nil, 'opts.user must be string or ignore'
+    end
+
+    if password and not typeof.string(password) then
+        return nil, 'opts.password must be string or ignore'
+    end
+
     local endpoints = {}
     local http_hosts
     if type(http_host) == 'string' then -- signle node
@@ -118,7 +144,7 @@ function _M.new(opts)
     end
 
     for _, host in ipairs(http_hosts) do
-        local m, err = re_match(http_host, [[\/\/([\d.\w]+):(\d+)]], "jo")
+        local m, err = re_match(host, [[\/\/([\d.\w]+):(\d+)]], "jo")
         if not m then
             return nil, "invalid http host: " .. err
         end
@@ -134,10 +160,15 @@ function _M.new(opts)
     end
 
     return setmetatable({
-            timeout   = timeout,
-            ttl       = ttl,
-            is_cluster= #endpoints > 1,
-            endpoints = endpoints,
+            last_auth_time = now(), -- save last Authentication time
+            jwt_token   = nil,       -- last Authentication token
+            is_auth     = not not (user and password),
+            user       = user,
+            password   = password,
+            timeout    = timeout,
+            ttl        = ttl,
+            is_cluster = #endpoints > 1,
+            endpoints  = endpoints,
         },
         mt)
 end
@@ -159,6 +190,37 @@ local function choose_endpoint(self)
     return endpoints[pos]
 end
 
+-- return refresh_is_ok, error
+refresh_jwt_token = function (self)
+    -- token exist and not expire
+    -- default is 5min, we use 3min
+    -- https://github.com/etcd-io/etcd/issues/8287
+    if self.jwt_token and now() - self.last_auth_time < 60 * 3 then
+        return true, nil
+    end
+
+    local opts = {
+        body = {
+            name         = self.user,
+            password     = self.password,
+        }
+    }
+    local res, err = _request_uri(self, 'POST',
+                        choose_endpoint(self).full_prefix .. "/auth/authenticate",
+                        opts, 5, true)    -- default authenticate timeout 5 second
+    if err then
+        return nil, err
+    end
+
+    if not res or not res.body or not res.body.token then
+        return nil, 'authenticate refresh token fail'
+    end
+
+    self.jwt_token = res.body.token
+    self.last_auth_time = now()
+
+    return true, nil
+end
 
 local function set(self, key, val, attr)
     -- verify key
@@ -317,7 +379,7 @@ local function get(self, key, attr)
                               choose_endpoint(self).full_prefix .. "/kv/range",
                               opts, attr and attr.timeout or self.timeout)
 
-    if res.status==200 then
+    if res and res.status==200 then
         if res.body.kvs and tab_nkeys(res.body.kvs)>0 then
             for _, kv in ipairs(res.body.kvs) do
                 kv.key = decode_base64(kv.key)
@@ -383,7 +445,7 @@ end
 
 
 local function request_chunk(self, method, host, port, path, opts, timeout)
-    local body, err
+    local body, err, _
     if opts and opts.body and tab_nkeys(opts.body) > 0 then
         body, err = encode_json(opts.body)
         if not body then
@@ -394,6 +456,16 @@ local function request_chunk(self, method, host, port, path, opts, timeout)
     local query
     if opts and opts.query and tab_nkeys(opts.query) > 0 then
         query = encode_args(opts.query)
+    end
+
+    local headers = {}
+    if self.is_auth then
+        -- authentication reqeust not need auth request
+        _, err = refresh_jwt_token(self)
+        if err then
+            return nil, err
+        end
+        headers.Authorization = self.jwt_token
     end
 
     local http_cli
@@ -417,10 +489,11 @@ local function request_chunk(self, method, host, port, path, opts, timeout)
 
     local res
     res, err = http_cli:request({
-        method = method,
-        path   = path,
-        body   = body,
-        query  = query,
+        method  = method,
+        path    = path,
+        body    = body,
+        query   = query,
+        headers = headers,
     })
     utils.log_info("http request method: ", method, " path: ", path,
              " body: ", body, " query: ", query)
