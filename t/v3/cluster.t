@@ -65,11 +65,12 @@ __DATA__
             })
             check_res(etcd, err)
 
-            local res, err = etcd:set("/test", "abc")
+            local res, err = etcd:set("/test", { a='abc'})
             check_res(res, err)
 
             local res, err = etcd:get("/test")
-            check_res(res, err, "abc")
+            check_res(res, err)
+            assert(data.body.kvs[1].value)
 
             ngx.sleep(1)
 
@@ -81,18 +82,6 @@ __DATA__
             local data, err = etcd:get("/test")
             assert(not data.body.kvs)
 
-            etcd, err = require "resty.etcd" .new({
-                http_host = {
-                    "http://127.0.0.1:12379", 
-                    "http://127.0.0.1:22379",
-                    "http://127.0.0.1:32379",
-                },
-                user = 'wrong_user_name',
-                password = 'wrong_password',
-            })
-            data, err = etcd:get("/test")
-            check_res(data, err)
-
             ngx.say("all done")
         }
     }
@@ -101,6 +90,4 @@ GET /t
 --- no_error_log
 [error]
 --- response_body
-checked val as expect: abc
-err: authenticate refresh token fail
 all done
