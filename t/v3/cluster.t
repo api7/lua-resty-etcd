@@ -70,7 +70,8 @@ __DATA__
 
             local res, err = etcd:get("/test")
             check_res(res, err)
-            assert(data.body.kvs[1].value)
+
+            assert(res.body.kvs[1].value)
 
             ngx.sleep(1)
 
@@ -79,8 +80,8 @@ __DATA__
 
             ngx.sleep(1)
 
-            local data, err = etcd:get("/test")
-            assert(not data.body.kvs)
+            local res, err = etcd:get("/test")
+            assert(not res.body.kvs)
 
             ngx.say("all done")
         }
