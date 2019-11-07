@@ -48,7 +48,7 @@ run_tests();
 
 __DATA__
 
-=== TEST 1: cluster set + delete + get + auth
+=== TEST 1: cluster + auth
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -84,6 +84,7 @@ __DATA__
             assert(not res.body.kvs)
 
             etcd, err = require "resty.etcd" .new({
+                etcd_prefix = '/v3',
                 protocol = "v3",
                 http_host = {
                     "http://127.0.0.1:12379", 
@@ -92,10 +93,12 @@ __DATA__
                 },
                 user = 'wrong_user_name',
                 password = 'wrong_password',
+                timeout= 10,
             })
             res, err = etcd:get("/test")
             assert(err == "authenticate refresh token fail")
 
+            ngx.sleep(0.1)
             ngx.say("all done")
         }
     }

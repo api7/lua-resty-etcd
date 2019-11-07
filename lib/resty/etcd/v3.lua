@@ -40,13 +40,16 @@ local function _request_uri(self, method, uri, opts, timeout, ignore_auth)
     end
 
     local headers = {}
+    local keepalive = true
     if self.is_auth then
-        -- authentication reqeust not need auth request
         if not ignore_auth then
+            -- authentication reqeust not need auth request
             local _, err = refresh_jwt_token(self)
             if err then
                 return nil, err
             end
+        else
+            keepalive = false   -- jwt_token not keepalive
         end
         headers.Authorization = self.jwt_token
     end
@@ -67,6 +70,7 @@ local function _request_uri(self, method, uri, opts, timeout, ignore_auth)
         method = method,
         body = body,
         headers = headers,
+        keepalive = keepalive,
     })
 
     if err then
@@ -191,7 +195,7 @@ local function choose_endpoint(self)
 end
 
 -- return refresh_is_ok, error
-refresh_jwt_token = function (self)
+function refresh_jwt_token(self)
     -- token exist and not expire
     -- default is 5min, we use 3min
     -- https://github.com/etcd-io/etcd/issues/8287
