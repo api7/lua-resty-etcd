@@ -118,7 +118,7 @@ function _M.new(opts)
     end
 
     for _, host in ipairs(http_hosts) do
-        local m, err = re_match(http_host, [[\/\/([\d.\w]+):(\d+)]], "jo")
+        local m, err = re_match(host, [[\/\/([\d.\w]+):(\d+)]], "jo")
         if not m then
             return nil, "invalid http host: " .. err
         end
