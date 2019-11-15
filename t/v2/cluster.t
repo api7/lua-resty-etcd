@@ -81,22 +81,26 @@ checked error msg as expect: Key not found
 all done
 
 
-
-=== TEST 2: cluster set + delete + get
+=== TEST 2: cluster set + delete + get + auth
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
         content_by_lua_block {
             local etcd, err = require "resty.etcd" .new({
                 http_host = {
-                    "http://127.0.0.1:12379",
+                    "http://127.0.0.1:12379", 
                     "http://127.0.0.1:22379",
                     "http://127.0.0.1:32379",
-                }
+                },
+                user = 'root',
+                password = 'abc123',
             })
             check_res(etcd, err)
 
             local res, err = etcd:set("/test", {a = "abc"})
+            check_res(res, err)
+
+            local res, err = etcd:get("/test")
             check_res(res, err)
 
             ngx.sleep(1)
@@ -109,6 +113,18 @@ all done
             local data, err = etcd:get("/test")
             check_res(data, err, nil, "Key not found")
 
+            etcd, err = require "resty.etcd" .new({
+                http_host = {
+                    "http://127.0.0.1:12379", 
+                    "http://127.0.0.1:22379",
+                    "http://127.0.0.1:32379",
+                },
+                user = 'wrong_user_name',
+                password = 'wrong_password',
+            })
+            data, err = etcd:get("/test")
+            check_res(data, err, nil, "The request requires user authentication")
+
             ngx.say("all done")
         }
     }
@@ -118,4 +134,5 @@ GET /t
 [error]
 --- response_body
 checked error msg as expect: Key not found
+checked error msg as expect: The request requires user authentication
 all done

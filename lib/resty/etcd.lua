@@ -46,15 +46,19 @@ function _M.new(opts)
                                        .. ":" .. (opts.port or 2379)
     opts.ttl  = opts.ttl or -1
 
-    local ver, err = etcd_version(opts)
-    if not ver then
-        return nil, err
-    end
-
     local protocol = opts and opts.protocol or "v2"
     if protocol == "v3" then
-        local sub_ver = ver.etcdserver:sub(1, 4)
-        local etcd_prefix = prefix_v3[sub_ver] or "/v3beta"
+
+        local etcd_prefix = opts.etcd_prefix
+        -- if opts special the etcd_prefix,no need to check version
+        if not etcd_prefix then
+            local ver, err = etcd_version(opts)
+            if not ver then
+                return nil, err
+            end
+            local sub_ver = ver.etcdserver:sub(1, 4)
+            etcd_prefix = prefix_v3[sub_ver] or "/v3beta"
+        end
         opts.api_prefix = etcd_prefix .. (opts.api_prefix or "")
         return etcdv3.new(opts)
     end
