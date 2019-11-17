@@ -14,6 +14,7 @@ API V3
     * [watchdir](#watchdir)
     * [rmdir](#rmdir)
     * [txn](#txn)
+    * [version](#version)
 
 Method
 ======
@@ -27,10 +28,13 @@ Method
   - `http_host`: string - default `http://127.0.0.1:2379`
   - `ttl`: int - default `-1`
     default ttl for key operation. set -1 to disable ttl.
-  - `prefix`: string
+  - `key_prefix`: string
     append this prefix path string to key operation url.
   - `timeout`: int
     default request timeout seconds.
+  - `api_prefix`: string
+    to suit [etcd v3 api gateway](https://github.com/etcd-io/etcd/blob/master/Documentation/dev-guide/api_grpc_gateway.md#notes).
+    it will autofill by fetching etcd version if this option empty.
 
 The client methods returns either a `etcd` object or an `error string`.
 
