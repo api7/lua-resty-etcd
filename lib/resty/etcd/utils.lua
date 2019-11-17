@@ -68,8 +68,8 @@ function _M.get_real_key(prefix, key)
 end
 
 
-function _M.has_value(tab, val)
-    for index, value in ipairs(tab) do
+function _M.has_value(arr, val)
+    for index, value in ipairs(arr) do
         if value == val then
             return index
         end
