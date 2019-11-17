@@ -8,7 +8,6 @@ our $HttpConfig = <<'_EOC_';
     lua_socket_log_errors off;
     lua_package_path 'lib/?.lua;/usr/local/share/lua/5.3/?.lua;/usr/share/lua/5.1/?.lua;;';
     init_by_lua_block {
-        local cjson = require("cjson.safe")
         function check_res(data, err, val, err_msg)
             if err then
                 ngx.say("err: ", err)
@@ -115,6 +114,7 @@ GET /t
 --- response_body
 checked val as expect: abc
 checked error msg as expect: Key not found
+
 
 
 === TEST 4: set + delete + get + delete + get
@@ -325,6 +325,7 @@ GET /t
 [error]
 --- response_body
 res: nil err: opts.http_host must be string or string array
+
 
 
 === TEST 11: invalid basicauth arguments

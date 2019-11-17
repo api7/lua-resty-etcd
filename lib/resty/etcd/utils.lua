@@ -63,13 +63,12 @@ end
 _M.normalize = normalize
 
 
-local function get_real_key(prefix, key)
-    return (type(prefix) == 'string' and prefix or "") .. normalize(key)
+function _M.get_real_key(prefix, key)
+    return (type(prefix) == 'string' and prefix or "") .. key
 end
-_M.get_real_key = get_real_key
 
 
-local function has_value(tab, val)
+function _M.has_value(tab, val)
     for index, value in ipairs(tab) do
         if value == val then
             return index
@@ -78,7 +77,6 @@ local function has_value(tab, val)
 
     return false
 end
-_M.has_value = has_value
 
 local ngx_log = ngx.log
 local ngx_ERR = ngx.ERR
