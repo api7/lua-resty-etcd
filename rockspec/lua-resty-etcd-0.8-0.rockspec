@@ -18,7 +18,8 @@ build = {
    type = "builtin",
    modules = {
       ["resty.etcd"] = "lib/resty/etcd.lua",
-      ["resty.etcdv3"] = "lib/resty/etcdv3.lua",
-      ["resty.etcd.utils"] = "lib/resty/etcd/utils.lua"
+      ["resty.etcd.v2"] = "lib/resty/etcd/v2.lua",
+      ["resty.etcd.v3"] = "lib/resty/etcd/v3.lua",
+      ["resty.etcd.utils"] = "lib/resty/etcd/utils.lua",
    }
 }
