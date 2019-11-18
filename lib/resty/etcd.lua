@@ -1,5 +1,6 @@
 local etcdv2 = require("resty.etcd.v2")
 local etcdv3 = require("resty.etcd.v3")
+local utils  = require("resty.etcd.utils")
 local typeof = require("typeof")
 local prefix_v3 = {
     ["3.5."] = "/v3",
@@ -33,35 +34,26 @@ function _M.new(opts)
         return nil, 'opts must be table'
     end
 
-    if opts.host and not typeof.string(opts.host) then
-        return nil, 'opts.host must be string'
-    end
-
-    if opts.port and not typeof.int(opts.port) then
-        return nil, 'opts.port must be integer'
-    end
-
     opts.timeout = opts.timeout or 5    -- 5 sec
-    opts.http_host = opts.http_host or "http://" .. (opts.host or "127.0.0.1")
-                                       .. ":" .. (opts.port or 2379)
+    opts.http_host = opts.http_host or "http://127.0.0.1:2379"
     opts.ttl  = opts.ttl or -1
 
     local protocol = opts and opts.protocol or "v2"
-    if protocol == "v3" then
 
-        local etcd_prefix = opts.etcd_prefix
-        -- if opts special the etcd_prefix,no need to check version
-        if not etcd_prefix then
+    if protocol == "v3" then
+        -- if opts special the api_prefix,no need to check version
+        if not opts.api_prefix or not utils.has_value(prefix_v3, opts.api_prefix) then
             local ver, err = etcd_version(opts)
             if not ver then
                 return nil, err
             end
             local sub_ver = ver.etcdserver:sub(1, 4)
-            etcd_prefix = prefix_v3[sub_ver] or "/v3beta"
+            opts.api_prefix = prefix_v3[sub_ver] or "/v3beta"
         end
-        opts.api_prefix = etcd_prefix .. (opts.api_prefix or "")
         return etcdv3.new(opts)
     end
+
+    opts.api_prefix = "/v2"
 
     return etcdv2.new(opts)
 end

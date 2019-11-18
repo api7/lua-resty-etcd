@@ -63,6 +63,21 @@ end
 _M.normalize = normalize
 
 
+function _M.get_real_key(prefix, key)
+    return (type(prefix) == 'string' and prefix or "") .. key
+end
+
+
+function _M.has_value(arr, val)
+    for index, value in ipairs(arr) do
+        if value == val then
+            return index
+        end
+    end
+
+    return false
+end
+
 local ngx_log = ngx.log
 local ngx_ERR = ngx.ERR
 local ngx_INFO = ngx.INFO

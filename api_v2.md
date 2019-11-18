@@ -31,7 +31,7 @@ Method
   - `http_host`: string - default `http://127.0.0.1:2379`
   - `ttl`: int - default `-1`
     default ttl for key operation. set -1 to disable ttl.
-  - `prefix`: string
+  - `key_prefix`: string
     append this prefix path string to key operation url `'/v2/keys'`.
   - `timeout`: int
     request timeout seconds.

@@ -314,7 +314,7 @@ all done
     location /t {
         content_by_lua_block {
             local etcd, err = require "resty.etcd" .new({
-                host = true
+                http_host = true
             })
             ngx.say("res: ", res, " err: ", err)
         }
@@ -324,7 +324,7 @@ GET /t
 --- no_error_log
 [error]
 --- response_body
-res: nil err: opts.host must be string
+res: nil err: opts.http_host must be string or string array
 
 
 
@@ -358,3 +358,33 @@ GET /t
 res: nil err: opts.user must be string or ignore
 res: nil err: opts.password must be string or ignore
 --- timeout: 5
+
+
+
+=== TEST 12: key prefix
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local etcd, err = require "resty.etcd" .new({key_prefix="/apisix"})
+            check_res(etcd, err)
+
+            local res, err = etcd:set("/tt", {a = "aa"})
+            check_res(res, err)
+
+            local etcd2, err = require "resty.etcd" .new()
+            check_res(etcd2, err)
+
+            local data, err = etcd2:get("/apisix/tt")
+            check_res(data, err)
+
+            assert(data.body.node.value.a == "aa")
+            ngx.say("all done")
+        }
+    }
+--- request
+GET /t
+--- no_error_log
+[error]
+--- response_body
+all done

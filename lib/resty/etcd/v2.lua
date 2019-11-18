@@ -44,7 +44,8 @@ end
 function _M.new(opts)
     local timeout = opts.timeout
     local ttl = opts.ttl
-    local prefix = opts.prefix or "/v2/keys"
+    local api_prefix = opts.api_prefix or ""
+    local key_prefix = opts.key_prefix or ""
     local http_host = opts.http_host
     local user = opts.user
     local password = opts.password
@@ -54,15 +55,19 @@ function _M.new(opts)
     end
 
     if not typeof.string(http_host) and not typeof.table(http_host) then
-        return nil, 'opts.host must be string or string array'
+        return nil, 'opts.http_host must be string or string array'
     end
 
     if not typeof.int(ttl) then
         return nil, 'opts.ttl must be integer'
     end
 
-    if not typeof.string(prefix) then
-        return nil, 'opts.prefix must be string'
+    if not typeof.string(api_prefix) then
+        return nil, 'opts.api_prefix must be string'
+    end
+
+    if not typeof.string(key_prefix) then
+        return nil, 'opts.key_prefix must be string'
     end
 
     if user and not typeof.string(user) then
@@ -83,9 +88,9 @@ function _M.new(opts)
 
     for _, host in ipairs(http_hosts) do
         table.insert(endpoints, {
-            full_prefix = host .. utils.normalize(prefix),
+            full_prefix = host .. utils.normalize(api_prefix),
             http_host = host,
-            prefix = prefix,
+            api_prefix = api_prefix,
             version     = host .. '/version',
             stats_leader = host .. '/v2/stats/leader',
             stats_self   = host .. '/v2/stats/self',
@@ -98,6 +103,7 @@ function _M.new(opts)
         init_count = 0,
         timeout = timeout,
         ttl = ttl,
+        key_prefix = key_prefix,
         is_cluster = #endpoints > 1,
         user = user,
         password = password,
@@ -237,8 +243,9 @@ local function set(self, key, val, attr)
 
     local res
     res, err = _request(self, attr.in_order and 'POST' or 'PUT',
-                        choose_endpoint(self).full_prefix .. key,
+                        choose_endpoint(self).full_prefix .. "/keys" .. key,
                         opts, self.timeout)
+
     if err then
         return nil, err
     end
@@ -306,7 +313,7 @@ local function get(self, key, attr)
     end
 
     local res, err = _request(self, "GET",
-            choose_endpoint(self).full_prefix .. utils.normalize(key),
+            choose_endpoint(self).full_prefix .. "/keys" .. utils.normalize(key),
             opts, attr and attr.timeout or self.timeout)
     if err then
         return res, err
@@ -367,7 +374,7 @@ local function delete(self, key, attr)
 
     -- todo: check arguments
     return _request(self, "DELETE",
-                    choose_endpoint(self).full_prefix .. utils.normalize(key),
+                    choose_endpoint(self).full_prefix .. "/keys" .. utils.normalize(key),
                     opts, self.timeout)
 end
 
@@ -377,6 +384,8 @@ function _M.get(self, key)
     if not typeof.string(key) then
         return nil, 'key must be string'
     end
+
+    key = utils.get_real_key(self.key_prefix, key)
 
     return get(self, key)
 end
@@ -388,6 +397,8 @@ function _M.wait(self, key, modified_index, timeout)
     attr.wait_index = modified_index
     attr.timeout = timeout
 
+    key = utils.get_real_key(self.key_prefix, key)
+
     return get(self, key, attr)
 end
 
@@ -395,6 +406,8 @@ function _M.readdir(self, key, recursive)
     clear_tab(attr)
     attr.dir = true
     attr.recursive = recursive
+
+    key = utils.get_real_key(self.key_prefix, key)
 
     return get(self, key, attr)
 end
@@ -407,6 +420,8 @@ function _M.waitdir(self, key, modified_index, timeout)
     attr.recursive = true
     attr.wait_index = modified_index
     attr.timeout = timeout
+
+    key = utils.get_real_key(self.key_prefix, key)
 
     return get(self, key, attr)
 end
@@ -442,6 +457,8 @@ function _M.set(self, key, val, ttl)
     clear_tab(attr)
     attr.ttl = ttl
 
+    key = utils.get_real_key(self.key_prefix, key)
+
     return set(self, key, val, attr)
 end
 
@@ -450,6 +467,8 @@ function _M.setnx(self, key, val, ttl)
     clear_tab(attr)
     attr.ttl = ttl
     attr.prev_exist = false
+
+    key = utils.get_real_key(self.key_prefix, key)
 
     return set(self, key, val, attr)
 end
@@ -461,6 +480,8 @@ function _M.setx(self, key, val, ttl, modified_index)
     attr.prev_exist = true
     attr.prev_index = modified_index
 
+    key = utils.get_real_key(self.key_prefix, key)
+
     return set(self, key, val, attr)
 end
 
@@ -469,6 +490,8 @@ function _M.mkdir(self, key, ttl)
     clear_tab(attr)
     attr.ttl = ttl
     attr.dir = true
+
+    key = utils.get_real_key(self.key_prefix, key)
 
     return set(self, key, nil, attr)
 end
@@ -480,6 +503,8 @@ function _M.mkdirnx(self, key, ttl)
     attr.dir = true
     attr.prev_exist = false
 
+    key = utils.get_real_key(self.key_prefix, key)
+
     return set(self, key, nil, attr)
 end
 
@@ -488,6 +513,8 @@ function _M.push(self, key, val, ttl)
     clear_tab(attr)
     attr.ttl = ttl
     attr.in_order = true
+
+    key = utils.get_real_key(self.key_prefix, key)
 
     return set(self, key, val, attr)
 end
@@ -502,6 +529,8 @@ function _M.delete(self, key, prev_val, modified_index)
     attr.prev_value = prev_val
     attr.prev_index = modified_index
 
+    key = utils.get_real_key(self.key_prefix, key)
+
     return delete(self, key, attr)
 end
 
@@ -509,6 +538,8 @@ function _M.rmdir(self, key, recursive)
     clear_tab(attr)
     attr.dir = true
     attr.recursive = recursive
+
+    key = utils.get_real_key(self.key_prefix, key)
 
     return delete(self, key, attr)
 end

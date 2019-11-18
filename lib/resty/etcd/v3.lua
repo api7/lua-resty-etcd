@@ -106,7 +106,7 @@ function _M.new(opts)
     local timeout    = opts.timeout
     local ttl        = opts.ttl
     local api_prefix = opts.api_prefix
-    local key_prefix = opts.key_prefix or "/apisix"
+    local key_prefix = opts.key_prefix or ""
     local http_host  = opts.http_host
     local user = opts.user
     local password = opts.password
@@ -116,7 +116,7 @@ function _M.new(opts)
     end
 
     if not typeof.string(http_host) and not typeof.table(http_host) then
-        return nil, 'opts.host must be string or string array'
+        return nil, 'opts.http_host must be string or string array'
     end
 
     if not typeof.int(ttl) then
@@ -159,7 +159,6 @@ function _M.new(opts)
             host        = m[1] or "127.0.0.1",
             port        = m[2] or "2379",
             api_prefix  = api_prefix,
-            key_prefix  = key_prefix,
         })
     end
 
@@ -173,6 +172,7 @@ function _M.new(opts)
             ttl        = ttl,
             is_cluster = #endpoints > 1,
             endpoints  = endpoints,
+            key_prefix  = key_prefix,
         },
         mt)
 end
@@ -637,6 +637,8 @@ function _M.get(self, key, opts)
         return nil, 'key must be string'
     end
 
+    key = utils.get_real_key(self.key_prefix, key)
+
     clear_tab(attr)
     attr.timeout = opts and opts.timeout
     attr.revision = opts and opts.revision
@@ -646,6 +648,8 @@ end
 
 function _M.watch(self, key, opts)
     clear_tab(attr)
+
+    key = utils.get_real_key(self.key_prefix, key)
 
     attr.start_revision  = opts and opts.start_revision
     attr.timeout = opts and opts.timeout
@@ -661,6 +665,9 @@ end
 function _M.readdir(self, key, opts)
 
     clear_tab(attr)
+    
+    key = utils.get_real_key(self.key_prefix, key)
+
     attr.range_end = get_range_end(key)
     attr.revision = opts and opts.revision
     attr.timeout  = opts and opts.timeout
@@ -675,8 +682,10 @@ end
 
 function _M.watchdir(self, key, opts)
     clear_tab(attr)
+    
+    key = utils.get_real_key(self.key_prefix, key)
+    
     attr.range_end = get_range_end(key)
-
     attr.start_revision  = opts and opts.start_revision
     attr.timeout = opts and opts.timeout
     attr.progress_notify = opts and opts.progress_notify
@@ -696,6 +705,9 @@ do
 function _M.set(self, key, val, opts)
 
     clear_tab(attr)
+    
+    key = utils.get_real_key(self.key_prefix, key)
+
     attr.timeout = opts and opts.timeout
     attr.lease   = opts and opts.lease
     attr.prev_kv = opts and opts.prev_kv
@@ -711,6 +723,9 @@ end
     local failure = {}
 function _M.setnx(self, key, val, opts)
     clear_tab(compare)
+    
+    key = utils.get_real_key(self.key_prefix, key)
+
     compare[1] = {}
     compare[1].target = "CREATE"
     compare[1].key    = encode_base64(key)
@@ -734,6 +749,9 @@ end
 -- set key-val and ttl if key is exists (update)
 function _M.setx(self, key, val, opts)
     clear_tab(compare)
+    
+    key = utils.get_real_key(self.key_prefix, key)
+
     compare[1] = {}
     compare[1].target = "CREATE"
     compare[1].key    = encode_base64(key)
@@ -764,7 +782,8 @@ function _M.txn(self, compare, success, failure, opts)
         local new_rules = tab_clone(compare)
         for i, rule in ipairs(compare) do
             rule = tab_clone(rule)
-            rule.key = encode_base64(rule.key)
+
+            rule.key = encode_base64(utils.get_real_key(self.key_prefix, rule.key))
 
             if rule.value then
                 rule.value, err = encode_json_base64(rule.value)
@@ -784,7 +803,7 @@ function _M.txn(self, compare, success, failure, opts)
             rule = tab_clone(rule)
             if rule.requestPut then
                 local requestPut = tab_clone(rule.requestPut)
-                requestPut.key = encode_base64(requestPut.key)
+                requestPut.key = encode_base64(utils.get_real_key(self.key_prefix, requestPut.key))
 
                 requestPut.value, err = encode_json_base64(requestPut.value)
                 if not requestPut.value then
@@ -833,6 +852,9 @@ do
     local attr = {}
 function _M.delete(self, key, opts)
     clear_tab(attr)
+    
+    key = utils.get_real_key(self.key_prefix, key)
+
     attr.timeout = opts and opts.timeout
     attr.prev_kv = opts and opts.prev_kv
 
@@ -841,6 +863,9 @@ end
 
 function _M.rmdir(self, key, opts)
     clear_tab(attr)
+    
+    key = utils.get_real_key(self.key_prefix, key)
+
     attr.range_end = get_range_end(key)
     attr.timeout   = opts and opts.timeout
     attr.prev_kv   = opts and opts.prev_kv
