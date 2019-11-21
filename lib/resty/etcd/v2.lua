@@ -193,7 +193,7 @@ local function _request(self, method, uri, opts, timeout)
         return nil, "invalid response code: " .. res.status
     end
 
-    if res.stats == 401 then
+    if res.status == 401 then
         return nil, "insufficient credentials code: " .. res.status
     end
 
