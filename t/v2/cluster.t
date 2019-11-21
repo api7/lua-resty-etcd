@@ -134,5 +134,4 @@ GET /t
 [error]
 --- response_body
 checked error msg as expect: Key not found
-checked error msg as expect: The request requires user authentication
-all done
+err: insufficient credentials code: 401
