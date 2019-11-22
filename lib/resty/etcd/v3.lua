@@ -401,7 +401,7 @@ local function delete(self, key, attr)
 
     local range_end
     if attr.range_end then
-        range_end = encode_base64(attr.range_endrange_end)
+        range_end = encode_base64(attr.range_end)
     end
 
     local prev_kv
