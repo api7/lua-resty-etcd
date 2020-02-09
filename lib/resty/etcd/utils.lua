@@ -69,12 +69,12 @@ end
 
 
 function _M.has_value(arr, val)
-    for index, value in ipairs(arr) do
+    for key, value in pairs(arr) do
         if value == val then
-            return index
+            return key
         end
     end
-
+    
     return false
 end
 
