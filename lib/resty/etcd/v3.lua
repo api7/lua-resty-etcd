@@ -528,6 +528,11 @@ local function request_chunk(self, method, host, port, path, opts, timeout)
                     event.kv.value = decode_json(event.kv.value)
                 end
                 event.kv.key = decode_base64(event.kv.key)
+                if event.prev_kv then
+                    event.prev_kv.value = decode_base64(event.prev_kv.value)
+                    event.prev_kv.value = decode_json(event.prev_kv.value)
+                    event.prev_kv.key = decode_base64(event.prev_kv.key)
+                end
             end
         end
 
@@ -573,7 +578,7 @@ local function watch(self, key, attr)
 
     local prev_kv
     if attr.prev_kv then
-        prev_kv = attr.prev_kv and 'true' or 'false'
+        prev_kv = attr.prev_kv and true or false
     end
 
     local start_revision
@@ -588,12 +593,12 @@ local function watch(self, key, attr)
 
     local progress_notify
     if attr.progress_notify then
-        progress_notify = attr.progress_notify and 'true' or 'false'
+        progress_notify = attr.progress_notify and true or false
     end
 
     local fragment
     if attr.fragment then
-        fragment = attr.fragment and 'true' or 'false'
+        fragment = attr.fragment and true or false
     end
 
     local filters
