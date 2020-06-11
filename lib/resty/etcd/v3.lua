@@ -94,7 +94,7 @@ end
 
 local function encode_json_base64(data)
     local err
-    -- data, err = encode_json(data)
+    data, err = encode_json(data)
     if not data then
         return nil, err
     end
@@ -388,7 +388,7 @@ local function get(self, key, attr)
             for _, kv in ipairs(res.body.kvs) do
                 kv.key = decode_base64(kv.key)
                 kv.value = decode_base64(kv.value)
-                -- kv.value = decode_json(kv.value)
+                kv.value = decode_json(kv.value)
             end
         end
     end
@@ -521,20 +521,16 @@ local function request_chunk(self, method, host, port, path, opts, timeout)
             return nil, "failed to decode json body: " .. (err or " unkwon")
         end
 
-        if body.error then
-            return nil,encode_json(body)
-        end
-
         if body.result.events then
             for _, event in ipairs(body.result.events) do
                 if event.kv.value then   -- DELETE not have value
                     event.kv.value = decode_base64(event.kv.value)
-                    -- event.kv.value = decode_json(event.kv.value)
+                    event.kv.value = decode_json(event.kv.value)
                 end
                 event.kv.key = decode_base64(event.kv.key)
                 if event.prev_kv then
                     event.prev_kv.value = decode_base64(event.prev_kv.value)
-                    -- event.prev_kv.value = decode_json(event.prev_kv.value)
+                    event.prev_kv.value = decode_json(event.prev_kv.value)
                     event.prev_kv.key = decode_base64(event.prev_kv.key)
                 end
             end
@@ -652,7 +648,7 @@ function _M.get(self, key, opts)
     attr.timeout = opts and opts.timeout
     attr.revision = opts and opts.revision
 
-    return get(self, key,attr)
+    return get(self, key, attr)
 end
 
 function _M.watch(self, key, opts)
