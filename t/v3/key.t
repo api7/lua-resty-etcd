@@ -56,7 +56,7 @@ __DATA__
             local etcd, err = require "resty.etcd" .new({protocol = "v3"})
             check_res(etcd, err)
 
-            local res, err = etcd:set("/test", "abc")
+            local res, err = etcd:set("/test", "abc", {prev_kv = true})
             check_res(res, err)
 
             local data, err = etcd:get("/test")

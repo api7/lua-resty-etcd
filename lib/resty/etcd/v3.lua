@@ -249,17 +249,17 @@ local function set(self, key, val, attr)
 
     local prev_kv
     if attr.prev_kv then
-        prev_kv = attr.prev_kv and 'true' or 'false'
+        prev_kv = attr.prev_kv and true or false
     end
 
     local ignore_value
     if attr.ignore_value then
-        ignore_value = attr.ignore_value and 'true' or 'false'
+        ignore_value = attr.ignore_value and true or false
     end
 
     local ignore_lease
     if attr.ignore_lease then
-        ignore_lease = attr.ignore_lease and 'true' or 'false'
+        ignore_lease = attr.ignore_lease and true or false
     end
 
     local opts = {
@@ -326,17 +326,17 @@ local function get(self, key, attr)
 
     local serializable
     if attr.serializable then
-        serializable = attr.serializable and 'true' or 'false'
+        serializable = attr.serializable and true or false
     end
 
     local keys_only
     if attr.keys_only then
-        keys_only = attr.keys_only and 'true' or 'false'
+        keys_only = attr.keys_only and true or false
     end
 
     local count_only
     if attr.count_only then
-        count_only = attr.count_only and 'true' or 'false'
+        count_only = attr.count_only and true or false
     end
 
     local min_mod_revision
@@ -406,7 +406,7 @@ local function delete(self, key, attr)
 
     local prev_kv
     if attr.prev_kv then
-        prev_kv = attr.prev_kv and 'true' or 'false'
+        prev_kv = attr.prev_kv and true or false
     end
 
     key = encode_base64(key)
@@ -648,7 +648,7 @@ function _M.get(self, key, opts)
     attr.timeout = opts and opts.timeout
     attr.revision = opts and opts.revision
 
-    return get(self, key)
+    return get(self, key, attr)
 end
 
 function _M.watch(self, key, opts)
