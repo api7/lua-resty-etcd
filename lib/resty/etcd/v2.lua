@@ -156,10 +156,6 @@ local function _request(self, method, uri, opts, timeout)
 
     local http_cli, err = http.new()
     if err then
-        if self.is_cluster then
-            err = 'fail to instance Http, request url:' .. uri .. ' err:'
-                  .. tostring(err)
-        end
         return nil, err
     end
 
@@ -183,9 +179,6 @@ local function _request(self, method, uri, opts, timeout)
     })
 
     if err then
-        if self.is_cluster then
-            err = 'fail request to: ' .. uri .. ' err:' .. tostring(err)
-        end
         return nil, err
     end
 
