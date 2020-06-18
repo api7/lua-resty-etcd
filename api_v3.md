@@ -39,7 +39,7 @@ Method
 The client methods returns either a `etcd` object or an `error string`.
 
 ```lua
-local cli, err = require("resty.etcd").new({prototol = "v3"})
+local cli, err = require("resty.etcd").new({protocol = "v3"})
 ```
 
 Please refer the **etcd API documentaion** at - https://github.com/coreos/etcd for more details.
