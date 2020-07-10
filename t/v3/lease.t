@@ -7,6 +7,7 @@ repeat_each(1);
 #todo
 #test multi-leases
 #test multi-keys conbined to one lease
+#test the keys conbined to timetolive is the same to granted (some kind of decoding needed)
 
 my $etcd_version = `etcd --version`;
 if ($etcd_version =~ /^etcd Version: 2/ || $etcd_version =~ /^etcd Version: 3.1./) {

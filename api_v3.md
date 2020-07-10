@@ -15,6 +15,11 @@ API V3
     * [rmdir](#rmdir)
     * [txn](#txn)
     * [version](#version)
+    * [grant](#grant)
+    * [revoke](#revoke)
+    * [keepalive](#keepalive)
+    * [timetolive](#timetolive)
+    * [leases](#leases)
 
 Method
 ======
@@ -261,3 +266,54 @@ local res, err = cli:txn(compare, success, nil)
 Gets the etcd version info.
 
 [Back to TOP](#api-v3)
+
+### grant
+
+`syntax: res, err = cli:grant(TTL:int [, ID:int])`
+
+- `TTL`: advisory time-to-live in seconds.
+- `ID`: the requested ID for the lease. If ID is set to 0, the lessor chooses an ID.
+
+Creates a lease which expires if the server does not receive a keepalive within a given time to live period. All keys attached to the lease will be expired and deleted if the lease expires. Each expired key generates a delete event in the event history.
+
+[Back to TOP](#api-v3)
+
+### revoke
+
+`syntax: res, err = cli:revoke(ID:int)`
+
+- `ID`: the lease ID to revoke. When the ID is revoked, all associated keys will be deleted.
+
+Revokes a lease. All keys attached to the lease will expire and be deleted.
+
+[Back to TOP](#api-v3)
+
+### keepalive
+
+`syntax: res, err = cli:keepalive(ID:int)`
+
+- `ID`: the lease ID for the lease to keep alive.
+
+Keeps the lease alive by streaming keep alive requests from the client to the server and streaming keep alive responses from the server to the client.
+
+[Back to TOP](#api-v3)
+
+### timetolive
+
+`syntax: res, err = cli:timetolive(ID:int [, keys: bool])`
+
+- `ID`: the lease ID for the lease.
+- `keys`: if true, query all the keys attached to this lease.
+
+Retrieves lease information.
+
+[Back to TOP](#api-v3)
+
+### leases
+
+`syntax: res, err = cli:leases()`
+
+Lists all existing leases.
+
+[Back to TOP](#api-v3)
+
