@@ -90,6 +90,7 @@ checked val as expect: abc
 key expired as expect
 
 
+
 === TEST 2: lease grant and revoke
 --- http_config eval: $::HttpConfig
 --- config
@@ -123,6 +124,8 @@ GET /t
 --- response_body
 checked val as expect: abc
 deleted key as expect
+
+
 
 === TEST 3: lease grant and keealive
 --- http_config eval: $::HttpConfig

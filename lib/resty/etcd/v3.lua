@@ -634,95 +634,6 @@ local function watch(self, key, attr)
     return callback_fun
 end
 
-local function grant(self, ttl, id)
-    if ttl==nil then
-        return nil, "lease grant command needs TTL argument"
-    end
-
-    if not typeof.int(ttl) then
-        return nil, 'ttl must be integer'
-    end
-
-    id = id or 0
-    local opts = {
-        body = {
-            TTL = ttl,
-            ID = id
-        },
-    }
-
-    return _request_uri(self, "POST",
-                        choose_endpoint(self).full_prefix .. "/lease/grant", opts)
-end
-
-local function revoke(self, id)
-    if id==nil then
-        return nil, "lease revoke command needs ID argument"
-    end
-
-    local opts = {
-        body = {
-            ID = id
-        },
-    }
-
-    return _request_uri(self, "POST",
-                        choose_endpoint(self).full_prefix .. "/lease/revoke", opts)
-end
-
-local function timetolive(self, id, keys)
-    if id==nil then
-        return nil, "lease timetolive command needs ID argument"
-    end
-
-    keys = keys or false
-    local opts = {
-        body = {
-            ID = id,
-            keys = keys
-        },
-    }
-
-    return _request_uri(self, "POST",
-                        choose_endpoint(self).full_prefix .. "/lease/timetolive", opts)
-end
-
-local function keepalive(self, id)
-    if id==nil then
-        return nil, "lease keepalive command needs ID argument"
-    end
-
-    local opts = {
-        body = {
-            ID = id
-        },
-    }
-
-    return _request_uri(self, "POST",
-                        choose_endpoint(self).full_prefix .. "/lease/keepalive", opts)
-end
-
-function _M.grant(self, ttl, id)
-    return grant(self, ttl, id)
-end
-
-function _M.revoke(self, id)
-    return revoke(self, id)
-end
-
-function _M.keepalive(self, id)
-    return keepalive(self, id)
-end
-
-function _M.timetolive(self, id, keys)
-    return timetolive(self, id, keys)
-end
-
-function _M.leases(self)
-    return _request_uri(self, "POST",
-                        choose_endpoint(self).full_prefix .. "/lease/leases")
-end
-
 do
     local attr = {}
 function _M.get(self, key, opts)
@@ -911,6 +822,79 @@ function _M.txn(self, compare, success, failure, opts)
     end
 
     return txn(self, opts, compare, success, failure)
+end
+
+function _M.grant(self, ttl, id)
+    if ttl == nil then
+        return nil, "lease grant command needs TTL argument"
+    end
+
+    if not typeof.int(ttl) then
+        return nil, 'ttl must be integer'
+    end
+
+    id = id or 0
+    local opts = {
+        body = {
+            TTL = ttl,
+            ID = id
+        },
+    }
+
+    return _request_uri(self, "POST",
+                        choose_endpoint(self).full_prefix .. "/lease/grant", opts)
+end
+
+function _M.revoke(self, id)
+    if id == nil then
+        return nil, "lease revoke command needs ID argument"
+    end
+
+    local opts = {
+        body = {
+            ID = id
+        },
+    }
+
+    return _request_uri(self, "POST",
+                        choose_endpoint(self).full_prefix .. "/lease/revoke", opts)
+end
+
+function _M.keepalive(self, id)
+    if id == nil then
+        return nil, "lease keepalive command needs ID argument"
+    end
+
+    local opts = {
+        body = {
+            ID = id
+        },
+    }
+
+    return _request_uri(self, "POST",
+                        choose_endpoint(self).full_prefix .. "/lease/keepalive", opts)
+end
+
+function _M.timetolive(self, id, keys)
+    if id == nil then
+        return nil, "lease timetolive command needs ID argument"
+    end
+
+    keys = keys or false
+    local opts = {
+        body = {
+            ID = id,
+            keys = keys
+        },
+    }
+
+    return _request_uri(self, "POST",
+                        choose_endpoint(self).full_prefix .. "/lease/timetolive", opts)
+end
+
+function _M.leases(self)
+    return _request_uri(self, "POST",
+                        choose_endpoint(self).full_prefix .. "/lease/leases")
 end
 
 
