@@ -857,7 +857,7 @@ function _M.revoke(self, id)
     }
 
     return _request_uri(self, "POST",
-                        choose_endpoint(self).full_prefix .. "/lease/revoke", opts)
+                        choose_endpoint(self).full_prefix .. "/kv/lease/revoke", opts)
 end
 
 function _M.keepalive(self, id)
@@ -889,7 +889,7 @@ function _M.timetolive(self, id, keys)
     }
 
     return _request_uri(self, "POST",
-                        choose_endpoint(self).full_prefix .. "/lease/timetolive", opts)
+                        choose_endpoint(self).full_prefix .. "/kv/lease/timetolive", opts)
 end
 
 function _M.leases(self)

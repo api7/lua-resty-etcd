@@ -51,7 +51,7 @@ run_tests();
 
 __DATA__
 
-=== TEST 1: lease grant, leases(), and wait for expiring
+=== TEST 1: lease grant, and wait for expiring
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -62,11 +62,6 @@ __DATA__
             local res, err = etcd:grant(2)
             check_res(res, err)
 
-            local data, err = etcd:leases()
-            if data.body.leases[1].ID ~= res.body.ID then
-                ngx.say("leases not working")
-            end
-            
             local data, err = etcd:set("/test", "abc", {prev_kv = true, lease = res.body.ID})
             check_res(data, err)
 
