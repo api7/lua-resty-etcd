@@ -4,11 +4,6 @@ log_level('info');
 no_long_string();
 repeat_each(1);
 
-#todo
-#test multi-leases
-#test multi-keys conbined to one lease
-#test the keys conbined to timetolive is the same to granted (some kind of decoding needed)
-
 my $etcd_version = `etcd --version`;
 if ($etcd_version =~ /^etcd Version: 2/ || $etcd_version =~ /^etcd Version: 3.1./) {
     plan(skip_all => "etcd is too old, skip v3 protocol");
@@ -68,8 +63,11 @@ __DATA__
             local data, err = etcd:get("/test")
             check_res(data, err, "abc")
 
-            ngx.sleep(2.5)
+            ngx.sleep(1)
+            local data, err = etcd:get("/test")
+            check_res(data, err, "abc")
 
+            ngx.sleep(1.5)  -- till lease expired
             local data, err = etcd:get("/test")
             if data.body.kvs == nil then
                 ngx.say("key expired as expect")
@@ -81,6 +79,7 @@ GET /t
 --- no_error_log
 [error]
 --- response_body
+checked val as expect: abc
 checked val as expect: abc
 key expired as expect
 
@@ -94,21 +93,31 @@ key expired as expect
             local etcd, err = require "resty.etcd".new({protocol = "v3"})
             check_res(etcd, err)
 
-            local res, err = etcd:grant(5)
+            local res, err = etcd:grant(2)
             check_res(res, err)
 
-            local data, err = etcd:set("/test", "abc", {prev_kv = true, lease = res.body.ID})
+            local data, err = etcd:set("/test1", "abc", {prev_kv = true, lease = res.body.ID})
             check_res(data, err)
 
-            local data, err = etcd:get("/test")
+            local data, err = etcd:set("/test2", "bcd", {prev_kv = true, lease = res.body.ID})
+            check_res(data, err)
+
+            local data, err = etcd:get("/test1")
             check_res(data, err, "abc")
+
+            local data, err = etcd:get("/test2")
+            check_res(data, err, "bcd")
 
             local data, err = etcd:revoke(res.body.ID)
             check_res(data, err)
 
-            local data, err = etcd:get("/test")
-            if data.body.kvs == nil then
+            local data1, err1 = etcd:get("/test1")
+            local data2, err2 = etcd:get("/test2")
+            if data1.body.kvs == nil and data2.body.kvs == nil then
                 ngx.say("deleted key as expect")
+            else
+                ngx.say("failed to delete key")
+                ngx.exit(200)
             end
         }
     }
@@ -118,6 +127,7 @@ GET /t
 [error]
 --- response_body
 checked val as expect: abc
+checked val as expect: bcd
 deleted key as expect
 
 
@@ -130,29 +140,49 @@ deleted key as expect
             local etcd, err = require "resty.etcd".new({protocol = "v3"})
             check_res(etcd, err)
 
-            local res, err = etcd:grant(5)
+            local res, err = etcd:grant(2, 123)
             check_res(res, err)
 
-            local data, err = etcd:set("/test", "abc", {prev_kv = true, lease = res.body.ID})
+            local res, err = etcd:grant(2, 456)
+            check_res(res, err)
+
+            local data, err = etcd:set("/test1", "abc", {prev_kv = true, lease = 123})
             check_res(data, err)
 
-            local data, err = etcd:get("/test")
+            local data, err = etcd:set("/test2", "bcd", {prev_kv = true, lease = 456})
+            check_res(data, err)
+
+            local data, err = etcd:get("/test1")
             check_res(data, err, "abc")
 
-            local data, err = etcd:timetolive(res.body.ID)
+            local data, err = etcd:get("/test2")
+            check_res(data, err, "bcd")
+
+            local data, err = etcd:timetolive(123, true)
             check_res(data, err)
+            if data.body.keys then
+                if data.body.keys[1] ~= "/test1" then
+                    ngx.say("lease attached keys are not as expected: ", data.body.keys)
+                end
+            end
 
             ngx.sleep(1)
-            if tonumber(data.body.TTL) < 5 then
-                ngx.say("current TTL decreased")
+            local data, err = etcd:keepalive(123)
+            check_res(data, err)
+
+            ngx.sleep(1.5)
+
+            local data, err = etcd:get("/test1")
+            if data.body.kvs == nil then
+                ngx.say("Keepalive failed")
+            end
+            
+            local data, err = etcd:get("/test2")
+            if data.body.kvs ~= nil then
+                ngx.say("Wrong lease got keepalived")
             end
 
-            local data, err = etcd:keepalive(res.body.ID)
-            check_res(data, err)
-            
-            if data.body.result.TTL == "5" then
-                ngx.say("renewed TTL")
-            end
+            ngx.say("all done")
         }
     }
 --- request
@@ -161,5 +191,5 @@ GET /t
 [error]
 --- response_body
 checked val as expect: abc
-current TTL decreased
-renewed TTL
+checked val as expect: bcd
+all done

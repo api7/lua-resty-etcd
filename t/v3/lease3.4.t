@@ -62,14 +62,22 @@ __DATA__
             local res, err = etcd:grant(2)
             check_res(res, err)
 
+            local data, err = etcd:leases()
+            if data.body.leases[1].ID ~= res.body.ID then
+                ngx.say("leases not working")
+            end
+
             local data, err = etcd:set("/test", "abc", {prev_kv = true, lease = res.body.ID})
             check_res(data, err)
 
             local data, err = etcd:get("/test")
             check_res(data, err, "abc")
 
-            ngx.sleep(2.5)
+            ngx.sleep(1)
+            local data, err = etcd:get("/test")
+            check_res(data, err, "abc")
 
+            ngx.sleep(1.5)  -- till lease expired
             local data, err = etcd:get("/test")
             if data.body.kvs == nil then
                 ngx.say("key expired as expect")
@@ -81,5 +89,6 @@ GET /t
 --- no_error_log
 [error]
 --- response_body
+checked val as expect: abc
 checked val as expect: abc
 key expired as expect

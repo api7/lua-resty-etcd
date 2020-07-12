@@ -383,8 +383,8 @@ local function get(self, key, attr)
                               choose_endpoint(self).full_prefix .. "/kv/range",
                               opts, attr and attr.timeout or self.timeout)
 
-    if res and res.status==200 then
-        if res.body.kvs and tab_nkeys(res.body.kvs)>0 then
+    if res and res.status == 200 then
+        if res.body.kvs and tab_nkeys(res.body.kvs) > 0 then
             for _, kv in ipairs(res.body.kvs) do
                 kv.key = decode_base64(kv.key)
                 kv.value = decode_base64(kv.value)
@@ -429,7 +429,7 @@ local function txn(self, opts_arg, compare, success, failure)
         return nil, "compare couldn't be empty"
     end
 
-    if (success==nil or #success < 1) and (failure==nil or #failure<1) then
+    if (success == nil or #success < 1) and (failure == nil or #failure < 1) then
         return nil, "success and failure couldn't be empty at the same time"
     end
 
@@ -888,8 +888,18 @@ function _M.timetolive(self, id, keys)
         },
     }
 
-    return _request_uri(self, "POST",
+    local res, err = _request_uri(self, "POST",
                         choose_endpoint(self).full_prefix .. "/kv/lease/timetolive", opts)
+
+    if res and res.status == 200 then
+        if res.body.keys and tab_nkeys(res.body.keys) > 0 then
+            for i, key in ipairs(res.body.keys) do
+                res.body.keys[i] = decode_base64(key)
+            end
+        end
+    end
+
+    return res, err
 end
 
 function _M.leases(self)
