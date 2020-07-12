@@ -63,7 +63,7 @@ Please refer the **etcd API documentaion** at - https://github.com/coreos/etcd f
 Gets the value for key.
 
 ```lua
-local res, err = cli:get('/path_/to/_key')
+local res, err = cli:get('/path/to/key')
 ```
 
 [Back to TOP](#api-v3)
@@ -276,6 +276,14 @@ Gets the etcd version info.
 
 Creates a lease which expires if the server does not receive a keepalive within a given time to live period. All keys attached to the lease will be expired and deleted if the lease expires. Each expired key generates a delete event in the event history.
 
+```lua
+-- grant a lease with 5 second TTL
+local res, err = cli:grant(5)
+
+-- attach key to lease, whose ID would be contained in res
+local data, err = etcd:set('/path/to/key', 'val', {lease = res.body.ID})
+```
+
 [Back to TOP](#api-v3)
 
 ### revoke
@@ -285,6 +293,15 @@ Creates a lease which expires if the server does not receive a keepalive within 
 - `ID`: the lease ID to revoke. When the ID is revoked, all associated keys will be deleted.
 
 Revokes a lease. All keys attached to the lease will expire and be deleted.
+
+```lua
+local res, err = cli:grant(5)
+local data, err = etcd:set('/path/to/key', 'val', {lease = res.body.ID})
+
+local data, err = etcd:revoke(res.body.ID)
+local data, err = cli:get('/path/to/key')
+-- responce would contains no kvs
+```
 
 [Back to TOP](#api-v3)
 
