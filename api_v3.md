@@ -160,7 +160,7 @@ local res, err = cli:watch('/path/to/key')
 
 ### readdir
 
-`syntax: res, err = cli:readdir(key:string [, opts:table])`
+`syntax: res, err = cli:readdir(dir:string [, opts:table])`
 
 * `key`: string value.
 * `opts`: optional options.
@@ -183,7 +183,7 @@ local res, err = cli:readdir('/path/to/dir')
 
 ### watchdir
 
-`syntax: res, err = cli:watchdir(key:string [, opts:table])`
+`syntax: res, err = cli:watchdir(dir:string [, opts:table])`
 
 
 * `key`: string value.
@@ -208,7 +208,7 @@ local res, err = cli:watchdir('/path/to/dir')
 
 ### rmdir
 
-`syntax: res, err = cli:rmdir(key:string [, opts:table])`
+`syntax: res, err = cli:rmdir(dir:string [, opts:table])`
 
 * `key`: string value.
 * `opts`: optional options.
