@@ -218,7 +218,7 @@ checked val as expect: b
             end)
 
             cur_time = ngx.now()
-            res, err = etcd:waitdir("/dir", res.body.node.modifiedIndex + 1, 5)
+            res, err = etcd:waitdir("/dir", res.body.node.modifiedIndex + 1, 3)
 
             check_res(res, err, "a")
             ngx.say("wait more than 1sec: ", ngx.now() - cur_time > 1)
@@ -233,6 +233,7 @@ checked [/dir] is dir.
 err: timeout, more than 1sec: true
 checked val as expect: a
 wait more than 1sec: true
+--- timeout: 5
 
 
 

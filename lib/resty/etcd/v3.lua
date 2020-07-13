@@ -383,8 +383,8 @@ local function get(self, key, attr)
                               choose_endpoint(self).full_prefix .. "/kv/range",
                               opts, attr and attr.timeout or self.timeout)
 
-    if res and res.status==200 then
-        if res.body.kvs and tab_nkeys(res.body.kvs)>0 then
+    if res and res.status == 200 then
+        if res.body.kvs and tab_nkeys(res.body.kvs) > 0 then
             for _, kv in ipairs(res.body.kvs) do
                 kv.key = decode_base64(kv.key)
                 kv.value = decode_base64(kv.value)
@@ -429,7 +429,7 @@ local function txn(self, opts_arg, compare, success, failure)
         return nil, "compare couldn't be empty"
     end
 
-    if (success==nil or #success < 1) and (failure==nil or #failure<1) then
+    if (success == nil or #success < 1) and (failure == nil or #failure < 1) then
         return nil, "success and failure couldn't be empty at the same time"
     end
 
@@ -634,7 +634,6 @@ local function watch(self, key, attr)
     return callback_fun
 end
 
-
 do
     local attr = {}
 function _M.get(self, key, opts)
@@ -823,6 +822,89 @@ function _M.txn(self, compare, success, failure, opts)
     end
 
     return txn(self, opts, compare, success, failure)
+end
+
+function _M.grant(self, ttl, id)
+    if ttl == nil then
+        return nil, "lease grant command needs TTL argument"
+    end
+
+    if not typeof.int(ttl) then
+        return nil, 'ttl must be integer'
+    end
+
+    id = id or 0
+    local opts = {
+        body = {
+            TTL = ttl,
+            ID = id
+        },
+    }
+
+    return _request_uri(self, "POST",
+                        choose_endpoint(self).full_prefix .. "/lease/grant", opts)
+end
+
+function _M.revoke(self, id)
+    if id == nil then
+        return nil, "lease revoke command needs ID argument"
+    end
+
+    local opts = {
+        body = {
+            ID = id
+        },
+    }
+
+    return _request_uri(self, "POST",
+                        choose_endpoint(self).full_prefix .. "/kv/lease/revoke", opts)
+end
+
+function _M.keepalive(self, id)
+    if id == nil then
+        return nil, "lease keepalive command needs ID argument"
+    end
+
+    local opts = {
+        body = {
+            ID = id
+        },
+    }
+
+    return _request_uri(self, "POST",
+                        choose_endpoint(self).full_prefix .. "/lease/keepalive", opts)
+end
+
+function _M.timetolive(self, id, keys)
+    if id == nil then
+        return nil, "lease timetolive command needs ID argument"
+    end
+
+    keys = keys or false
+    local opts = {
+        body = {
+            ID = id,
+            keys = keys
+        },
+    }
+
+    local res, err = _request_uri(self, "POST",
+                        choose_endpoint(self).full_prefix .. "/kv/lease/timetolive", opts)
+
+    if res and res.status == 200 then
+        if res.body.keys and tab_nkeys(res.body.keys) > 0 then
+            for i, key in ipairs(res.body.keys) do
+                res.body.keys[i] = decode_base64(key)
+            end
+        end
+    end
+
+    return res, err
+end
+
+function _M.leases(self)
+    return _request_uri(self, "POST",
+                        choose_endpoint(self).full_prefix .. "/lease/leases")
 end
 
 
