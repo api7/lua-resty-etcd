@@ -173,7 +173,7 @@ res, err = cli:wait('/path/to/key', res.body.node.modifiedIndex + 2, 10)
 
 ### readdir
 
-`syntax: res, err = cli:readdir(key:string [, recursive:boolean])`
+`syntax: res, err = cli:readdir(dir:string [, recursive:boolean])`
 
 - `recursive`: boolean - get all the contents under a directory.
 
@@ -187,7 +187,7 @@ local res, err = cli:readdir('/path/to/dir')
 
 ### mkdir
 
-`syntax: res, err = cli:mkdir(key:string [, ttl:int])`
+`syntax: res, err = cli:mkdir(dir:string [, ttl:int])`
 
 Creates a directory.
 
@@ -199,7 +199,7 @@ local res, err = cli:mkdir('/path/to/dir', 10)
 
 ### mkdirnx
 
-`syntax: res, err = cli:mkdirnx(key:string [, ttl:int])`
+`syntax: res, err = cli:mkdirnx(dir:string [, ttl:int])`
 
 Creates a directory if that directory does not exist.
 
@@ -211,7 +211,7 @@ local res, err = cli:mkdirnx('/path/to/dir', 10)
 
 ### rmdir
 
-`syntax: res, err = cli:rmdir(key:string [, recursive:boolean])`
+`syntax: res, err = cli:rmdir(dir:string [, recursive:boolean])`
 
 - `recursive`: boolean - remove all the contents under a directory.
 
@@ -225,7 +225,7 @@ local res, err = cli:rmdir('/path/to/dir')
 
 ### waitdir
 
-`syntax: res, err = cli:waitdir(key:string [, modified_index:uint [, timeout:uint] ])`
+`syntax: res, err = cli:waitdir(dir:string [, modified_index:uint [, timeout:uint] ])`
 
 
 - `modified_index`: uint - this argument to use to the `prev_index` query of atomic operation.
@@ -239,7 +239,7 @@ local res, err = cli:waitdir('/path/to/dir')
 
 ### push
 
-`syntax: res, err = cli:push(key:string, val:JSON value [, ttl:int])`
+`syntax: res, err = cli:push(dir:string, val:JSON value [, ttl:int])`
 
 Pushs a value into the specified directory.
 
