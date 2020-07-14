@@ -907,6 +907,22 @@ function _M.leases(self)
                         choose_endpoint(self).full_prefix .. "/lease/leases")
 end
 
+function _M.compact(self, revision, physical)
+    if revision == nil then
+        return nil, "compact command needs revision argument"
+    end
+
+    local opts = {
+        body = {
+            revision = revision,
+            physical = physical
+        },
+    }
+
+    return _request_uri(self, "POST",
+                        choose_endpoint(self).full_prefix .. "/kv/compaction", opts)
+end
+
 
 -- /version
 function _M.version(self)
