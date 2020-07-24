@@ -226,15 +226,16 @@ function refresh_jwt_token(self)
     return true, nil
 end
 
+
+
 local function set(self, key, val, attr)
     -- verify key
-    key = utils.normalize(key)
-    if key == '/' then
-        return nil, "key should not be a slash"
+    local _, err = utils.verify_key(key)
+    if err then
+        return nil, err
     end
 
     key = encode_base64(key)
-    local err
     val, err = encode_json_base64(val)
     if not val then
         return nil, err
@@ -291,10 +292,11 @@ local function set(self, key, val, attr)
 end
 
 local function get(self, key, attr)
+
     -- verify key
-    key = utils.normalize(key)
-    if not key or key == '/' then
-        return nil, "key invalid"
+    local _, err = utils.verify_key(key)
+    if err then
+        return nil, err
     end
 
     attr = attr or {}
@@ -542,31 +544,24 @@ end
 
 
 local function get_range_end(key)
-    local last = sub_str(key, -1)
-    key = sub_str(key, 1, #key-1)
-    local has_slash = false
-    if last == '/' then
-        last = sub_str(key, -1)
-        key  = sub_str(key, 1, #key-1)
-        has_slash = true
+    if #key == 0 then
+        return str_char(0)
     end
 
-    if key == '/' then
-        return nil, "invalid key"
-    end
+    local last = sub_str(key, -1)
+    key = sub_str(key, 1, #key-1)
 
     local ascii = str_byte(last) + 1
     local str   = str_char(ascii)
 
-    return key .. str .. (has_slash and '/' or '')
+    return key .. str
 end
 
 
 local function watch(self, key, attr)
     -- verify key
-    key = utils.normalize(key)
-    if key == '/' then
-        return nil, "key should not be a slash"
+    if #key == 0 then
+        key = str_char(0)
     end
 
     key = encode_base64(key)
