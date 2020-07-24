@@ -221,7 +221,8 @@ checked val as expect: b
             res, err = etcd:waitdir("/dir", res.body.node.modifiedIndex + 1, 3)
 
             check_res(res, err, "a")
-            ngx.say("wait more than 1sec: ", ngx.now() - cur_time > 1)
+            ngx.update_time()
+            ngx.say("wait more than 1sec: ", ngx.now() - cur_time >= 1)
         }
     }
 --- request

@@ -92,5 +92,13 @@ local function log_info( ... )
 end
 _M.log_info = log_info
 
+local function verify_key(key)
+    if not key or #key == 0 then
+        return false, "key should not be empty"
+    end
+    return true, nil
+end
+_M.verify_key = verify_key
+
 
 return _M
