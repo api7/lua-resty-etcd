@@ -561,6 +561,22 @@ local function get_range_end(key)
     return key .. str .. (has_slash and '/' or '')
 end
 
+local function watch_wrong_parameter(self, endpoint, opts, attr)
+    opts.body.create1_request = opts.body.create_request
+    opts.body.create_request = nil
+    local callback_fun, err = request_chunk(self, 'POST',
+        endpoint.host,
+        endpoint.port,
+        endpoint.api_prefix .. '/watch', opts,
+        attr.timeout or self.timeout)
+
+    if not callback_fun then
+        return nil, err
+    end
+
+    return callback_fun
+end
+
 
 local function watch(self, key, attr)
     -- verify key
@@ -622,6 +638,11 @@ local function watch(self, key, attr)
     }
 
     local endpoint = choose_endpoint(self)
+
+    if attr.wrong then
+        return watch_wrong_parameter(self, endpoint, opts, attr)
+    end
+
     local callback_fun, err = request_chunk(self, 'POST',
                                 endpoint.host,
                                 endpoint.port,
@@ -662,8 +683,23 @@ function _M.watch(self, key, opts)
     attr.prev_kv  = opts and opts.prev_kv
     attr.watch_id = opts and opts.watch_id
     attr.fragment = opts and opts.fragment
+    attr.wrong = opts and opts.wrong
 
     return watch(self, key, attr)
+end
+
+function _M.watchcancel(self, watch_id, timeout)
+    local opts = {
+        body = {
+            cancel_request = {
+                watch_id = watch_id and watch_id or 0,
+            }
+        }
+    }
+    local res, err =  _request_uri(self, "POST",
+        choose_endpoint(self).full_prefix .. "/watch", opts, timeout or self.timeout)
+
+    return res, err
 end
 
 function _M.readdir(self, key, opts)
@@ -906,7 +942,6 @@ function _M.leases(self)
     return _request_uri(self, "POST",
                         choose_endpoint(self).full_prefix .. "/lease/leases")
 end
-
 
 -- /version
 function _M.version(self)
