@@ -61,13 +61,12 @@ __DATA__
 
             local res, err = etcd:rmdir("/dir", true)
             check_res(res, err)
-
             ngx.say("first")
 
             res, err = etcd:mkdir("/dir")
             check_res(res, err, nil, nil, true)
 
-            etcd.encode_json = function (val)
+            etcd.serializer.serialize = function (val)
                 return val
             end
 
@@ -78,12 +77,15 @@ __DATA__
             res, err = etcd:readdir("/dir")
             check_res(res, err) -- error log
             ngx.say("done readdir")
+
+            local cjson = require("cjson.safe") --recover
+            etcd.serializer.serialize = cjson.encode
         }
     }
 --- request
 GET /t
 --- error_log
-failed to json decode value of node: Expected object key string but found invalid token at character 2
+failed to deserialize value of node: Expected object key string but found invalid token at character 2
 --- response_body
 first
 checked [/dir] is dir.
