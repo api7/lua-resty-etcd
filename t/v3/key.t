@@ -154,6 +154,77 @@ timeout/
 --- timeout: 5
 
 
+=== TEST 31: watch with watchcancel(key)
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local etcd, err = require("resty.etcd").new({protocol = "v3"})
+            check_res(etcd, err)
+
+            local res, err = etcd:set("/test", "abc")
+            check_res(res, err)
+
+            ngx.timer.at(0.1, function ()
+                etcd:set("/test", "bcd3")
+            end)
+
+            local cur_time = ngx.now()
+            local body_chunk_fun, err = etcd:watch("/test", {timeout = 0.5, watch_id = 100})
+            if not body_chunk_fun then
+                ngx.say("failed to watch: ", err)
+            end
+
+            local res, err = etcd:watchcancel(100, 0.5)
+            if not res then
+                ngx.say("failed to cancel: ", err)
+            end
+
+            ngx.say("ok")
+        }
+    }
+--- request
+GET /t
+--- no_error_log
+[error]
+--- response_body
+ok
+--- timeout: 5
+
+=== TEST 32: watch with wrong parameter(key)
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local etcd, err = require("resty.etcd").new({protocol = "v3"})
+            check_res(etcd, err)
+
+            local res, err = etcd:set("/test", "abc")
+            check_res(res, err)
+
+            ngx.timer.at(0.1, function ()
+                etcd:set("/test", "bcd3")
+            end)
+
+            local cur_time = ngx.now()
+            local body_chunk_fun, err = etcd:watch("/test", {timeout = 0.5, watch_id = 100, wrong = true})
+            if not body_chunk_fun then
+                ngx.say("failed to watch: ", err)
+            end
+
+            ngx.say("ok")
+
+        }
+    }
+--- request
+GET /t
+--- no_error_log
+[error]
+--- response_body
+ok
+--- timeout: 5
+
+
 
 === TEST 4: watchdir(key)
 --- http_config eval: $::HttpConfig
