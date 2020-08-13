@@ -271,7 +271,7 @@ local function decode_dir_value(self, body_node)
         if type(val) == "string" then
             node.value, err = self.serializer.deserialize(val)
             if err then
-                utils.log_error("failed to decode json: ", err)
+                utils.log_error("failed to deserialize: ", err)
             end
         end
 
