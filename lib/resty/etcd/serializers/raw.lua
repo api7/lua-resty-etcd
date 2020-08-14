@@ -3,7 +3,7 @@ local type = type
 
 local function raw_encode(v)
     local t = type(v)
-    if v and t ~= 'string' then
+    if t ~= 'string' then
         return nil, 'unsupported type for ' .. t
     end
     return v

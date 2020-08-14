@@ -200,10 +200,12 @@ end
 
 local function set(self, key, val, attr)
     local err
-    val, err = self.serializer.serialize(val)
+    if val then
+        val, err = self.serializer.serialize(val)
 
-    if err then
-        return nil, err
+        if err then
+            return nil, err
+        end
     end
 
     local prev_exist
