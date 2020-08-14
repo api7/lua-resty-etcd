@@ -12,8 +12,8 @@ local encode_base64 = ngx.encode_base64
 local require       = require
 local next          = next
 local table         = table
+local decode_json   = cjson.decode
 local INIT_COUNT_RESIZE = 2e8
-local decode_json = cjson.decode
 
 
 local _M = {}

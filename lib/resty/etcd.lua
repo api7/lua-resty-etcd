@@ -1,7 +1,9 @@
-local etcdv2 = require("resty.etcd.v2")
-local etcdv3 = require("resty.etcd.v3")
-local utils  = require("resty.etcd.utils")
-local typeof = require("typeof")
+local etcdv2  = require("resty.etcd.v2")
+local etcdv3  = require("resty.etcd.v3")
+local utils   = require("resty.etcd.utils")
+local typeof  = require("typeof")
+local require = require
+local pcall   = pcall
 local prefix_v3 = {
     ["3.5."] = "/v3",
     ["3.4."] = "/v3",
@@ -27,7 +29,7 @@ local function etcd_version(opts)
     return ver.body
 end
 
-local function prequire(prefix, package, default)
+local function require_package(prefix, package, default)
     local o, p = pcall(require, prefix .. package)
     if not o then
         return require(prefix .. default)
@@ -61,8 +63,8 @@ function _M.new(opts)
     end
 
     opts.api_prefix = "/v2"
-    local serializer = opts.serializer or 'json'
-    opts.serializer = prequire("resty.etcd.serializers.", serializer, 'json')
+    local serializer = opts.serializer or "json"
+    opts.serializer = require_package("resty.etcd.serializers.", serializer, "json")
 
     return etcdv2.new(opts)
 end

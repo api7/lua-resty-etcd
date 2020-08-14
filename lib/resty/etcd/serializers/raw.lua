@@ -1,6 +1,10 @@
+local type = type
+
+
 local function raw_encode(v)
-    if v and type(v) ~= 'string' then
-        return nil, "unsupported type for " .. type(v)
+    local t = type(v)
+    if v and t ~= 'string' then
+        return nil, 'unsupported type for ' .. t
     end
     return v
 end
@@ -8,6 +12,7 @@ end
 local function raw_decode(v)
     return v
 end
+
 
 return {
     serialize   = raw_encode,
