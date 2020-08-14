@@ -510,7 +510,7 @@ local function request_chunk(self, method, host, port, path, opts, timeout)
         return nil, "failed to watch data, response code: " .. res.status
     end
 
-    return function()
+    local function read_watch()
         local body, err = res.body_reader()
         if not body then
             return nil, err
@@ -538,6 +538,15 @@ local function request_chunk(self, method, host, port, path, opts, timeout)
 
         return body
     end
+
+    if opts.need_cancel == true then
+        return {
+            func = read_watch,
+            http_cli = http_cli
+        }
+    else
+        return read_watch
+    end
 end
 
 
@@ -560,23 +569,6 @@ local function get_range_end(key)
 
     return key .. str .. (has_slash and '/' or '')
 end
-
-local function watch_wrong_parameter(self, endpoint, opts, attr)
-    opts.body.create1_request = opts.body.create_request
-    opts.body.create_request = nil
-    local callback_fun, err = request_chunk(self, 'POST',
-        endpoint.host,
-        endpoint.port,
-        endpoint.api_prefix .. '/watch', opts,
-        attr.timeout or self.timeout)
-
-    if not callback_fun then
-        return nil, err
-    end
-
-    return callback_fun
-end
-
 
 local function watch(self, key, attr)
     -- verify key
@@ -622,6 +614,11 @@ local function watch(self, key, attr)
         filters = attr.filters and attr.filters or 0
     end
 
+    local need_cancel
+    if attr.need_cancel then
+        need_cancel = attr.need_cancel and true or false
+    end
+
     local opts = {
         body = {
             create_request = {
@@ -634,14 +631,11 @@ local function watch(self, key, attr)
                 fragment        = fragment,
                 filters         = filters,
             }
-        }
+        },
+        need_cancel = need_cancel,
     }
 
     local endpoint = choose_endpoint(self)
-
-    if attr.wrong then
-        return watch_wrong_parameter(self, endpoint, opts, attr)
-    end
 
     local callback_fun, err = request_chunk(self, 'POST',
                                 endpoint.host,
@@ -651,7 +645,9 @@ local function watch(self, key, attr)
     if not callback_fun then
         return nil, err
     end
-
+    if opts.need_cancel == true then
+        return callback_fun.func, callback_fun.http_cli
+    end
     return callback_fun
 end
 
@@ -683,22 +679,13 @@ function _M.watch(self, key, opts)
     attr.prev_kv  = opts and opts.prev_kv
     attr.watch_id = opts and opts.watch_id
     attr.fragment = opts and opts.fragment
-    attr.wrong = opts and opts.wrong
+    attr.need_cancel = opts and opts.need_cancel
 
     return watch(self, key, attr)
 end
 
-function _M.watchcancel(self, watch_id, timeout)
-    local opts = {
-        body = {
-            cancel_request = {
-                watch_id = watch_id and watch_id or 0,
-            }
-        }
-    }
-    local res, err =  _request_uri(self, "POST",
-        choose_endpoint(self).full_prefix .. "/watch", opts, timeout or self.timeout)
-
+function _M.watchcancel(self, http_cli)
+    local res, err = http_cli:close()
     return res, err
 end
 
@@ -733,6 +720,7 @@ function _M.watchdir(self, key, opts)
     attr.prev_kv  = opts and opts.prev_kv
     attr.watch_id = opts and opts.watch_id
     attr.fragment = opts and opts.fragment
+    attr.need_cancel = opts and opts.need_cancel
 
     return watch(self, key, attr)
 end
