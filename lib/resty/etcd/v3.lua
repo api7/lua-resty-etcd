@@ -570,6 +570,7 @@ local function get_range_end(key)
     return key .. str .. (has_slash and '/' or '')
 end
 
+
 local function watch(self, key, attr)
     -- verify key
     key = utils.normalize(key)
@@ -930,6 +931,7 @@ function _M.leases(self)
     return _request_uri(self, "POST",
                         choose_endpoint(self).full_prefix .. "/lease/leases")
 end
+
 
 -- /version
 function _M.version(self)
