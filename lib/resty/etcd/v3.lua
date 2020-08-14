@@ -383,8 +383,8 @@ local function get(self, key, attr)
 
     local res
     res, err = _request_uri(self, "POST",
-                              choose_endpoint(self).full_prefix .. "/kv/range",
-                              opts, attr and attr.timeout or self.timeout)
+                        choose_endpoint(self).full_prefix .. "/kv/range",
+                        opts, attr and attr.timeout or self.timeout)
 
     if res and res.status == 200 then
         if res.body.kvs and tab_nkeys(res.body.kvs) > 0 then
