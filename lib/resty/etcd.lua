@@ -30,9 +30,9 @@ end
 local function prequire(prefix, package, default)
     local o, p = pcall(require, prefix .. package)
     if not o then
-         return require(prefix .. default)
-     end
-     return p
+        return require(prefix .. default)
+    end
+    return p
 end
 
 function _M.new(opts)
