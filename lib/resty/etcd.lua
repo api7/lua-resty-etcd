@@ -29,12 +29,12 @@ local function etcd_version(opts)
     return ver.body
 end
 
-local function require_package(prefix, package, default)
-    local o, p = pcall(require, prefix .. package)
-    if not o then
-        return require(prefix .. default)
+local function require_package(package, default)
+    local ok, module = pcall(require, package)
+    if not ok then
+        return require(default)
     end
-    return p
+    return module
 end
 
 function _M.new(opts)
@@ -63,8 +63,8 @@ function _M.new(opts)
     end
 
     opts.api_prefix = "/v2"
-    local serializer = opts.serializer or "json"
-    opts.serializer = require_package("resty.etcd.serializers.", serializer, "json")
+    local serializer = typeof.string(opts.serializer) and opts.serializer  or "json"
+    opts.serializer = require_package("resty.etcd.serializers." .. serializer, "resty.etcd.serializers.json")
 
     return etcdv2.new(opts)
 end
