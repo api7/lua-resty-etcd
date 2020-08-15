@@ -74,7 +74,7 @@ function _M.has_value(arr, val)
             return key
         end
     end
-    
+
     return false
 end
 

@@ -381,9 +381,10 @@ local function get(self, key, attr)
         }
     }
 
-    local res, err = _request_uri(self, "POST",
-                              choose_endpoint(self).full_prefix .. "/kv/range",
-                              opts, attr and attr.timeout or self.timeout)
+    local res
+    res, err = _request_uri(self, "POST",
+                        choose_endpoint(self).full_prefix .. "/kv/range",
+                        opts, attr and attr.timeout or self.timeout)
 
     if res and res.status == 200 then
         if res.body.kvs and tab_nkeys(res.body.kvs) > 0 then
@@ -513,7 +514,7 @@ local function request_chunk(self, method, host, port, path, opts, timeout)
     end
 
     return function()
-        local body, err = res.body_reader()
+        body, err = res.body_reader()
         if not body then
             return nil, err
         end
@@ -664,7 +665,7 @@ end
 function _M.readdir(self, key, opts)
 
     clear_tab(attr)
-    
+
     key = utils.get_real_key(self.key_prefix, key)
 
     attr.range_end = get_range_end(key)
@@ -681,9 +682,9 @@ end
 
 function _M.watchdir(self, key, opts)
     clear_tab(attr)
-    
+
     key = utils.get_real_key(self.key_prefix, key)
-    
+
     attr.range_end = get_range_end(key)
     attr.start_revision  = opts and opts.start_revision
     attr.timeout = opts and opts.timeout
@@ -704,7 +705,7 @@ do
 function _M.set(self, key, val, opts)
 
     clear_tab(attr)
-    
+
     key = utils.get_real_key(self.key_prefix, key)
 
     attr.timeout = opts and opts.timeout
@@ -722,7 +723,7 @@ end
     local failure = {}
 function _M.setnx(self, key, val, opts)
     clear_tab(compare)
-    
+
     key = utils.get_real_key(self.key_prefix, key)
 
     compare[1] = {}
@@ -748,7 +749,7 @@ end
 -- set key-val and ttl if key is exists (update)
 function _M.setx(self, key, val, opts)
     clear_tab(compare)
-    
+
     key = utils.get_real_key(self.key_prefix, key)
 
     compare[1] = {}
@@ -934,7 +935,7 @@ do
     local attr = {}
 function _M.delete(self, key, opts)
     clear_tab(attr)
-    
+
     key = utils.get_real_key(self.key_prefix, key)
 
     attr.timeout = opts and opts.timeout
@@ -945,7 +946,7 @@ end
 
 function _M.rmdir(self, key, opts)
     clear_tab(attr)
-    
+
     key = utils.get_real_key(self.key_prefix, key)
 
     attr.range_end = get_range_end(key)

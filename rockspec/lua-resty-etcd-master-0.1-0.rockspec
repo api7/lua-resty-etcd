@@ -24,5 +24,7 @@ build = {
     ["resty.etcd.v2"] = "lib/resty/etcd/v2.lua",
     ["resty.etcd.v3"] = "lib/resty/etcd/v3.lua",
     ["resty.etcd.utils"] = "lib/resty/etcd/utils.lua",
+    ["resty.etcd.serializers.json"] = "lib/resty/etcd/serializers/json.lua",
+    ["resty.etcd.serializers.raw"] = "lib/resty/etcd/serializers/raw.lua",
    }
 }

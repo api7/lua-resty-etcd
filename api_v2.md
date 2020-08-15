@@ -35,6 +35,7 @@ Method
     append this prefix path string to key operation url `'/v2/keys'`.
   - `timeout`: int
     request timeout seconds.
+  - `serializer`: string - serializer type, default `json`, also support `raw` to keep origin string value. 
 
 The client methods returns either a `HTTP Response Entity` or an `error string`.
 

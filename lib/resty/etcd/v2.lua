@@ -5,7 +5,6 @@ local cjson         = require("cjson.safe")
 local encode_args   = ngx.encode_args
 local setmetatable  = setmetatable
 local clear_tab     = require("table.clear")
-local tostring      = tostring
 local ipairs        = ipairs
 local type          = type
 local utils         = require("resty.etcd.utils")
@@ -13,13 +12,11 @@ local encode_base64 = ngx.encode_base64
 local require       = require
 local next          = next
 local table         = table
+local decode_json   = cjson.decode
 local INIT_COUNT_RESIZE = 2e8
 
 
-local _M = {
-    decode_json = cjson.decode,
-    encode_json = cjson.encode,
-}
+local _M = {}
 
 
 local mt = { __index = _M }
@@ -49,6 +46,7 @@ function _M.new(opts)
     local http_host = opts.http_host
     local user = opts.user
     local password = opts.password
+    local serializer = opts.serializer
 
     if not typeof.uint(timeout) then
         return nil, 'opts.timeout must be unsigned integer'
@@ -107,7 +105,8 @@ function _M.new(opts)
         is_cluster = #endpoints > 1,
         user = user,
         password = password,
-        endpoints = endpoints
+        endpoints = endpoints,
+        serializer = serializer
     },
     mt)
 
@@ -194,16 +193,19 @@ local function _request(self, method, uri, opts, timeout)
         return res
     end
 
-    res.body = self.decode_json(res.body)
+    res.body = decode_json(res.body)
     return res
 end
 
 
 local function set(self, key, val, attr)
     local err
-    val, err = self.encode_json(val)
-    if not val then
-        return nil, err
+    if val then
+        val, err = self.serializer.serialize(val)
+
+        if err then
+            return nil, err
+        end
     end
 
     local prev_exist
@@ -245,9 +247,9 @@ local function set(self, key, val, attr)
 
     -- get
     if res.status < 300 and res.body.node and not res.body.node.dir then
-        res.body.node.value, err = self.decode_json(res.body.node.value)
+        res.body.node.value, err = self.serializer.deserialize(res.body.node.value)
         if err then
-            utils.log_error("failed to json decode value of node: ", err)
+            utils.log_error("failed to deserialize value of node: ", err)
             return res, err
         end
     end
@@ -269,9 +271,9 @@ local function decode_dir_value(self, body_node)
     for _, node in ipairs(body_node.nodes) do
         local val = node.value
         if type(val) == "string" then
-            node.value, err = self.decode_json(val)
+            node.value, err = self.serializer.deserialize(val)
             if err then
-                utils.log_error("failed to decode json: ", err)
+                utils.log_error("failed to deserialize: ", err)
             end
         end
 
@@ -325,9 +327,9 @@ local function get(self, key, attr)
         if not ok then
             local val = res.body.node.value
             if type(val) == "string" then
-                res.body.node.value, err = self.decode_json(val)
+                res.body.node.value, err = self.serializer.deserialize(val)
                 if err then
-                    utils.log_error("failed to json decode: ", err)
+                    utils.log_error("failed to deserialize: ", err)
                 end
             end
         end
@@ -340,7 +342,7 @@ end
 local function delete(self, key, attr)
     local val, err = attr.prev_value
     if val ~= nil and type(val) ~= "number" then
-        val, err = self.encode_json(val)
+        val, err = self.serializer.serialize(val)
         if not val then
             return nil, err
         end
