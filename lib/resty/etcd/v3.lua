@@ -226,15 +226,16 @@ function refresh_jwt_token(self)
     return true, nil
 end
 
+
+
 local function set(self, key, val, attr)
     -- verify key
-    key = utils.normalize(key)
-    if key == '/' then
-        return nil, "key should not be a slash"
+    local _, err = utils.verify_key(key)
+    if err then
+        return nil, err
     end
 
     key = encode_base64(key)
-    local err
     val, err = encode_json_base64(val)
     if not val then
         return nil, err
@@ -291,10 +292,11 @@ local function set(self, key, val, attr)
 end
 
 local function get(self, key, attr)
+
     -- verify key
-    key = utils.normalize(key)
-    if not key or key == '/' then
-        return nil, "key invalid"
+    local _, err = utils.verify_key(key)
+    if err then
+        return nil, err
     end
 
     attr = attr or {}
@@ -379,9 +381,10 @@ local function get(self, key, attr)
         }
     }
 
-    local res, err = _request_uri(self, "POST",
-                              choose_endpoint(self).full_prefix .. "/kv/range",
-                              opts, attr and attr.timeout or self.timeout)
+    local res
+    res, err = _request_uri(self, "POST",
+                        choose_endpoint(self).full_prefix .. "/kv/range",
+                        opts, attr and attr.timeout or self.timeout)
 
     if res and res.status == 200 then
         if res.body.kvs and tab_nkeys(res.body.kvs) > 0 then
@@ -510,8 +513,10 @@ local function request_chunk(self, method, host, port, path, opts, timeout)
         return nil, "failed to watch data, response code: " .. res.status
     end
 
+
     local function read_watch()
         local body, err = res.body_reader()
+
         if not body then
             return nil, err
         end
@@ -551,31 +556,24 @@ end
 
 
 local function get_range_end(key)
-    local last = sub_str(key, -1)
-    key = sub_str(key, 1, #key-1)
-    local has_slash = false
-    if last == '/' then
-        last = sub_str(key, -1)
-        key  = sub_str(key, 1, #key-1)
-        has_slash = true
+    if #key == 0 then
+        return str_char(0)
     end
 
-    if key == '/' then
-        return nil, "invalid key"
-    end
+    local last = sub_str(key, -1)
+    key = sub_str(key, 1, #key-1)
 
     local ascii = str_byte(last) + 1
     local str   = str_char(ascii)
 
-    return key .. str .. (has_slash and '/' or '')
+    return key .. str
 end
 
 
 local function watch(self, key, attr)
     -- verify key
-    key = utils.normalize(key)
-    if key == '/' then
-        return nil, "key should not be a slash"
+    if #key == 0 then
+        key = str_char(0)
     end
 
     key = encode_base64(key)
@@ -693,7 +691,7 @@ end
 function _M.readdir(self, key, opts)
 
     clear_tab(attr)
-    
+
     key = utils.get_real_key(self.key_prefix, key)
 
     attr.range_end = get_range_end(key)
@@ -710,9 +708,9 @@ end
 
 function _M.watchdir(self, key, opts)
     clear_tab(attr)
-    
+
     key = utils.get_real_key(self.key_prefix, key)
-    
+
     attr.range_end = get_range_end(key)
     attr.start_revision  = opts and opts.start_revision
     attr.timeout = opts and opts.timeout
@@ -734,7 +732,7 @@ do
 function _M.set(self, key, val, opts)
 
     clear_tab(attr)
-    
+
     key = utils.get_real_key(self.key_prefix, key)
 
     attr.timeout = opts and opts.timeout
@@ -752,7 +750,7 @@ end
     local failure = {}
 function _M.setnx(self, key, val, opts)
     clear_tab(compare)
-    
+
     key = utils.get_real_key(self.key_prefix, key)
 
     compare[1] = {}
@@ -778,7 +776,7 @@ end
 -- set key-val and ttl if key is exists (update)
 function _M.setx(self, key, val, opts)
     clear_tab(compare)
-    
+
     key = utils.get_real_key(self.key_prefix, key)
 
     compare[1] = {}
@@ -964,7 +962,7 @@ do
     local attr = {}
 function _M.delete(self, key, opts)
     clear_tab(attr)
-    
+
     key = utils.get_real_key(self.key_prefix, key)
 
     attr.timeout = opts and opts.timeout
@@ -975,7 +973,7 @@ end
 
 function _M.rmdir(self, key, opts)
     clear_tab(attr)
-    
+
     key = utils.get_real_key(self.key_prefix, key)
 
     attr.range_end = get_range_end(key)

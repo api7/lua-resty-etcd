@@ -74,7 +74,7 @@ function _M.has_value(arr, val)
             return key
         end
     end
-    
+
     return false
 end
 
@@ -91,6 +91,14 @@ local function log_info( ... )
     return ngx_log(ngx_INFO, ...)
 end
 _M.log_info = log_info
+
+local function verify_key(key)
+    if not key or #key == 0 then
+        return false, "key should not be empty"
+    end
+    return true, nil
+end
+_M.verify_key = verify_key
 
 
 return _M

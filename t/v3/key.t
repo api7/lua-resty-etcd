@@ -24,10 +24,10 @@ our $HttpConfig = <<'_EOC_';
             end
 
             if val then
-                if data.body.kvs==nil then
+                if data and data.body.kvs==nil then
                     ngx.exit(404)
                 end
-                if data.body.kvs and val ~= data.body.kvs[1].value then
+                if data and data.body.kvs and val ~= data.body.kvs[1].value then
                     ngx.say("failed to check value")
                     ngx.log(ngx.ERR, "failed to check value, got: ", data.body.kvs[1].value,
                             ", expect: ", val)
@@ -61,6 +61,12 @@ __DATA__
 
             local data, err = etcd:get("/test")
             check_res(data, err, "abc")
+
+            local data, err = etcd:get("")
+            check_res(data, nil, err)
+
+            local data, err = etcd:set("")
+            check_res(data, nil, err)
         }
     }
 --- request
@@ -69,6 +75,8 @@ GET /t
 [error]
 --- response_body
 checked val as expect: abc
+checked val as expect: key should not be empty
+checked val as expect: key should not be empty
 
 
 
@@ -225,8 +233,12 @@ ok
             local res, err = etcd:set("/wdir", "abc")
             check_res(res, err)
 
+            ngx.timer.at(0.05, function ()
+                etcd:set("/wdir-", "bcd3")
+            end)
+
             ngx.timer.at(0.1, function ()
-                etcd:set("/wdir", "bcd4")
+                etcd:set("/wdir/", "bcd4")
             end)
 
             ngx.timer.at(0.2, function ()
@@ -238,7 +250,7 @@ ok
             end)
 
             local cur_time = ngx.now()
-            local body_chunk_fun, err = etcd:watchdir("/wdir", {timeout = 1.5})
+            local body_chunk_fun, err = etcd:watchdir("/wdir/", {timeout = 1.5})
             if not body_chunk_fun then
                 ngx.say("failed to watch: ", err)
             end
@@ -268,6 +280,69 @@ qr/1:.*"created":true.*
 2:.*"value":"bcd4".*
 3:.*"value":"bcd4a".*
 4:.*"type":"DELETE".*
+timeout/
+--- timeout: 5
+
+
+=== TEST 4.1: watchdir(key=="")
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local etcd, err = require("resty.etcd").new({protocol = "v3"})
+            check_res(etcd, err)
+
+            local res, err = etcd:set("/wdir", "abc")
+            check_res(res, err)
+
+            ngx.timer.at(0.05, function ()
+                etcd:set("/wdir-", "bcd3")
+            end)
+
+            ngx.timer.at(0.1, function ()
+                etcd:set("/wdir/", "bcd4")
+            end)
+
+            ngx.timer.at(0.2, function ()
+                etcd:set("/wdir/a", "bcd4a")
+            end)
+
+            ngx.timer.at(0.3, function ()
+                etcd:delete("/wdir/a")
+            end)
+
+            local cur_time = ngx.now()
+            local body_chunk_fun, err = etcd:watchdir("", {timeout = 1.5})
+            if not body_chunk_fun then
+                ngx.say("failed to watch: ", err)
+            end
+
+            local idx = 0
+            while true do
+                local chunk, err = body_chunk_fun()
+
+                if not chunk then
+                    if err then
+                        ngx.say(err)
+                    end
+                    break
+                end
+
+                idx = idx + 1
+                ngx.say(idx, ": ", require("cjson").encode(chunk.result))
+            end
+        }
+    }
+--- request
+GET /t
+--- no_error_log
+[error]
+--- response_body_like eval
+qr/1:.*"created":true.*
+2:.*"value":"bcd3".*
+3:.*"value":"bcd4".*
+4:.*"value":"bcd4a".*
+5:.*"type":"DELETE".*
 timeout/
 --- timeout: 5
 

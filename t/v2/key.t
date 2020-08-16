@@ -225,7 +225,8 @@ checked val as expect: abc
 
             local cur_time = ngx.now()
             local res2, err = etcd:wait("/test", res.body.node.modifiedIndex + 1, 1)
-            ngx.say("err: ", err, ", more than 1sec: ", ngx.now() - cur_time > 1)
+            ngx.update_time()
+            ngx.say("err: ", err, ", more than 1sec: ", ngx.now() - cur_time >= 1)
 
             ngx.timer.at(1.5, function ()
                 etcd:set("/test", "bcd")
@@ -234,7 +235,8 @@ checked val as expect: abc
             cur_time = ngx.now()
             res, err = etcd:wait("/test", res.body.node.modifiedIndex + 1, 3)
             check_res(res, err, "bcd")
-            ngx.say("wait more than 1sec: ", ngx.now() - cur_time > 1)
+            ngx.update_time()
+            ngx.say("wait more than 1sec: ", ngx.now() - cur_time >= 1)
         }
     }
 --- request
