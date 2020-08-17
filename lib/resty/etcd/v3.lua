@@ -514,9 +514,15 @@ local function request_chunk(self, method, host, port, path, opts, timeout)
     end
 
     return function()
-        body, err = res.body_reader()
-        if not body then
-            return nil, err
+
+        while(1) do
+            body, err = res.body_reader()
+            if not body then
+                return nil, err
+            end
+            if not utils.is_empty_str(body) then
+                break
+            end
         end
 
         body, err = decode_json(body)
