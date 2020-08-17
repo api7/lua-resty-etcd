@@ -544,10 +544,7 @@ local function request_chunk(self, method, host, port, path, opts, timeout)
     end
 
     if opts.need_cancel == true then
-        return {
-            func = read_watch,
-            http_cli = http_cli
-        }
+        return read_watch, nil, http_cli
     else
         return read_watch
     end
@@ -635,7 +632,7 @@ local function watch(self, key, attr)
 
     local endpoint = choose_endpoint(self)
 
-    local callback_fun, err = request_chunk(self, 'POST',
+    local callback_fun, err, http_cli = request_chunk(self, 'POST',
                                 endpoint.host,
                                 endpoint.port,
                                 endpoint.api_prefix .. '/watch', opts,
@@ -644,7 +641,7 @@ local function watch(self, key, attr)
         return nil, err
     end
     if opts.need_cancel == true then
-        return callback_fun.func, callback_fun.http_cli
+        return callback_fun, nil, http_cli
     end
     return callback_fun
 end

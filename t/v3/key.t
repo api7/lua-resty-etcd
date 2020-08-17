@@ -183,9 +183,9 @@ timeout/
             end)
 
             local cur_time = ngx.now()
-            local body_chunk_fun, http_cli, err = etcd:watch("/test", {timeout = 0.5, need_cancel = true})
+            local body_chunk_fun, err, http_cli = etcd:watch("/test", {timeout = 0.5, need_cancel = true})
 
-            if type(res) == "function" then
+            if type(http_cli) ~= "table" then
                 ngx.say("need_cancel failed")
             end
 
