@@ -210,6 +210,7 @@ checked val as expect: b
             check_res(res, err, nil, nil, true)
 
             local cur_time = ngx.now()
+            ngx.update_time()
             local res2, err = etcd:wait("/dir", res.body.node.modifiedIndex + 1, 1)
             ngx.say("err: ", err, ", more than 1sec: ", ngx.now() - cur_time > 1)
 
