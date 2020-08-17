@@ -513,7 +513,8 @@ local function request_chunk(self, method, host, port, path, opts, timeout)
         return nil, "failed to watch data, response code: " .. res.status
     end
 
-    return function()
+
+    local function read_watch()
 
         while(1) do
             body, err = res.body_reader()
@@ -523,6 +524,7 @@ local function request_chunk(self, method, host, port, path, opts, timeout)
             if not utils.is_empty_str(body) then
                 break
             end
+
         end
 
         body, err = decode_json(body)
@@ -546,6 +548,12 @@ local function request_chunk(self, method, host, port, path, opts, timeout)
         end
 
         return body
+    end
+
+    if opts.need_cancel == true then
+        return read_watch, nil, http_cli
+    else
+        return read_watch
     end
 end
 
@@ -608,6 +616,11 @@ local function watch(self, key, attr)
         filters = attr.filters and attr.filters or 0
     end
 
+    local need_cancel
+    if attr.need_cancel then
+        need_cancel = attr.need_cancel and true or false
+    end
+
     local opts = {
         body = {
             create_request = {
@@ -620,11 +633,13 @@ local function watch(self, key, attr)
                 fragment        = fragment,
                 filters         = filters,
             }
-        }
+        },
+        need_cancel = need_cancel,
     }
 
     local endpoint = choose_endpoint(self)
-    local callback_fun, err = request_chunk(self, 'POST',
+
+    local callback_fun, err, http_cli = request_chunk(self, 'POST',
                                 endpoint.host,
                                 endpoint.port,
                                 endpoint.api_prefix .. '/watch', opts,
@@ -632,7 +647,9 @@ local function watch(self, key, attr)
     if not callback_fun then
         return nil, err
     end
-
+    if opts.need_cancel == true then
+        return callback_fun, nil, http_cli
+    end
     return callback_fun
 end
 
@@ -664,8 +681,14 @@ function _M.watch(self, key, opts)
     attr.prev_kv  = opts and opts.prev_kv
     attr.watch_id = opts and opts.watch_id
     attr.fragment = opts and opts.fragment
+    attr.need_cancel = opts and opts.need_cancel
 
     return watch(self, key, attr)
+end
+
+function _M.watchcancel(self, http_cli)
+    local res, err = http_cli:close()
+    return res, err
 end
 
 function _M.readdir(self, key, opts)
@@ -699,6 +722,7 @@ function _M.watchdir(self, key, opts)
     attr.prev_kv  = opts and opts.prev_kv
     attr.watch_id = opts and opts.watch_id
     attr.fragment = opts and opts.fragment
+    attr.need_cancel = opts and opts.need_cancel
 
     return watch(self, key, attr)
 end
