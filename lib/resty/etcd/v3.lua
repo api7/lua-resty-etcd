@@ -515,6 +515,7 @@ local function request_chunk(self, method, host, port, path, opts, timeout)
 
     local function read_watch()
         local body, err = res.body_reader()
+
         if not body then
             return nil, err
         end
