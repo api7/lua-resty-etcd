@@ -102,7 +102,7 @@ end
 _M.verify_key = verify_key
 
 local function is_empty_str(input_str)
-    return not not (find(input_str or '', [=[^\s*$]=], "jo"))
+    return (find(input_str or '', [=[^\s*$]=], "jo"))
 end
 _M.is_empty_str = is_empty_str
 
