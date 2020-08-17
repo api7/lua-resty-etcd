@@ -65,6 +65,7 @@ __DATA__
             local data, err = etcd:leases()
             if data.body.leases[1].ID ~= res.body.ID then
                 ngx.say("leases not working")
+                ngx.say("result: ", require("cjson").encode(data.body))
             end
 
             local data, err = etcd:set("/test", "abc", {prev_kv = true, lease = res.body.ID})
