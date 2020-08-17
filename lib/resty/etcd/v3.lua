@@ -514,7 +514,7 @@ local function request_chunk(self, method, host, port, path, opts, timeout)
     end
 
     local function read_watch()
-        local body, err = res.body_reader()
+        body, err = res.body_reader()
 
         if not body then
             return nil, err
@@ -681,6 +681,8 @@ end
 
 function _M.watchcancel(self, http_cli)
     local res, err = http_cli:close()
+    -- to avoid unused variable self
+    local _ = self
     return res, err
 end
 
