@@ -43,6 +43,15 @@ __DATA__
             ifNotEqual(normalize('/path/../to/dir/../../../file'), '/file')
             ifNotEqual(normalize('path', '..', 'to', 'dir', '..', '..', '..', 'file'), '/file')
 
+            local is_empty_str = require("resty.etcd.utils").is_empty_str
+            ifNotEqual(not not is_empty_str("\n"), true)
+            ifNotEqual(not not is_empty_str("\n\n"), true)
+            ifNotEqual(not not is_empty_str("\r\n"), true)
+            ifNotEqual(not not is_empty_str("\t\n"), true)
+            ifNotEqual(not not is_empty_str("\t"), true)
+            ifNotEqual(not not is_empty_str("\t\t"), true)
+            ifNotEqual(not not is_empty_str("\r\t\n"), true)
+
             ngx.say("all done")
         }
     }

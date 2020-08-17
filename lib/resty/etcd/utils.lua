@@ -2,6 +2,7 @@
 local http          = require("resty.http")
 local clear_tab     = require("table.clear")
 local split         = require("ngx.re").split
+local find          = ngx.re.find
 local concat_tab    = table.concat
 local tostring      = tostring
 local select        = select
@@ -102,5 +103,9 @@ local function verify_key(key)
 end
 _M.verify_key = verify_key
 
+local function is_empty_str(input_str)
+    return (find(input_str or '', [=[^\s*$]=], "jo"))
+end
+_M.is_empty_str = is_empty_str
 
 return _M

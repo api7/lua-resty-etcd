@@ -513,11 +513,18 @@ local function request_chunk(self, method, host, port, path, opts, timeout)
         return nil, "failed to watch data, response code: " .. res.status
     end
 
-    local function read_watch()
-        body, err = res.body_reader()
 
-        if not body then
-            return nil, err
+    local function read_watch()
+
+        while(1) do
+            body, err = res.body_reader()
+            if not body then
+                return nil, err
+            end
+            if not utils.is_empty_str(body) then
+                break
+            end
+
         end
 
         body, err = decode_json(body)
