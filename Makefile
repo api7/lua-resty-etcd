@@ -22,6 +22,7 @@ help:
 ### lint:             Lint Lua source code
 .PHONY: lint
 lint: utils
+	chmod a+x utils/check-lua-code-style.sh
 	./utils/check-lua-code-style.sh
 
 ### utils:            Installation tools
