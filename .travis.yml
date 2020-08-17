@@ -53,7 +53,7 @@ install:
 
 script:
   - cd test-nginx && (sudo cpanm --notest . > build.log 2>&1 || (cat build.log && exit 1)) && cd ..
-  - export PATH=$OPENRESTY_PREFIX/nginx/sbin:$PWD/etcd-v$ETCD_VER-linux-amd64:$PATH
+  - export PATH=$OPENRESTY_PREFIX/nginx/sbin:$OPENRESTY_PREFIX/luajit/bin:$PWD/etcd-v$ETCD_VER-linux-amd64:$PATH
   - etcd --version
   - goreman -f ./t/$GOREMAN_CONF start > goreman.log 2>&1 &
   - sleep 5
