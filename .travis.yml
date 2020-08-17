@@ -63,7 +63,7 @@ script:
   - ./t/v3/add-auth.sh
   - cat goreman.log
   - ps -ef | grep etcd
-  - ls $OPENRESTY_PREFIX/luajit/bin
   - luajit -v
+  - luajit -v | awk '{print$2}'| grep 2.1
   - sudo make lint || exit 1
   - make test
