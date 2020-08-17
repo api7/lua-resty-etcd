@@ -9,9 +9,9 @@ API V3
     * [setx](#setx)
     * [delete](#delete)
     * [watch](#watch)
-    * [watchcancel](#watchcancel)
     * [watchdir](#watchdir)
     * [readdir](#readdir)
+    * [watchdir](#watchdir)
     * [rmdir](#rmdir)
     * [txn](#txn)
     * [version](#version)
@@ -154,27 +154,11 @@ local res, err = cli:delete('/path/to/key')
     * `prev_kv`: (bool) If prev_kv is set, created watcher gets the previous KV before the event happens. If the previous KV is already compacted, nothing will be returned.
     * `watch_id`: (int) If watch_id is provided and non-zero, it will be assigned to this watcher. Since creating a watcher in etcd is not a synchronous operation, this can be used ensure that ordering is correct when creating multiple watchers on the same stream. Creating a watcher with an ID already in use on the stream will cause an error to be returned. 
     * `fragment`: (bool) fragment enables splitting large revisions into multiple watch responses.  
-    * `need_cancel`: (bool) if watch need to be cancel, watch would return http_cli for further cancelation. See [watchcancel](#watchcancel) for detail.
 
 Watch the update of key.
 
 ```lua
 local res, err = cli:watch('/path/to/key')
-```
-
-[Back to TOP](#api-v3)
-
-### watchcancel
-
-`syntax: res, err = cli:watchcancel(http_cli:table)`
-
-* `http_cli`: the http client needs to revoke.
-
-Cancel the watch before it got expired. Need to set `need_cancel` to get the http client for cancelation.
-
-```lua
-local res, err, http_cli = cli:watch('/path/to/key', {need_cancel = true})
-res = cli:watchcancel(http_cli)
 ```
 
 [Back to TOP](#api-v3)
