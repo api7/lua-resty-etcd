@@ -54,4 +54,5 @@ dkms.conf
 # dev
 go
 t/servroot
+utils/lj-releng
 [\.]*

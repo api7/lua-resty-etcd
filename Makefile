@@ -19,5 +19,19 @@ help:
 	@echo
 	@grep -E '^### [-A-Za-z0-9_]+:' Makefile | sed 's/###/   /'
 
+### lint:             Lint Lua source code
+.PHONY: lint
+lint: utils
+	chmod a+x utils/check-lua-code-style.sh
+	./utils/check-lua-code-style.sh
+
+### utils:            Installation tools
+.PHONY: utils
+utils:
+ifeq ("$(wildcard utils/lj-releng)", "")
+	wget -O utils/lj-releng https://raw.githubusercontent.com/iresty/openresty-devel-utils/master/lj-releng
+	chmod a+x utils/lj-releng
+endif
+
 test:
 	prove -I../test-nginx/lib -r -s t/

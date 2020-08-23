@@ -684,6 +684,8 @@ end
 
 function _M.watchcancel(self, http_cli)
     local res, err = http_cli:close()
+    -- to avoid unused variable self
+    local _ = self
     return res, err
 end
 

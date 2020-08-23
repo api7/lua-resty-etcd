@@ -7,6 +7,8 @@ local concat_tab    = table.concat
 local tostring      = tostring
 local select        = select
 local ipairs        = ipairs
+local pairs         = pairs
+local type          = type
 
 
 local _M = {http = http}
