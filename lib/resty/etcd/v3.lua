@@ -63,8 +63,6 @@ local function _request_uri(self, method, uri, opts, timeout, ignore_auth)
         http_cli:set_timeout(timeout * 1000)
     end
 
-    utils.log_info('uri:', uri, ' body:', body)
-
     local res
     res, err = http_cli:request_uri(uri, {
         method = method,
@@ -76,8 +74,6 @@ local function _request_uri(self, method, uri, opts, timeout, ignore_auth)
     if err then
         return nil, err
     end
-
-    utils.log_info('res body:', res.body, 'status:', res.status)
 
     if res.status >= 500 then
         return nil, "invalid response code: " .. res.status
