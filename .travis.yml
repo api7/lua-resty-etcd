@@ -65,5 +65,5 @@ script:
   - ps -ef | grep etcd
   - luajit -v
   - luajit -v | awk '{print$2}'| grep 2.1
-  - sudo make lint || exit 1
+  - make lint || exit 1
   - make test
