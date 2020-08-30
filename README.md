@@ -34,4 +34,3 @@ $ cd lua-resty-etcd
 $ sudo make install
 ```
 
-[Back to TOC](#table-of-contents)
