@@ -28,7 +28,7 @@ luarocks install lua-resty-etcd
 > install by source
 
 ```shell
-$ luarocks install lua-resty-http lua-typeof
+$ make dev
 $ git clone https://github.com/iresty/lua-resty-etcd.git
 $ cd lua-resty-etcd
 $ sudo make install
