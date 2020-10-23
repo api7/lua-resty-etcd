@@ -144,7 +144,7 @@ function _M.new(opts)
     end
 
     for _, host in ipairs(http_hosts) do
-        local m, err = re_match(host, [[\/\/([\d.\w]+):(\d+)]], "jo")
+        local m, err = ngx_re_match(uri, [[^(?:(http[s]?):)?//([^:/\?]+)(?::(\d+))?([^\?]*)\??(.*)]], "jo")
         if not m then
             return nil, "invalid http host: " .. err
         end
