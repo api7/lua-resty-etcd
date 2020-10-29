@@ -60,8 +60,8 @@ script:
   - sleep 5
   - chmod +x ./t/v2/add-auth.sh
   - chmod +x ./t/v3/add-auth.sh
-  - ./t/v2/add-auth.sh
-  - ./t/v3/add-auth.sh
+  - [ $ETCD_ENABLE_TLS != TRUE ] && ./t/v2/add-auth.sh
+  - [ $ETCD_ENABLE_TLS != TRUE ] && ./t/v3/add-auth.sh
   - cat goreman.log
   - ps -ef | grep etcd
   - luajit -v
