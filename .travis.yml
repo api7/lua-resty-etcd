@@ -25,6 +25,7 @@ matrix:
     - env: ETCD_VER=3.2.0 GOREMAN_CONF=Procfile-single
     - env: ETCD_VER=3.3.0 GOREMAN_CONF=Procfile-single-enable-v2
     - env: ETCD_VER=3.4.0 GOREMAN_CONF=Procfile-single-enable-v2
+    - env: ETCD_VER=3.4.0 GOREMAN_CONF=Procfile-single-enable-tls ETCD_ENABLE_TLS=TRUE
 
 env:
   global:

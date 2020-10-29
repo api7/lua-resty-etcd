@@ -69,6 +69,7 @@ local function _request_uri(self, method, uri, opts, timeout, ignore_auth)
         body = body,
         headers = headers,
         keepalive = keepalive,
+        ssl_verify = self.ssl_verify,
     })
 
     if err then
@@ -104,8 +105,9 @@ function _M.new(opts)
     local api_prefix = opts.api_prefix
     local key_prefix = opts.key_prefix or ""
     local http_host  = opts.http_host
-    local user = opts.user
-    local password = opts.password
+    local user       = opts.user
+    local password   = opts.password
+    local ssl_verify = opts.ssl_verfiy
 
     if not typeof.uint(timeout) then
         return nil, 'opts.timeout must be unsigned integer'
@@ -160,15 +162,16 @@ function _M.new(opts)
 
     return setmetatable({
             last_auth_time = now(), -- save last Authentication time
-            jwt_token   = nil,       -- last Authentication token
-            is_auth     = not not (user and password),
+            jwt_token  = nil,       -- last Authentication token
+            is_auth    = not not (user and password),
             user       = user,
             password   = password,
             timeout    = timeout,
             ttl        = ttl,
             is_cluster = #endpoints > 1,
             endpoints  = endpoints,
-            key_prefix  = key_prefix,
+            key_prefix = key_prefix,
+            ssl_verify = ssl_verify,
         },
         mt)
 end
