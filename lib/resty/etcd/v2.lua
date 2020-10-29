@@ -47,6 +47,7 @@ function _M.new(opts)
     local user = opts.user
     local password = opts.password
     local serializer = opts.serializer
+    local ssl_verify = opts.ssl_verify
 
     if not typeof.uint(timeout) then
         return nil, 'opts.timeout must be unsigned integer'
@@ -106,10 +107,10 @@ function _M.new(opts)
         user = user,
         password = password,
         endpoints = endpoints,
-        serializer = serializer
+        serializer = serializer,
+        ssl_verify = ssl_verify,
     },
     mt)
-
 end
 
     local content_type = {
@@ -175,6 +176,7 @@ local function _request(self, method, uri, opts, timeout)
         method = method,
         body = body,
         headers = headers,
+        ssl_verify = self.ssl_verify,
     })
 
     if err then
