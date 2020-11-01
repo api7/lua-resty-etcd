@@ -40,7 +40,7 @@ Method
   - `api_prefix`: string
     to suit [etcd v3 api gateway](https://github.com/etcd-io/etcd/blob/master/Documentation/dev-guide/api_grpc_gateway.md#notes).
     it will autofill by fetching etcd version if this option empty.
-  - `ssl_verify`: boolean - whether to verify the etcd certificate when originating TLS connection with etcd (if you want to communicate to etcd with TLS connection, use `https` scheme in your `http_host`).
+  - `ssl_verify`: boolean - whether to verify the etcd certificate when originating TLS connection with etcd (if you want to communicate to etcd with TLS connection, use `https` scheme in your `http_host`), default is `true.
 
 The client methods returns either a `etcd` object or an `error string`.
 
