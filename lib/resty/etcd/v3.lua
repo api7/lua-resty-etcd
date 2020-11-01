@@ -107,7 +107,7 @@ function _M.new(opts)
     local http_host  = opts.http_host
     local user       = opts.user
     local password   = opts.password
-    local ssl_verify = opts.ssl_verfiy
+    local ssl_verify = opts.ssl_verify
 
     if not typeof.uint(timeout) then
         return nil, 'opts.timeout must be unsigned integer'
