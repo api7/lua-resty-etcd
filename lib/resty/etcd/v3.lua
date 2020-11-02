@@ -146,7 +146,7 @@ function _M.new(opts)
     end
 
     for _, host in ipairs(http_hosts) do
-        local m, err = re_match(host, [[\/\/([\d.\w]+):(\d+)]], "jo")
+        local m, err = re_match(host, [[([^\/]+)\:\/\/([\d.\w]+):(\d+)]], "jo")
         if not m then
             return nil, "invalid http host: " .. err
         end
@@ -154,8 +154,9 @@ function _M.new(opts)
         tab_insert(endpoints, {
             full_prefix = host .. utils.normalize(api_prefix),
             http_host   = host,
-            host        = m[1] or "127.0.0.1",
-            port        = m[2] or "2379",
+            scheme      = m[1],
+            host        = m[2] or "127.0.0.1",
+            port        = m[3] or "2379",
             api_prefix  = api_prefix,
         })
     end
@@ -450,7 +451,7 @@ local function txn(self, opts_arg, compare, success, failure)
 end
 
 
-local function request_chunk(self, method, host, port, path, opts, timeout)
+local function request_chunk(self, method, scheme, host, port, path, opts, timeout)
     local body, err, _
     if opts and opts.body and tab_nkeys(opts.body) > 0 then
         body, err = encode_json(opts.body)
@@ -491,6 +492,18 @@ local function request_chunk(self, method, host, port, path, opts, timeout)
     ok, err = http_cli:connect(host, port)
     if not ok then
         return nil, err
+    end
+
+    if scheme == "https" then
+        local verify = true
+        if self.ssl_verify == false then
+            verify = false
+        end
+
+        ok, err = http_cli:ssl_handshake(nil, host, verify)
+        if not ok then
+            return nil, err
+        end
     end
 
     local res
@@ -639,6 +652,7 @@ local function watch(self, key, attr)
     local endpoint = choose_endpoint(self)
 
     local callback_fun, err, http_cli = request_chunk(self, 'POST',
+                                endpoint.scheme,
                                 endpoint.host,
                                 endpoint.port,
                                 endpoint.api_prefix .. '/watch', opts,
