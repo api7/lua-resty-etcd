@@ -1,5 +1,5 @@
 package = "lua-resty-etcd"
-version = "1.4-1"
+version = "1.4.1-0"
 source = {
    url = "git://github.com/iresty/lua-resty-etcd",
    tag = "v1.4.1"
