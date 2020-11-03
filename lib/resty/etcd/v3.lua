@@ -69,6 +69,7 @@ local function _request_uri(self, method, uri, opts, timeout, ignore_auth)
         body = body,
         headers = headers,
         keepalive = keepalive,
+        ssl_verify = self.ssl_verify,
     })
 
     if err then
@@ -104,8 +105,9 @@ function _M.new(opts)
     local api_prefix = opts.api_prefix
     local key_prefix = opts.key_prefix or ""
     local http_host  = opts.http_host
-    local user = opts.user
-    local password = opts.password
+    local user       = opts.user
+    local password   = opts.password
+    local ssl_verify = opts.ssl_verify
 
     if not typeof.uint(timeout) then
         return nil, 'opts.timeout must be unsigned integer'
@@ -156,7 +158,8 @@ function _M.new(opts)
         tab_insert(endpoints, {
             full_prefix = host .. utils.normalize(api_prefix),
             http_host   = host,
-            host        = m[1] or "127.0.0.1",
+            scheme      = m[1],
+            host        = m[2] or "127.0.0.1",
             port        = m[3] or "2379",
             api_prefix  = api_prefix,
         })
@@ -164,15 +167,16 @@ function _M.new(opts)
 
     return setmetatable({
             last_auth_time = now(), -- save last Authentication time
-            jwt_token   = nil,       -- last Authentication token
-            is_auth     = not not (user and password),
+            jwt_token  = nil,       -- last Authentication token
+            is_auth    = not not (user and password),
             user       = user,
             password   = password,
             timeout    = timeout,
             ttl        = ttl,
             is_cluster = #endpoints > 1,
             endpoints  = endpoints,
-            key_prefix  = key_prefix,
+            key_prefix = key_prefix,
+            ssl_verify = ssl_verify,
         },
         mt)
 end
@@ -451,7 +455,7 @@ local function txn(self, opts_arg, compare, success, failure)
 end
 
 
-local function request_chunk(self, method, host, port, path, opts, timeout)
+local function request_chunk(self, method, scheme, host, port, path, opts, timeout)
     local body, err, _
     if opts and opts.body and tab_nkeys(opts.body) > 0 then
         body, err = encode_json(opts.body)
@@ -492,6 +496,18 @@ local function request_chunk(self, method, host, port, path, opts, timeout)
     ok, err = http_cli:connect(host, port)
     if not ok then
         return nil, err
+    end
+
+    if scheme == "https" then
+        local verify = true
+        if self.ssl_verify == false then
+            verify = false
+        end
+
+        ok, err = http_cli:ssl_handshake(nil, host, verify)
+        if not ok then
+            return nil, err
+        end
     end
 
     local res
@@ -640,6 +656,7 @@ local function watch(self, key, attr)
     local endpoint = choose_endpoint(self)
 
     local callback_fun, err, http_cli = request_chunk(self, 'POST',
+                                endpoint.scheme,
                                 endpoint.host,
                                 endpoint.port,
                                 endpoint.api_prefix .. '/watch', opts,
