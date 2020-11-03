@@ -149,7 +149,7 @@ function _M.new(opts)
         local m, err = re_match(
             host,
             [[^(?:(http[s]?):)?//([^:/\?]+)(?::(\d+))?([^\?]*)\??(.*)]],
-            "jo"
+            "jo" 
         )
         if not m then
             return nil, "invalid http host: " .. err
