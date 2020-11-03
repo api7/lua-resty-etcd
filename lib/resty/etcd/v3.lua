@@ -144,7 +144,11 @@ function _M.new(opts)
     end
 
     for _, host in ipairs(http_hosts) do
-        local m, err = re_match(host, [[^(?:(http[s]?):)?//([^:/\?]+)(?::(\d+))?([^\?]*)\??(.*)]], "jo")
+        local m, err = re_match(
+            host,
+            [[^(?:(http[s]?):)?//([^:/\?]+)(?::(\d+))?([^\?]*)\??(.*)]],
+            "jo"
+        )
         if not m then
             return nil, "invalid http host: " .. err
         end
@@ -153,7 +157,7 @@ function _M.new(opts)
             full_prefix = host .. utils.normalize(api_prefix),
             http_host   = host,
             host        = m[1] or "127.0.0.1",
-            port        = m[2] or "2379",
+            port        = m[3] or "2379",
             api_prefix  = api_prefix,
         })
     end
