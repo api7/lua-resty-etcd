@@ -1,9 +1,16 @@
 
-use Test::Nginx::Socket::Lua 'no_plan';
+use Test::Nginx::Socket::Lua;
 
 log_level('warn');
 no_long_string();
 repeat_each(2);
+
+my $enable_tls = $ENV{ETCD_ENABLE_TLS};
+if ($enable_tls eq "TRUE") {
+    plan(skip_all => "skip test cases when TLS is enabled");
+} else {
+    plan 'no_plan';
+}
 
 our $HttpConfig = <<'_EOC_';
     lua_socket_log_errors off;
