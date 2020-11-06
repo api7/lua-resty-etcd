@@ -146,9 +146,9 @@ function _M.new(opts)
     end
 
     for _, host in ipairs(http_hosts) do
-        local m, err = re_match(host, [[([^\/]+)\:\/\/([\d.\w]+):(\d+)]], "jo")
+        local m, err = re_match(host, [=[([^\/]+):\/\/([^:\[]+|\[[\w:]+\]):?(\d+)?]=], "jo")
         if not m then
-            return nil, "invalid http host: " .. err
+            return nil, "invalid http host: " .. (err or "not matched")
         end
 
         tab_insert(endpoints, {
