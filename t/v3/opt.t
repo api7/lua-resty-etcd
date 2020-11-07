@@ -39,6 +39,7 @@ __DATA__
                 "https://127.0.0.1:12000",
                 "http://c.cn:9000",
                 "http://c-a.cn:9000",
+                "http://c_a.cn",
                 "http://[ab::0]:2971",
                 "http://[ab::0]",
             }
@@ -47,7 +48,6 @@ __DATA__
                     http_host = case})
                 if not etcd then
                     ngx.say(err)
-                    return
                 else
                     ngx.say(
                         etcd.endpoints[1].scheme, " ",
@@ -65,6 +65,7 @@ http 127.0.0.1 2379
 https 127.0.0.1 12000
 http c.cn 9000
 http c-a.cn 9000
+invalid http host: http://c_a.cn, err: not matched
 http [ab::0] 2971
 http [ab::0] 2379
 ok
