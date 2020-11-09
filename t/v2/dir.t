@@ -294,7 +294,7 @@ checked val as expect: b
             res, err = etcd:mkdir("/dir")
             check_res(res, err, nil, nil, true)
 
-            local json_val = require("cjson").encode({a = 1, b = 2})
+            local json_val = require("dkjson").encode({a = 1, b = 2}, {keyorder = {'a', 'b'}})
             res, err = etcd:set("/dir/a", json_val)
             check_res(res, err)
 
@@ -344,12 +344,14 @@ item value: "{\"a\":1,\"b\":2}"
             check_res(res, err)
 
             ngx.say("item count: ", #res.body.node.nodes)
-            ngx.say("item value: ", require("cjson").encode(res.body.node.nodes[1].value))
+            ngx.say("item value: ",
+                require("dkjson").encode(res.body.node.nodes[1].value, {keyorder = {'a', 'b'}}))
 
             res, err = etcd:get("/dir")
             check_res(res, err)
             ngx.say("item count: ", #res.body.node.nodes)
-            ngx.say("item value: ", require("cjson").encode(res.body.node.nodes[1].value))
+            ngx.say("item value: ",
+                require("dkjson").encode(res.body.node.nodes[1].value, {keyorder = {'a', 'b'}}))
         }
     }
 --- request
