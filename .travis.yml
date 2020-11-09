@@ -45,6 +45,7 @@ install:
   - sudo apt-get update
   - sudo apt-get install openresty
   - sudo luarocks install luacheck > build.log 2>&1 || (cat build.log && exit 1)
+  - sudo luarocks install dkjson > build.log 2>&1 || (cat build.log && exit 1)
   - make utils
   - wget https://github.com/etcd-io/etcd/releases/download/v$ETCD_VER/etcd-v$ETCD_VER-linux-amd64.tar.gz
   - tar xf etcd-v$ETCD_VER-linux-amd64.tar.gz
