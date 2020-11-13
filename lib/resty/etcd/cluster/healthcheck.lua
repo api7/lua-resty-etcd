@@ -129,7 +129,6 @@ function _M.report_failure(self, endpoint, osi, err, status)
         end
     end
 
-    --checker:report_timeout(endpoint.host, tonumber(endpoint.port),  nil, "active")
 end
 
 
