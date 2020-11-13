@@ -77,6 +77,7 @@ local DEFAULTS = setmetatable({
         https_verify_certificate = false,
         healthy = {
             http_statuses = {200},
+            --active healthy health checks are disabled by default
             interval = 0,
             successes = 1,
         },
@@ -98,7 +99,8 @@ local DEFAULTS = setmetatable({
             http_statuses = {500},
             http_failures = 1,
             tcp_failures = 1,
-            timeouts = 1,
+            --passive health checks are disabled by default
+            timeouts = 0,
         },
     },
 }, fixed_field_metatable)
