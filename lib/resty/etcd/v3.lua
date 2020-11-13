@@ -20,6 +20,7 @@ local encode_json   = cjson.encode
 local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
 local INIT_COUNT_RESIZE = 2e8
+local healthcheck   = require("resty.etcd.cluster.healthcheck")
 
 local _M = {}
 
@@ -73,10 +74,12 @@ local function _request_uri(self, method, uri, opts, timeout, ignore_auth)
     })
 
     if err then
+        healthcheck:report_failure(endpoint, "tcp", err)
         return nil, err
     end
 
     if res.status >= 500 then
+        healthcheck:report_failure(endpoint, "http", nil, res.status)
         return nil, "invalid response code: " .. res.status
     end
 
@@ -181,6 +184,12 @@ end
 
 local function choose_endpoint(self)
     local endpoints = self.endpoints
+
+    local health_endpoint = healthcheck:fetch_health_nodes(endpoints)
+    if health_endpoint then
+        return health_endpoint
+    end
+
     local endpoints_len = #endpoints
     if endpoints_len == 1 then
         return endpoints[1]
@@ -492,6 +501,7 @@ local function request_chunk(self, method, scheme, host, port, path, opts, timeo
 
     ok, err = http_cli:connect(host, port)
     if not ok then
+        healthcheck:report_failure(endpoint, "tcp", err)
         return nil, err
     end
 

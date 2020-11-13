@@ -1,9 +1,11 @@
-local etcdv2  = require("resty.etcd.v2")
-local etcdv3  = require("resty.etcd.v3")
-local utils   = require("resty.etcd.utils")
-local typeof  = require("typeof")
-local require = require
-local pcall   = pcall
+local etcdv2        = require("resty.etcd.v2")
+local etcdv3        = require("resty.etcd.v3")
+local utils         = require("resty.etcd.utils")
+local typeof        = require("typeof")
+local require       = require
+local pcall         = pcall
+local healthcheck   = require("resty.etcd.cluster.healthcheck")
+local tab_clone     = require("table.clone")
 local prefix_v3 = {
     ["3.5."] = "/v3",
     ["3.4."] = "/v3",
@@ -62,7 +64,14 @@ function _M.new(opts)
             local sub_ver = ver.etcdserver:sub(1, 4)
             opts.api_prefix = prefix_v3[sub_ver] or "/v3beta"
         end
-        return etcdv3.new(opts)
+
+        local etcd_cli, err = etcdv3.new(opts)
+        --if configure the cluster_healthcheck attribute, then enable etcd cluster health check
+        if not err and opts.cluster_healthcheck then
+            local endpoints = tab_clone(etcd_cli.endpoints)
+            healthcheck.run(opts, endpoints)
+        end
+        return etcd_cli, err
     end
 
     opts.api_prefix = "/v2"

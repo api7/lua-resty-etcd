@@ -14,6 +14,7 @@ description = {
 
 dependencies = {
    "lua-resty-http = 0.15",
+   "lua-resty-healthcheck-api7 = 2.2.0",
    "lua-typeof = 0.1"
 }
 
