@@ -461,7 +461,7 @@ local function txn(self, opts_arg, compare, success, failure)
 end
 
 
-local function request_chunk(self, method, scheme, host, port, path, opts, timeout)
+local function request_chunk(self, endpoint, method, scheme, host, port, path, opts, timeout)
     local body, err, _
     if opts and opts.body and tab_nkeys(opts.body) > 0 then
         body, err = encode_json(opts.body)
@@ -553,6 +553,10 @@ local function request_chunk(self, method, scheme, host, port, path, opts, timeo
         body, err = decode_json(body)
         if not body then
             return nil, "failed to decode json body: " .. (err or " unkwon")
+        end
+
+        if body and body.error and body.error.http_code >= 500 then
+            healthcheck:report_failure(endpoint, "http", nil, body.error.http_code)
         end
 
         if body.result.events then
@@ -662,7 +666,7 @@ local function watch(self, key, attr)
 
     local endpoint = choose_endpoint(self)
 
-    local callback_fun, err, http_cli = request_chunk(self, 'POST',
+    local callback_fun, err, http_cli = request_chunk(self, endpoint,'POST',
                                 endpoint.scheme,
                                 endpoint.host,
                                 endpoint.port,
