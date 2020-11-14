@@ -29,7 +29,7 @@ local mt = { __index = _M }
 -- define local refresh function variable
 local refresh_jwt_token
 
-local function _request_uri(self, method, uri, opts, timeout, ignore_auth)
+local function _request_uri(self, endpoint, method, uri, opts, timeout, ignore_auth)
 
     local body
     if opts and opts.body and tab_nkeys(opts.body) > 0 then
@@ -219,8 +219,9 @@ function refresh_jwt_token(self)
             password     = self.password,
         }
     }
-    local res, err = _request_uri(self, 'POST',
-                        choose_endpoint(self).full_prefix .. "/auth/authenticate",
+    local endpoint= choose_endpoint(self)
+    local res, err = _request_uri(self, endpoint, 'POST',
+            endpoint.full_prefix .. "/auth/authenticate",
                         opts, 5, true)    -- default authenticate timeout 5 second
     if err then
         return nil, err
@@ -284,9 +285,10 @@ local function set(self, key, val, attr)
         }
     }
 
+    local endpoint= choose_endpoint(self)
     local res
-    res, err = _request_uri(self, 'POST',
-                        choose_endpoint(self).full_prefix .. "/kv/put",
+    res, err = _request_uri(self, endpoint, 'POST',
+            endpoint.full_prefix .. "/kv/put",
                         opts, self.timeout)
     if err then
         return nil, err
@@ -391,9 +393,10 @@ local function get(self, key, attr)
         }
     }
 
+    local endpoint= choose_endpoint(self)
     local res
-    res, err = _request_uri(self, "POST",
-                        choose_endpoint(self).full_prefix .. "/kv/range",
+    res, err = _request_uri(self, endpoint, "POST",
+            endpoint.full_prefix .. "/kv/range",
                         opts, attr and attr.timeout or self.timeout)
 
     if res and res.status == 200 then
@@ -432,8 +435,9 @@ local function delete(self, key, attr)
         },
     }
 
-    return _request_uri(self, "POST",
-                    choose_endpoint(self).full_prefix .. "/kv/deleterange",
+    local endpoint= choose_endpoint(self)
+    return _request_uri(self, endpoint, "POST",
+            endpoint.full_prefix .. "/kv/deleterange",
                     opts, self.timeout)
 end
 
@@ -455,8 +459,9 @@ local function txn(self, opts_arg, compare, success, failure)
         },
     }
 
-    return _request_uri(self, "POST",
-                        choose_endpoint(self).full_prefix .. "/kv/txn",
+    local endpoint= choose_endpoint(self)
+    return _request_uri(self, endpoint, "POST",
+            endpoint.full_prefix .. "/kv/txn",
                         opts, timeout or self.timeout)
 end
 
@@ -897,8 +902,9 @@ function _M.grant(self, ttl, id)
         },
     }
 
-    return _request_uri(self, "POST",
-                        choose_endpoint(self).full_prefix .. "/lease/grant", opts)
+    local endpoint= choose_endpoint(self)
+    return _request_uri(self, endpoint, "POST",
+            endpoint.full_prefix .. "/lease/grant", opts)
 end
 
 function _M.revoke(self, id)
@@ -912,8 +918,9 @@ function _M.revoke(self, id)
         },
     }
 
-    return _request_uri(self, "POST",
-                        choose_endpoint(self).full_prefix .. "/kv/lease/revoke", opts)
+    local endpoint= choose_endpoint(self)
+    return _request_uri(self, endpoint, "POST",
+            endpoint.full_prefix .. "/kv/lease/revoke", opts)
 end
 
 function _M.keepalive(self, id)
@@ -927,8 +934,9 @@ function _M.keepalive(self, id)
         },
     }
 
-    return _request_uri(self, "POST",
-                        choose_endpoint(self).full_prefix .. "/lease/keepalive", opts)
+    local endpoint= choose_endpoint(self)
+    return _request_uri(self, endpoint, "POST",
+            endpoint.full_prefix .. "/lease/keepalive", opts)
 end
 
 function _M.timetolive(self, id, keys)
@@ -944,7 +952,8 @@ function _M.timetolive(self, id, keys)
         },
     }
 
-    local res, err = _request_uri(self, "POST",
+    local endpoint= choose_endpoint(self)
+    local res, err = _request_uri(self, endpoint, "POST",
                         choose_endpoint(self).full_prefix .. "/kv/lease/timetolive", opts)
 
     if res and res.status == 200 then
@@ -959,34 +968,39 @@ function _M.timetolive(self, id, keys)
 end
 
 function _M.leases(self)
-    return _request_uri(self, "POST",
-                        choose_endpoint(self).full_prefix .. "/lease/leases")
+    local endpoint= choose_endpoint(self)
+    return _request_uri(self, endpoint, "POST",
+            endpoint.full_prefix .. "/lease/leases")
 end
 
 
 -- /version
 function _M.version(self)
-    return _request_uri(self, "GET",
-                        choose_endpoint(self).http_host .. "/version",
+    local endpoint= choose_endpoint(self)
+    return _request_uri(self, endpoint, "GET",
+            endpoint.http_host .. "/version",
                         nil, self.timeout)
 end
 
 -- /stats
 function _M.stats_leader(self)
-    return _request_uri(self, "GET",
-                        choose_endpoint(self).http_host .. "/v2/stats/leader",
+    local endpoint= choose_endpoint(self)
+    return _request_uri(self, endpoint, "GET",
+            endpoint.http_host .. "/v2/stats/leader",
                         nil, self.timeout)
 end
 
 function _M.stats_self(self)
-    return _request_uri(self, "GET",
-                        choose_endpoint(self).http_host .. "/v2/stats/self",
+    local endpoint= choose_endpoint(self)
+    return _request_uri(self, endpoint, "GET",
+            endpoint.http_host .. "/v2/stats/self",
                         nil, self.timeout)
 end
 
 function _M.stats_store(self)
-    return _request_uri(self, "GET",
-                        choose_endpoint(self).http_host .. "/v2/stats/store",
+    local endpoint= choose_endpoint(self)
+    return _request_uri(self, endpoint, "GET",
+            endpoint.http_host .. "/v2/stats/store",
                         nil, self.timeout)
 end
 
