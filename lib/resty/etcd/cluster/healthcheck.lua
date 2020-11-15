@@ -68,6 +68,7 @@ local function tbl_copy_merge_defaults(t1, defaults)
     end
 end
 
+
 local DEFAULTS = setmetatable({
     active = {
         concurrency = 5,
@@ -111,7 +112,6 @@ local DEFAULTS = setmetatable({
 local _M = {
     version = 0.1,
 }
-
 
 
 function _M.report_failure(endpoint, osi, _, status)
