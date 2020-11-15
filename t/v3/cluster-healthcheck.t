@@ -91,10 +91,11 @@ __DATA__
     }
 --- request
 GET /t
---- grep_error_log_out eval
-qr /enable etcd cluster health check/
-qr /success to add new health check target: 127.0.0.1:12379/
-qr /success to add new health check target: 127.0.0.1:22379/
-qr /success to add new health check target: 127.0.0.1:32379/
+--- grep_error_log eval
+qr/success to add new health check target: 127.0.0.1:\d+/
+--- grep_error_log_out
+success to add new health check target: 127.0.0.1:12379
+success to add new health check target: 127.0.0.1:22379
+success to add new health check target: 127.0.0.1:32379
 --- no_error_log
 [error]
