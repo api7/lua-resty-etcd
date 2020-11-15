@@ -1,3 +1,5 @@
+local healthcheck
+local require       = require
 local ipairs        = ipairs
 local pcall         = pcall
 local error         = error
@@ -9,7 +11,6 @@ local setmetatable  = setmetatable
 local getmetatable  = getmetatable
 local utils         = require("resty.etcd.utils")
 local ngx_shared    = ngx.shared
-local healthcheck
 local checker
 
 local headthcheck_endpoint = {
@@ -119,13 +120,15 @@ function _M.report_failure(endpoint, osi, _, status)
     end
 
     if osi == "tcp" then
-        checker:report_tcp_failure(endpoint.host, tonumber(endpoint.port), nil, nil, "active")
+        checker:report_tcp_failure(endpoint.host, tonumber(endpoint.port),
+                nil, nil, "active")
         return
     end
 
     if osi == "http" then
         if status >= 500 then
-            checker:report_http_status(endpoint.host, tonumber(endpoint.port),  nil, status, "active")
+            checker:report_http_status(endpoint.host, tonumber(endpoint.port),
+                    nil, status, "active")
             return
         end
     end
@@ -158,7 +161,7 @@ function _M.run(opts, endpoints)
     end
 
     --supported etcd version >= 3.3
-    --see https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/monitoring.md#health-check
+    --https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/monitoring.md#health-check
     if not headthcheck_endpoint[opts.api_prefix] then
         error("unsupported health check for the etcd version < v3.3.0")
         return
@@ -170,7 +173,7 @@ function _M.run(opts, endpoints)
             return nil, checks
         end
 
-        if not healthcheck then
+        if healthcheck == nil then
             healthcheck = require("resty.healthcheck")
         end
 
