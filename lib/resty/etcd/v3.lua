@@ -74,12 +74,12 @@ local function _request_uri(self, endpoint, method, uri, opts, timeout, ignore_a
     })
 
     if err then
-        healthcheck:report_failure(endpoint, "tcp", err)
+        healthcheck.report_failure(endpoint, "tcp", err)
         return nil, err
     end
 
     if res.status >= 500 then
-        healthcheck:report_failure(endpoint, "http", nil, res.status)
+        healthcheck.report_failure(endpoint, "http", nil, res.status)
         return nil, "invalid response code: " .. res.status
     end
 
@@ -185,7 +185,7 @@ end
 local function choose_endpoint(self)
     local endpoints = self.endpoints
 
-    local health_endpoint = healthcheck:fetch_health_nodes(endpoints)
+    local health_endpoint = healthcheck.fetch_health_nodes(endpoints)
     if health_endpoint then
         return health_endpoint
     end
@@ -506,7 +506,7 @@ local function request_chunk(self, endpoint, method, scheme, host, port, path, o
 
     ok, err = http_cli:connect(host, port)
     if not ok then
-        healthcheck:report_failure(endpoint, "tcp", err)
+        healthcheck.report_failure(endpoint, "tcp", err)
         return nil, err
     end
 
@@ -561,7 +561,7 @@ local function request_chunk(self, endpoint, method, scheme, host, port, path, o
         end
 
         if body and body.error and body.error.http_code >= 500 then
-            healthcheck:report_failure(endpoint, "http", nil, body.error.http_code)
+            healthcheck.report_failure(endpoint, "http", nil, body.error.http_code)
         end
 
         if body.result.events then

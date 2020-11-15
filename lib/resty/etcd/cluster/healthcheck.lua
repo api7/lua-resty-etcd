@@ -7,6 +7,7 @@ local type          = type
 local next          = next
 local setmetatable  = setmetatable
 local getmetatable  = getmetatable
+local utils         = require("resty.etcd.utils")
 local ngx_shared    = ngx.shared
 local healthcheck
 local checker
@@ -19,11 +20,11 @@ local headthcheck_endpoint = {
 
 local fixed_field_metatable = {
     __index =
-    function(t, k)
+    function(_, k)
         error("field " .. tostring(k) .. " does not exist", 3)
     end,
     __newindex =
-    function(t, k, v)
+    function(_, k, _)
         error("attempt to create new field " .. tostring(k), 3)
     end,
 }
@@ -112,21 +113,19 @@ local _M = {
 
 
 
-function _M.report_failure(self, endpoint, osi, err, status)
+function _M.report_failure(endpoint, osi, _, status)
     if not checker then
         return
     end
 
     if osi == "tcp" then
         checker:report_tcp_failure(endpoint.host, tonumber(endpoint.port), nil, nil, "active")
-        checker:report_tcp_failure(endpoint.host, tonumber(endpoint.port), nil, nil, "passive")
         return
     end
 
     if osi == "http" then
         if status >= 500 then
             checker:report_http_status(endpoint.host, tonumber(endpoint.port),  nil, status, "active")
-            checker:report_http_status(endpoint.host, tonumber(endpoint.port),  nil, status, "passive")
             return
         end
     end
@@ -134,7 +133,7 @@ function _M.report_failure(self, endpoint, osi, err, status)
 end
 
 
-function _M.fetch_health_nodes(self, endpoints)
+function _M.fetch_health_nodes(endpoints)
     if not checker then
         return nil
     end
@@ -188,6 +187,8 @@ function _M.run(opts, endpoints)
                     error("failed to add new health check target: ", endpoint.host, ":",
                             endpoint.port, " err: ", err)
                 end
+                utils.log_info("success to add new health check target: ", endpoint.host, ":",
+                        endpoint.port)
             end
         end
 

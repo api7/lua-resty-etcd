@@ -68,6 +68,7 @@ function _M.new(opts)
         local etcd_cli, err = etcdv3.new(opts)
         --if configure the cluster_healthcheck attribute, then enable etcd cluster health check
         if not err and opts.cluster_healthcheck then
+            utils.log_info("enable etcd cluster health check")
             local endpoints = tab_clone(etcd_cli.endpoints)
             healthcheck.run(opts, endpoints)
         end
