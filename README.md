@@ -18,7 +18,7 @@ Table of Contents
 
 - lua-resty-http: https://github.com/ledgetech/lua-resty-http
 - lua-typeof: https://github.com/iresty/lua-typeof
-
+- lua-resty-healthcheck-api7: https://github.com/api7/lua-resty-healthcheck
 > install by luarocks
 
 ```shell

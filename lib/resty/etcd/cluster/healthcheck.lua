@@ -160,7 +160,7 @@ function _M.run(opts, endpoints)
         return
     end
 
-    --supported etcd version >= 3.3
+    --supported etcd version >= 3.3.0
     --https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/monitoring.md#health-check
     if not headthcheck_endpoint[opts.api_prefix] then
         ngx.log(ngx.WARN, "unsupported health check for the etcd version < v3.3.0")
