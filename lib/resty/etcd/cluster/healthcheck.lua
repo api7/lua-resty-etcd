@@ -163,13 +163,14 @@ function _M.run(opts, endpoints)
     --supported etcd version >= 3.3
     --https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/monitoring.md#health-check
     if not headthcheck_endpoint[opts.api_prefix] then
-        error("unsupported health check for the etcd version < v3.3.0")
+        ngx.log(ngx.WARN, "unsupported health check for the etcd version < v3.3.0")
         return
     end
 
     if not checker then
         local ok, checks = pcall(tbl_copy_merge_defaults, opts.cluster_healthcheck.checks, DEFAULTS)
         if not ok then
+            ngx.log(ngx.WARN, "err: ", checks)
             return nil, checks
         end
 
