@@ -202,36 +202,30 @@ qr/unhealthy HTTP increment.*127.0.0.1:32379/]
                 password = 'abc123',
                 cluster_healthcheck = {
                     shm_name = 'test_shm',
-                    checks = {
-                        active = {
-                            unhealthy = {
-                                interval = 0.1,
-                            },
-                        },
-                    },
                 },
             })
 
             local network_isolation_cmd = "export PATH=$PATH:/sbin && iptables -A INPUT -p tcp --dport 12379 -j DROP"
             io_opopen(network_isolation_cmd)
 
-            ngx.sleep(0.1)
+            ngx.sleep(1)
 
             local res, err = etcd:set("/healthcheck", "yes")
 
             local network_recovery_cmd = "export PATH=$PATH:/sbin && iptables -D INPUT -p tcp --dport 12379 -j DROP"
             io_opopen(network_recovery_cmd)
 
-            ngx.sleep(0.2)
+            ngx.sleep(2)
         }
     }
 --- request
 GET /t
---- timeout: 10
 --- ignore_response
---- error_log eval
-[qr/unhealthy TCP increment/,
-qr/healthy SUCCESS increment/]
+--- grep_error_log eval
+qr/unhealthy TCP increment.*/
+--- grep_error_log_out eval
+qr/unhealthy TCP increment.*127.0.0.1:12379/
+--- timeout: 10
 
 
 
@@ -254,7 +248,7 @@ qr/healthy SUCCESS increment/]
                 }
             })
 
-	        local res, err = etcd:set("/healthcheck", "yes")
+            local res, err = etcd:set("/healthcheck", "yes")
             ngx.sleep(0.1)
             res, err = etcd:set("/healthcheck", "yes")
             res, err = etcd:get("/healthcheck")
