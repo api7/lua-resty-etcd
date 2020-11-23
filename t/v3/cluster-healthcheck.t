@@ -195,8 +195,8 @@ qr/unhealthy HTTP increment.*127.0.0.1:32379/]
                 protocol = "v3",
                 http_host = {
                     "http://127.0.0.1:12379",
-                    "http://127.0.0.1:22379",
-                    "http://127.0.0.1:32379",
+                    "http://127.0.0.1:12379",
+                    "http://127.0.0.1:12379",
                 },
                 user = 'root',
                 password = 'abc123',
@@ -282,8 +282,8 @@ qr/unhealthy TCP increment.*127.0.0.1:42379/
                 protocol = "v3",
                 http_host = {
                     "http://127.0.0.1:12379",
-                    "http://127.0.0.1:22379",
-                    "http://127.0.0.1:32379",
+                    "http://127.0.0.1:12379",
+                    "http://127.0.0.1:12379",
                 },
                 user = 'root',
                 password = 'abc123',
@@ -292,7 +292,7 @@ qr/unhealthy TCP increment.*127.0.0.1:42379/
                     checks = {
                         active = {
                             unhealthy = {
-                                interval = 0.5,
+                                interval = 1
                             },
                         },
                     },
