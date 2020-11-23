@@ -222,13 +222,15 @@ qr/unhealthy HTTP increment.*127.0.0.1:32379/]
             local network_recovery_cmd = "export PATH=$PATH:/sbin && iptables -D INPUT -p tcp --dport 12379 -j DROP"
             io_opopen(network_recovery_cmd)
 
-            ngx.sleep(2)
+            ngx.sleep(1)
+            ngx.say(res.body.kvs[1].value)
         }
     }
 --- request
 GET /t
 --- timeout: 10
---- ignore_response
+--- response_body eval
+qr/yes/
 --- error_log eval
 [qr/unhealthy TCP increment.*127.0.0.1:12379/,
 qr/healthy SUCCESS increment.*127.0.0.1:12379/]
