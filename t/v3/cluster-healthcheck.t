@@ -186,48 +186,7 @@ qr/unhealthy HTTP increment.*127.0.0.1:32379/]
 
 
 
-=== TEST 5: mock tcp connect timeout and recovery, report the node unhealthy and health
---- http_config eval: $::HttpConfig
---- config
-    location /t {
-        content_by_lua_block {
-            local network_isolation_cmd = "export PATH=$PATH:/sbin && iptables -A INPUT -p tcp --dport 12379 -j DROP"
-            io_opopen(network_isolation_cmd)
-            ngx.sleep(1)
-
-            local etcd, err = require "resty.etcd" .new({
-                protocol = "v3",
-                api_prefix = "/v3",
-                http_host = {
-                    "http://127.0.0.1:12379",
-                    "http://127.0.0.1:12379",
-                    "http://127.0.0.1:12379",
-                },
-                user = 'root',
-                password = 'abc123',
-                cluster_healthcheck = {
-                    shm_name = 'test_shm',
-                },
-            })
-
-            local res, err = etcd:set("/healthcheck", "yes")
-
-            local network_recovery_cmd = "export PATH=$PATH:/sbin && iptables -D INPUT -p tcp --dport 12379 -j DROP"
-            io_opopen(network_recovery_cmd)
-            ngx.sleep(3)
-        }
-    }
---- request
-GET /t
---- ignore_response
---- error_log eval
-[qr/unhealthy TCP increment.*127.0.0.1:12379/,
-qr/healthy SUCCESS increment.*127.0.0.1:12379/]
---- timeout: 30
-
-
-
-=== TEST 6: mock etcd node down, report the node unhealthy and choose another health node next time
+=== TEST 5: mock etcd node down, report the node unhealthy and choose another health node next time
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
