@@ -193,7 +193,7 @@ qr/unhealthy HTTP increment.*127.0.0.1:32379/]
         content_by_lua_block {
             local network_isolation_cmd = "export PATH=$PATH:/sbin && iptables -A INPUT -p tcp --dport 12379 -j DROP"
             io_opopen(network_isolation_cmd)
-            ngx.sleep(0.1)
+            ngx.sleep(1)
 
             local etcd, err = require "resty.etcd" .new({
                 protocol = "v3",
@@ -214,7 +214,7 @@ qr/unhealthy HTTP increment.*127.0.0.1:32379/]
 
             local network_recovery_cmd = "export PATH=$PATH:/sbin && iptables -D INPUT -p tcp --dport 12379 -j DROP"
             io_opopen(network_recovery_cmd)
-            ngx.sleep(0.1)
+            ngx.sleep(3)
         }
     }
 --- request
@@ -223,7 +223,7 @@ GET /t
 --- error_log eval
 [qr/unhealthy TCP increment.*127.0.0.1:12379/,
 qr/healthy SUCCESS increment.*127.0.0.1:12379/]
---- timeout: 10
+--- timeout: 30
 
 
 
