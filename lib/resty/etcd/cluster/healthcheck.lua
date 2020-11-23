@@ -2,7 +2,6 @@ local healthcheck
 local require       = require
 local ipairs        = ipairs
 local pcall         = pcall
-local error         = error
 local tostring      = tostring
 local tonumber      = tonumber
 local type          = type
@@ -22,11 +21,11 @@ local headthcheck_endpoint = {
 local fixed_field_metatable = {
     __index =
     function(_, k)
-        error("field " .. tostring(k) .. " does not exist", 3)
+        utils.log_error("field " .. tostring(k) .. " does not exist", 3)
     end,
     __newindex =
     function(_, k, _)
-        error("attempt to create new field " .. tostring(k), 3)
+        utils.log_error("attempt to create new field " .. tostring(k), 3)
     end,
 }
 
@@ -148,7 +147,7 @@ function _M.fetch_health_nodes(endpoints)
         end
     end
 
-    error("etcd cluster is unavailable")
+    utils.log_error("etcd cluster is unavailable")
     return nil
 end
 
@@ -156,21 +155,21 @@ end
 function _M.run(opts, endpoints)
     local shared_dict = ngx_shared[opts.cluster_healthcheck.shm_name]
     if not shared_dict then
-        error("failed to get ngx.shared dict when start etcd cluster health check")
+        utils.log_error("failed to get ngx.shared dict when start etcd cluster health check")
         return
     end
 
     --supported etcd version >= 3.3.0
     --https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/monitoring.md#health-check
     if not headthcheck_endpoint[opts.api_prefix] then
-        ngx.log(ngx.WARN, "unsupported health check for the etcd version < v3.3.0")
+        utils.log_info("unsupported health check for the etcd version < v3.3.0")
         return
     end
 
     if not checker then
         local ok, checks = pcall(tbl_copy_merge_defaults, opts.cluster_healthcheck.checks, DEFAULTS)
         if not ok then
-            ngx.log(ngx.WARN, "err: ", checks)
+            utils.log_error("err: ", checks)
             return nil, checks
         end
 
@@ -188,7 +187,7 @@ function _M.run(opts, endpoints)
             for _, endpoint in ipairs(endpoints) do
                 local _, err = checker:add_target(endpoint.host, endpoint.port, nil, true)
                 if not ok then
-                    error("failed to add new health check target: ", endpoint.host, ":",
+                    utils.log_error("failed to add new health check target: ", endpoint.host, ":",
                             endpoint.port, " err: ", err)
                 end
                 utils.log_info("success to add new health check target: ", endpoint.host, ":",
