@@ -28,9 +28,9 @@ luarocks install lua-resty-etcd
 > install by source
 
 ```shell
-$ make dev
 $ git clone https://github.com/iresty/lua-resty-etcd.git
 $ cd lua-resty-etcd
+$ make dev
 $ sudo make install
 ```
 
