@@ -222,3 +222,46 @@ qr/unhealthy TCP increment.*/
 --- grep_error_log_out eval
 qr/unhealthy TCP increment.*127.0.0.1:42379/
 
+
+
+=== TEST 6: get checker after create etcd client success
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local etcd, err = require "resty.etcd" .new({
+                protocol = "v3",
+                http_host = {
+                    "http://127.0.0.1:12379",
+                    "http://127.0.0.1:22379",
+                    "http://127.0.0.1:32379",
+                },
+                cluster_healthcheck = {
+                    shm_name = 'test_shm',
+                    checks = {
+                        active = {
+                            https_verify_certificate = false,
+                            timeout = 1,
+                            healthy = {
+                                http_statuses = {200},
+                                interval = 0.5,
+                            },
+                            unhealthy = {
+                              http_statuses = { 404 },
+                            },
+                        },
+                    },
+                },
+            })
+
+            ngx.sleep(3)
+            ngx.say(etcd.checker.EVENT_SOURCE)
+        }
+    }
+--- request
+GET /t
+--- timeout: 10
+--- no_error_log
+[error]
+--- response_body
+lua-resty-healthcheck [etcd-cluster-health-check]

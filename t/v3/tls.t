@@ -42,6 +42,21 @@ our $HttpConfig = <<'_EOC_';
             end
         end
     }
+
+    lua_shared_dict test_shm 8m;
+    lua_shared_dict my_worker_events 8m;
+    init_worker_by_lua_block {
+
+        local we = require "resty.worker.events"
+        local ok, err = we.configure({
+            shm = "my_worker_events",
+            interval = 0.1
+        })
+        if not ok then
+            ngx.log(ngx.ERR, "failed to configure worker events: ", err)
+            return
+        end
+    }
 _EOC_
 
 run_tests();
@@ -162,3 +177,91 @@ qr/1:.*"created":true.*
 2:.*"value":"bcd3".*
 timeout/
 --- timeout: 5
+
+
+
+=== TEST 4: enable health check success with TLS no verify
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local etcd, err = require "resty.etcd" .new({
+                protocol = "v3",
+                http_host = {
+                    "https://127.0.0.1:12379",
+                    "https://127.0.0.1:22379",
+                    "https://127.0.0.1:32379",
+                },
+                ssl_verify = false,
+                cluster_healthcheck = {
+                    shm_name = 'test_shm',
+                    checks = {
+                        active = {
+                            type = "https",
+                            https_verify_certificate = false,
+                            timeout = 1,
+                            healthy = {
+                                http_statuses = {200},
+                                interval = 0.5,
+                            },
+                            unhealthy = {
+                              http_statuses = { 404 },
+                            },
+                        },
+                    },
+                },
+            })
+
+            ngx.sleep(3)
+            ngx.say(etcd.checker.EVENT_SOURCE)
+        }
+    }
+--- request
+GET /t
+--- timeout: 10
+--- no_error_log
+[error]
+--- response_body
+lua-resty-healthcheck [etcd-cluster-health-check]
+
+
+
+=== TEST 5: enable health check fail with TLS verify
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local etcd, err = require "resty.etcd" .new({
+                protocol = "v3",
+                http_host = {
+                    "https://127.0.0.1:12379",
+                    "https://127.0.0.1:22379",
+                    "https://127.0.0.1:32379",
+                },
+                ssl_verify = false,
+                cluster_healthcheck = {
+                    shm_name = 'test_shm',
+                    checks = {
+                        active = {
+                            type = "https",
+                            timeout = 1,
+                            healthy = {
+                                http_statuses = {200},
+                                interval = 0.5,
+                            },
+                            unhealthy = {
+                              http_statuses = { 404 },
+                            },
+                        },
+                    },
+                },
+            })
+
+            ngx.sleep(3)
+        }
+    }
+--- request
+GET /t
+--- timeout: 10
+--- error_log eval
+qr /18: self signed certificate/

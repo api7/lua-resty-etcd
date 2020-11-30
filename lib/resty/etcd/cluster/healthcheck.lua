@@ -75,8 +75,8 @@ local DEFAULTS = setmetatable({
         http_path = "/health",
         host = "",
         type = "http",
-        req_headers = {"User-Agent: curl/7.29.0"},
-        https_verify_certificate = false,
+        req_headers = {"UA: curl/7.29.0"},
+        https_verify_certificate = true,
         healthy = {
             http_statuses = {200},
             --active healthy health checks are disabled by default
@@ -108,9 +108,7 @@ local DEFAULTS = setmetatable({
 }, fixed_field_metatable)
 
 
-local _M = {
-    version = 0.1,
-}
+local _M = {}
 
 
 function _M.report_failure(endpoint, osi, _, status)
@@ -194,8 +192,8 @@ function _M.run(opts, endpoints)
                         endpoint.port)
             end
         end
-
         checker:start()
+        return checker
     end
 end
 
