@@ -1,6 +1,6 @@
 use Test::Nginx::Socket::Lua;
 
-log_level('info');
+log_level('debug');
 no_long_string();
 repeat_each(1);
 
@@ -94,8 +94,13 @@ qr/enable etcd cluster health check/
                 },
                 user = 'root',
                 password = 'abc123',
-                cluster_healthcheck ={
+                cluster_healthcheck = {
                     shm_name = 'test_shm',
+                    checks = {
+                        active = {
+                            https_verify_certificate = false,
+                        },
+                    },
                 }
             })
         }
@@ -108,8 +113,8 @@ qr/success to add new health check target: 127.0.0.1:\d+/
 success to add new health check target: 127.0.0.1:12379
 success to add new health check target: 127.0.0.1:22379
 success to add new health check target: 127.0.0.1:32379
---- no_error_log
-[error]
+--- error_log eval
+qr/Healthchecker started!/
 
 
 
@@ -206,7 +211,6 @@ qr/failed to get ngx.shared dict: wrong_shm/
             })
 
             ngx.sleep(3)
-            ngx.say(etcd.checker.EVENT_SOURCE)
         }
     }
 --- request
@@ -279,11 +283,16 @@ qr/unhealthy HTTP increment.*127.0.0.1:32379/]
                 password = 'abc123',
                 cluster_healthcheck = {
                     shm_name = 'test_shm',
+                    checks = {
+                        active = {
+                            https_verify_certificate = false,
+                        },
+                    },
                 }
             })
 
             local res, err = etcd:set("/healthcheck", "yes")
-            ngx.sleep(0.1)
+            ngx.sleep(0.2)
             res, err = etcd:set("/healthcheck", "yes")
             res, err = etcd:get("/healthcheck")
             ngx.say(res.body.kvs[1].value)
@@ -301,7 +310,7 @@ qr/unhealthy TCP increment.*127.0.0.1:42379/
 
 
 
-=== TEST 8: get checker after create etcd client success
+=== TEST 8: call checker:stop() and checker:clear()
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -313,32 +322,25 @@ qr/unhealthy TCP increment.*127.0.0.1:42379/
                     "http://127.0.0.1:22379",
                     "http://127.0.0.1:32379",
                 },
+                user = 'root',
+                password = 'abc123',
                 cluster_healthcheck = {
                     shm_name = 'test_shm',
                     checks = {
                         active = {
                             https_verify_certificate = false,
-                            timeout = 1,
-                            healthy = {
-                                http_statuses = {200},
-                                interval = 0.5,
-                            },
-                            unhealthy = {
-                              http_statuses = { 404 },
-                            },
                         },
                     },
-                },
+                }
             })
 
-            ngx.sleep(3)
-            ngx.say(etcd.checker.EVENT_SOURCE)
+            etcd.health_check.checker_clear()
+            etcd.health_check.checker_stop()
         }
     }
 --- request
 GET /t
 --- timeout: 10
---- no_error_log
-[error]
---- response_body
-lua-resty-healthcheck [etcd-cluster-health-check]
+--- error_log eval
+[qr/\(etcd-cluster-health-check\) event: local cache cleared/,
+qr/\(etcd-cluster-health-check\) timers stopped/]

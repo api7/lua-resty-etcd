@@ -72,8 +72,8 @@ The default configuration is as follows:
         http_path = "/health",
         host = "",
         type = "http",
-        req_headers = {"User-Agent: curl/7.29.0"},
-        https_verify_certificate = false,
+        req_headers = {"User-Agent: lua-resty-etcd"},
+        https_verify_certificate = true,
         healthy = {
             http_statuses = {200},
             --active healthy health checks are disabled by default

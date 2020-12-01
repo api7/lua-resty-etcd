@@ -70,11 +70,12 @@ function _M.new(opts)
         if not err and opts.cluster_healthcheck then
             utils.log_info("enable etcd cluster health check")
             local endpoints = tab_clone(etcd_cli.endpoints)
-            local checker, err = healthcheck.run(opts, endpoints)
+            local health_check
+            health_check, err = healthcheck.run(opts, endpoints)
             if err then
-                return nil, err
+                return etcd_cli, err
             end
-            etcd_cli.checker = checker
+            etcd_cli.health_check = health_check
         end
         return etcd_cli, err
     end

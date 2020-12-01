@@ -137,6 +137,20 @@ function _M.fetch_health_nodes(endpoints)
 end
 
 
+function _M.checker_clear()
+    if checker then
+        checker:clear()
+    end
+end
+
+
+function _M.checker_stop()
+    if checker then
+        checker:stop()
+    end
+end
+
+
 function _M.run(opts, endpoints)
     local shared_dict = ngx_shared[opts.cluster_healthcheck.shm_name]
     if not shared_dict then
@@ -150,7 +164,8 @@ function _M.run(opts, endpoints)
     end
 
     if not checker then
-        local ok, checks = pcall(tbl_copy_merge_defaults, opts.cluster_healthcheck.checks, DEFAULTS)
+        local ok, checks = pcall(tbl_copy_merge_defaults, opts.cluster_healthcheck.checks,
+                DEFAULTS)
         if not ok then
             utils.log_error("err: ", checks)
             return nil, checks
@@ -160,15 +175,20 @@ function _M.run(opts, endpoints)
             healthcheck = require("resty.healthcheck")
         end
 
-        checker = healthcheck.new({
+        local err
+        checker, err = healthcheck.new({
             name = opts.cluster_healthcheck.name or "etcd-cluster-health-check",
             shm_name = opts.cluster_healthcheck.shm_name,
             checks = checks,
         })
 
+        if err then
+            return nil, err
+        end
+
         if #endpoints > 1 then
             for _, endpoint in ipairs(endpoints) do
-                local _, err = checker:add_target(endpoint.host, endpoint.port, nil, true)
+                ok, err = checker:add_target(endpoint.host, endpoint.port, nil, true)
                 if not ok then
                     utils.log_error("failed to add new health check target: ", endpoint.host, ":",
                             endpoint.port, " err: ", err)
@@ -177,8 +197,8 @@ function _M.run(opts, endpoints)
                         endpoint.port)
             end
         end
-        checker:start()
-        return checker, nil
+
+        return _M, nil
     end
 end
 
