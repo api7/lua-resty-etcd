@@ -132,16 +132,93 @@ success to add new health check target: 127.0.0.1:32379
                     shm_name = 'test_shm',
                 }
             })
+            ngx.say(err)
         }
     }
 --- request
 GET /t
---- error_log eval
+--- response_body eval
 qr/unsupported health check for the etcd version < v3.3.0/
+--- no_error_log
+[error]
 
 
 
-=== TEST 4: check user config override default config
+=== TEST 4: set wrong shared_dict name
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local etcd, err = require "resty.etcd" .new({
+                protocol = "v3",
+                api_prefix = "/v3alpha",
+                http_host = {
+                    "http://127.0.0.1:12379",
+                    "http://127.0.0.1:22379",
+                    "http://127.0.0.1:32379",
+                },
+                user = 'root',
+                password = 'abc123',
+                cluster_healthcheck = {
+                    shm_name = 'wrong_shm',
+                }
+            })
+            ngx.say(err)
+        }
+    }
+--- request
+GET /t
+--- response_body eval
+qr/failed to get ngx.shared dict: wrong_shm/
+--- no_error_log
+[error]
+
+
+
+=== TEST 5: invalid value
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local etcd, err = require "resty.etcd" .new({
+                protocol = "v3",
+                http_host = {
+                    "http://127.0.0.1:12379",
+                    "http://127.0.0.1:22379",
+                    "http://127.0.0.1:32379",
+                },
+                cluster_healthcheck = {
+                    shm_name = 'test_shm',
+                    checks = {
+                        active = {
+                            timeout = "1",
+                            https_verify_certificate = false,
+                            healthy = {
+                                http_statuses = {200},
+                                interval = 0.5,
+                            },
+                            unhealthy = {
+                              http_statuses = { 404 },
+                            },
+                        },
+                    },
+                },
+            })
+
+            ngx.sleep(3)
+            ngx.say(etcd.checker.EVENT_SOURCE)
+        }
+    }
+--- request
+GET /t
+--- timeout: 10
+--- ignore_response
+--- error_log eval
+qr/invalid value/
+
+
+
+=== TEST 6: check user config override default config
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -186,7 +263,7 @@ qr/unhealthy HTTP increment.*127.0.0.1:32379/]
 
 
 
-=== TEST 5: mock etcd node down, report the node unhealthy and choose another health node next time
+=== TEST 7: mock etcd node down, report the node unhealthy and choose another health node next time
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -224,7 +301,7 @@ qr/unhealthy TCP increment.*127.0.0.1:42379/
 
 
 
-=== TEST 6: get checker after create etcd client success
+=== TEST 8: get checker after create etcd client success
 --- http_config eval: $::HttpConfig
 --- config
     location /t {

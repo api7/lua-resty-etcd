@@ -2,7 +2,6 @@ local healthcheck
 local require       = require
 local ipairs        = ipairs
 local pcall         = pcall
-local tostring      = tostring
 local tonumber      = tonumber
 local type          = type
 local next          = next
@@ -15,18 +14,6 @@ local checker
 local headthcheck_endpoint = {
     ["/v3"] = "/health",
     ["/v3beta"] = "/health",
-}
-
-
-local fixed_field_metatable = {
-    __index =
-    function(_, k)
-        utils.log_error("field " .. tostring(k) .. " does not exist", 3)
-    end,
-    __newindex =
-    function(_, k, _)
-        utils.log_error("attempt to create new field " .. tostring(k), 3)
-    end,
 }
 
 
@@ -68,14 +55,14 @@ local function tbl_copy_merge_defaults(t1, defaults)
 end
 
 
-local DEFAULTS = setmetatable({
+local DEFAULTS = {
     active = {
         concurrency = 5,
         timeout = 5,
         http_path = "/health",
         host = "",
         type = "http",
-        req_headers = {"UA: curl/7.29.0"},
+        req_headers = {"User-Agent: lua-resty-etcd"},
         https_verify_certificate = true,
         healthy = {
             http_statuses = {200},
@@ -105,7 +92,7 @@ local DEFAULTS = setmetatable({
             timeouts = 0,
         },
     },
-}, fixed_field_metatable)
+}
 
 
 local _M = {}
@@ -153,15 +140,13 @@ end
 function _M.run(opts, endpoints)
     local shared_dict = ngx_shared[opts.cluster_healthcheck.shm_name]
     if not shared_dict then
-        utils.log_error("failed to get ngx.shared dict when start etcd cluster health check")
-        return
+        return nil, "failed to get ngx.shared dict: " .. opts.cluster_healthcheck.shm_name
     end
 
     --supported etcd version >= 3.3.0
     --https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/monitoring.md#health-check
     if not headthcheck_endpoint[opts.api_prefix] then
-        utils.log_info("unsupported health check for the etcd version < v3.3.0")
-        return
+        return nil,"unsupported health check for the etcd version < v3.3.0"
     end
 
     if not checker then
@@ -193,7 +178,7 @@ function _M.run(opts, endpoints)
             end
         end
         checker:start()
-        return checker
+        return checker, nil
     end
 end
 
