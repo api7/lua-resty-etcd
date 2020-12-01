@@ -42,13 +42,13 @@ Method
     it will autofill by fetching etcd version if this option empty.
   - `ssl_verify`: boolean - whether to verify the etcd certificate when originating TLS connection with etcd (if you want to communicate to etcd with TLS connection, use `https` scheme in your `http_host`), default is `true.
 
-The client methods returns either a `etcd` object or an `error string`.
+The client method returns either a `etcd` object or an `error string`.
 
 ```lua
 local cli, err = require("resty.etcd").new({protocol = "v3"})
 ```
 
-Please refer the **etcd API documentaion** at - https://github.com/coreos/etcd for more details.
+Please refer to the **etcd API documentaion** at - https://github.com/coreos/etcd for more details.
 
 [Back to TOP](#api-v3)
 
@@ -59,9 +59,9 @@ Please refer the **etcd API documentaion** at - https://github.com/coreos/etcd f
 * `key`: string value.
 * `opts`: optional options.
     * `timeout`: (int) request timeout seconds. set 0 to disable timeout.
-    * `revision`: (int) revision is the point-in-time of the key-value store to use for the range. If revision is less or equal to zero, the range is over the newest key-value store. If the revision has been compacted, ErrCompacted is returned as a response.
+    * `revision`: (int) revision is the point-in-time of the key-value store to use for the range. If revision is less than or equal to zero, the range is over the newest key-value store. If the revision has been compacted, ErrCompacted is returned as a response.
 
-Gets the value for key.
+To get the value for key.
 
 ```lua
 local res, err = cli:get('/path/to/key')
@@ -82,7 +82,7 @@ local res, err = cli:get('/path/to/key')
     * `ignore_value`: (bool) If ignore_value is set, etcd updates the key using its current value. Returns an error if the key does not exist. 
     * `ignore_lease`: (bool) If ignore_lease is set, etcd updates the key using its current lease. Returns an error if the key does not exist.
 
-Set a key-value pair.
+To set a key-value pair.
 
 ```lua
 local res, err = cli:set('/path/to/key', 'val', 10)
@@ -99,7 +99,7 @@ local res, err = cli:set('/path/to/key', 'val', 10)
 * `opts`: optional options.
     * `timeout`: (int) request timeout seconds. set 0 to disable timeout.
 
-Set a key-value pair if that key does not exist.
+To set a key-value pair if that key does not exist.
 
 ```lua
 local res, err = cli:setnx('/path/to/key', 'val', 10)
@@ -116,7 +116,7 @@ local res, err = cli:setnx('/path/to/key', 'val', 10)
 * `opts`: optional options.
     * `timeout`: (int) request timeout seconds. set 0 to disable timeout.
 
-Set a key-value pair when that key is exists.
+To set a key-value pair when that key exists.
 
 ```lua
 local res, err = cli:setx('/path/to/key', 'val', 10)
@@ -133,7 +133,7 @@ local res, err = cli:setx('/path/to/key', 'val', 10)
     * `timeout`: (int) request timeout seconds. set 0 to disable timeout.
     * `prev_kv`: (bool) If prev_kv is set, etcd gets the previous key-value pairs before deleting it. The previous key-value pairs will be returned in the delete response.
 
-Deletes a key-value pair.
+To delete a key-value pair.
 
 ```lua
 local res, err = cli:delete('/path/to/key')
@@ -153,11 +153,11 @@ local res, err = cli:delete('/path/to/key')
     * `progress_notify`: (bool) progress_notify is set so that the etcd server will periodically send a WatchResponse with no events to the new watcher if there are no recent events. 
     * `filters`: (slice of (enum FilterType {NOPUT = 0;NODELETE = 1;})) filters filter the events at server side before it sends back to the watcher.  
     * `prev_kv`: (bool) If prev_kv is set, created watcher gets the previous KV before the event happens. If the previous KV is already compacted, nothing will be returned.
-    * `watch_id`: (int) If watch_id is provided and non-zero, it will be assigned to this watcher. Since creating a watcher in etcd is not a synchronous operation, this can be used ensure that ordering is correct when creating multiple watchers on the same stream. Creating a watcher with an ID already in use on the stream will cause an error to be returned. 
+    * `watch_id`: (int) If watch_id is provided and non-zero, it will be assigned to this watcher. Since creating a watcher in etcd is not a synchronous operation, this can be used to ensure that ordering is correct when creating multiple watchers on the same stream. Creating a watcher with an ID already in use on the stream will cause an error to be returned. 
     * `fragment`: (bool) fragment enables splitting large revisions into multiple watch responses.  
     * `need_cancel`: (bool) if watch need to be cancel, watch would return http_cli for further cancelation. See [watchcancel](#watchcancel) for detail.
 
-Watch the update of key.
+To watch the update of key.
 
 ```lua
 local res, err = cli:watch('/path/to/key')
@@ -171,7 +171,7 @@ local res, err = cli:watch('/path/to/key')
 
 * `http_cli`: the http client needs to revoke.
 
-Cancel the watch before it got expired. Need to set `need_cancel` to get the http client for cancelation.
+To cancel the watch before it get expired. Need to set `need_cancel` to get the http client for cancelation.
 
 ```lua
 local res, err, http_cli = cli:watch('/path/to/key', {need_cancel = true})
@@ -187,14 +187,14 @@ res = cli:watchcancel(http_cli)
 * `key`: string value.
 * `opts`: optional options.
     * `timeout`: (int) request timeout seconds. set 0 to disable timeout.
-    * `revision`: (int) revision is the point-in-time of the key-value store to use for the range. If revision is less or equal to zero, the range is over the newest key-value store. If the revision has been compacted, ErrCompacted is returned as a response.
+    * `revision`: (int) revision is the point-in-time of the key-value store to use for the range. If revision is less than or equal to zero, the range is over the newest key-value store. If the revision has been compacted, ErrCompacted is returned as a response.
     * `limit`: (int) limit is a limit on the number of keys returned for the request. When limit is set to 0, it is treated as no limit. 
     * `sort_order`: (int [SortNone:0, SortAscend:1, SortDescend:2]) sort_order is the order for returned sorted results.  
     * `sort_target`: (int [SortByKey:0, SortByVersion:1, SortByCreateRevision:2, SortByModRevision:3, SortByValue:4]) sort_target is the key-value field to use for sorting.
     * `keys_only`: (bool) keys_only when set returns only the keys and not the values.  
     * `count_only`: (bool) count_only when set returns only the count of the keys in the range. 
 
-Read the directory.
+To read the directory.
 
 ```lua
 local res, err = cli:readdir('/path/to/dir')
@@ -215,10 +215,10 @@ local res, err = cli:readdir('/path/to/dir')
     * `progress_notify`: (bool) progress_notify is set so that the etcd server will periodically send a WatchResponse with no events to the new watcher if there are no recent events. 
     * `filters`: (slice of [enum FilterType {NOPUT = 0;NODELETE = 1;}]) filters filter the events at server side before it sends back to the watcher.  
     * `prev_kv`: (bool) If prev_kv is set, created watcher gets the previous KV before the event happens. If the previous KV is already compacted, nothing will be returned.
-    * `watch_id`: (int) If watch_id is provided and non-zero, it will be assigned to this watcher. Since creating a watcher in etcd is not a synchronous operation, this can be used ensure that ordering is correct when creating multiple watchers on the same stream. Creating a watcher with an ID already in use on the stream will cause an error to be returned. 
+    * `watch_id`: (int) If watch_id is provided and non-zero, it will be assigned to this watcher. Since creating a watcher in etcd is not a synchronous operation, this can be used to ensure that ordering is correct when creating multiple watchers on the same stream. Creating a watcher with an ID already in use on the stream will cause an error to be returned. 
     * `fragment`: (bool) fragment enables splitting large revisions into multiple watch responses.  
 
-Watch the update of directory.
+To watch the update of directory.
 
 
 ```lua
@@ -237,7 +237,7 @@ local res, err = cli:watchdir('/path/to/dir')
     * `timeout`: (int) request timeout seconds. set 0 to disable timeout.
     * `prev_kv`: (bool) If prev_kv is set, etcd gets the previous key-value pairs before deleting it. The previous key-value pairs will be returned in the delete response.
 
-Remove the directory
+To remove the directory.
 
 ```lua
 local res, err = cli:rmdir('/path/to/dir')
@@ -256,7 +256,7 @@ local res, err = cli:rmdir('/path/to/dir')
 * `opts`: optional options.
     * `timeout`: (int) request timeout seconds. set 0 to disable timeout.
 
-Transaction
+Transaction.
 
 ```lua
 local compare = {}
@@ -280,7 +280,7 @@ local res, err = cli:txn(compare, success, nil)
 
 `syntax: res, err = cli:version()`
 
-Gets the etcd version info.
+To get the etcd version info.
 
 [Back to TOP](#api-v3)
 
@@ -291,7 +291,7 @@ Gets the etcd version info.
 - `TTL`: advisory time-to-live in seconds.
 - `ID`: the requested ID for the lease. If ID is set to 0, the lessor chooses an ID.
 
-Creates a lease which expires if the server does not receive a keepalive within a given time to live period. All keys attached to the lease will be expired and deleted if the lease expires. Each expired key generates a delete event in the event history.
+To create a lease which expires if the server does not receive a keepalive within a given time to live period. All keys attached to the lease will get expired and be deleted if the lease expires. Each expired key generates a delete event in the event history.
 
 ```lua
 -- grant a lease with 5 second TTL
@@ -309,7 +309,7 @@ local data, err = etcd:set('/path/to/key', 'val', {lease = res.body.ID})
 
 - `ID`: the lease ID to revoke. When the ID is revoked, all associated keys will be deleted.
 
-Revokes a lease. All keys attached to the lease will expire and be deleted.
+To revoke a lease. All keys attached to the lease will expire and be deleted.
 
 ```lua
 local res, err = cli:grant(5)
@@ -328,7 +328,7 @@ local data, err = cli:get('/path/to/key')
 
 - `ID`: the lease ID for the lease to keep alive.
 
-Keeps the lease alive by streaming keep alive requests from the client to the server and streaming keep alive responses from the server to the client.
+To keep the lease alive by streaming keep alive requests from the client to the server and streaming keep alive responses from the server to the client.
 
 [Back to TOP](#api-v3)
 
@@ -339,7 +339,7 @@ Keeps the lease alive by streaming keep alive requests from the client to the se
 - `ID`: the lease ID for the lease.
 - `keys`: if true, query all the keys attached to this lease.
 
-Retrieves lease information.
+To retrieve lease information.
 
 [Back to TOP](#api-v3)
 
@@ -347,7 +347,7 @@ Retrieves lease information.
 
 `syntax: res, err = cli:leases()`
 
-Lists all existing leases.
+To list all existing leases.
 
 [Back to TOP](#api-v3)
 
