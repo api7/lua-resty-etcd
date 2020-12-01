@@ -422,3 +422,31 @@ GET /t
 [error]
 --- response_body
 checked val as expect: aaa
+
+
+
+=== TEST 9: auth fail test
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+
+            local etcd, err = require "resty.etcd".new({protocol = "v3", user = "root", password = "guest"})
+
+            if err then
+                ngx.exit(500)
+            end
+
+            etcd:setnx("/setnx", "aaa")
+            etcd:setnx("/setnx", "aaa")
+            local res, err = etcd:setnx("/setnx", "aaa")
+            ngx.say(err)
+            ngx.exit(200)
+        }
+    }
+--- request
+GET /t
+--- no_error_log
+[error]
+--- response_body
+Jwt refreshed fail, while retry latter
