@@ -200,6 +200,10 @@ function refresh_jwt_token(self)
     -- token exist and not expire
     -- default is 5min, we use 3min
     -- https://github.com/etcd-io/etcd/issues/8287
+    if self.refresh_fail and now() - self.last_auth_time < 60 then
+        return nil, "Jwt refreshed fail, while retry latter"
+    end
+
     if self.jwt_token and now() - self.last_auth_time < 60 * 3 then
         return true, nil
     end
@@ -213,14 +217,18 @@ function refresh_jwt_token(self)
     local res, err = _request_uri(self, 'POST',
                         choose_endpoint(self).full_prefix .. "/auth/authenticate",
                         opts, 5, true)    -- default authenticate timeout 5 second
+    self.last_auth_time = now()
     if err then
+        self.refresh_fail = true
         return nil, err
     end
 
     if not res or not res.body or not res.body.token then
+        self.refresh_fail = true
         return nil, 'authenticate refresh token fail'
     end
 
+    self.refresh_fail = false
     self.jwt_token = res.body.token
     self.last_auth_time = now()
 
