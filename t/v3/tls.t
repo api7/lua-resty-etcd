@@ -211,18 +211,16 @@ timeout/
                     },
                 },
             })
-
-            ngx.sleep(3)
-            ngx.say(etcd.checker.EVENT_SOURCE)
         }
     }
 --- request
 GET /t
---- timeout: 10
---- no_error_log
-[error]
---- response_body
-lua-resty-healthcheck [etcd-cluster-health-check]
+--- grep_error_log eval
+qr/success to add new health check target: 127.0.0.1:\d+/
+--- grep_error_log_out
+success to add new health check target: 127.0.0.1:12379
+success to add new health check target: 127.0.0.1:22379
+success to add new health check target: 127.0.0.1:32379
 
 
 
