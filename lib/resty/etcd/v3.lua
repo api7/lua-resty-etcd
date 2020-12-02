@@ -2,6 +2,7 @@
 local typeof        = require("typeof")
 local cjson         = require("cjson.safe")
 local setmetatable  = setmetatable
+local random        = math.random
 local clear_tab     = require("table.clear")
 local utils         = require("resty.etcd.utils")
 local tab_nkeys     = require("table.nkeys")
@@ -19,6 +20,7 @@ local decode_json   = cjson.decode
 local encode_json   = cjson.encode
 local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
+local semaphore = require("ngx.semaphore")
 local INIT_COUNT_RESIZE = 2e8
 
 local _M = {}
@@ -29,6 +31,7 @@ local mt = { __index = _M }
 local refresh_jwt_token
 
 local function _request_uri(self, method, uri, opts, timeout, ignore_auth)
+    utils.log_info("v3 request uri: ", uri, ", timeout: ", timeout)
 
     local body
     if opts and opts.body and tab_nkeys(opts.body) > 0 then
@@ -44,7 +47,7 @@ local function _request_uri(self, method, uri, opts, timeout, ignore_auth)
     if self.is_auth then
         if not ignore_auth then
             -- authentication reqeust not need auth request
-            local _, err = refresh_jwt_token(self)
+            local _, err = refresh_jwt_token(self, timeout)
             if err then
                 return nil, err
             end
@@ -162,8 +165,15 @@ function _M.new(opts)
         })
     end
 
+    local sema, err = semaphore.new()
+    if not sema then
+        return nil, err
+    end
+
     return setmetatable({
             last_auth_time = now(), -- save last Authentication time
+            last_refresh_jwt_err = nil,
+            sema       = sema,
             jwt_token  = nil,       -- last Authentication token
             is_auth    = not not (user and password),
             user       = user,
@@ -195,14 +205,40 @@ local function choose_endpoint(self)
     return endpoints[pos]
 end
 
+
+local function wake_up_everyone(self)
+    local count = -self.sema:count()
+    if count > 0 then
+        self.sema:post(count)
+    end
+end
+
+
 -- return refresh_is_ok, error
-function refresh_jwt_token(self)
+function refresh_jwt_token(self, timeout)
     -- token exist and not expire
-    -- default is 5min, we use 3min
+    -- default is 5min, we use 3min plus random seconds to smooth the refresh across workers
     -- https://github.com/etcd-io/etcd/issues/8287
-    if self.jwt_token and now() - self.last_auth_time < 60 * 3 then
+    if self.jwt_token and now() - self.last_auth_time < 60 * 3 + random(0, 60) then
         return true, nil
     end
+
+    if self.requesting_token then
+        self.sema:wait(timeout)
+        if self.jwt_token and now() - self.last_auth_time < 60 * 3 + random(0, 60) then
+            return true, nil
+        end
+
+        if self.last_refresh_jwt_err then
+            utils.log_info("v3 refresh jwt last err: ", self.last_refresh_jwt_err)
+            return nil, self.last_refresh_jwt_err
+        end
+
+        -- something unexpected happened, try again
+    end
+
+    self.last_refresh_jwt_err = nil
+    self.requesting_token = true
 
     local opts = {
         body = {
@@ -211,18 +247,26 @@ function refresh_jwt_token(self)
         }
     }
     local res, err = _request_uri(self, 'POST',
-                        choose_endpoint(self).full_prefix .. "/auth/authenticate",
-                        opts, 5, true)    -- default authenticate timeout 5 second
+                                  choose_endpoint(self).full_prefix .. "/auth/authenticate",
+                                  opts, timeout, true)
+    self.requesting_token = false
+
     if err then
+        self.last_refresh_jwt_err = err
+        wake_up_everyone(self)
         return nil, err
     end
 
     if not res or not res.body or not res.body.token then
-        return nil, 'authenticate refresh token fail'
+        local err = 'authenticate refresh token fail'
+        self.last_refresh_jwt_err = err
+        wake_up_everyone(self)
+        return nil, err
     end
 
     self.jwt_token = res.body.token
     self.last_auth_time = now()
+    wake_up_everyone(self)
 
     return true, nil
 end
@@ -469,7 +513,7 @@ local function request_chunk(self, method, scheme, host, port, path, opts, timeo
     local headers = {}
     if self.is_auth then
         -- authentication reqeust not need auth request
-        _, err = refresh_jwt_token(self)
+        _, err = refresh_jwt_token(self, timeout)
         if err then
             return nil, err
         end
