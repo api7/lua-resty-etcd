@@ -5,8 +5,8 @@ no_long_string();
 repeat_each(1);
 
 my $etcd_version = `etcd --version`;
-if ($etcd_version =~ /^etcd Version: 2/ || $etcd_version =~ /^etcd Version: 3.1./ || $etcd_version =~ /^etcd Version: 3.2./) {
-    plan(skip_all => "etcd is too old, skip v3 protocol");
+if ($etcd_version =~ /^etcd Version: 2/ || $etcd_version =~ /^etcd Version: 3.[123]./) {
+    plan(skip_all => "etcd is too old");
 } else {
     my $enable_tls = $ENV{ETCD_ENABLE_TLS};
     if ((defined $enable_tls) && $enable_tls eq "TRUE") {
@@ -63,6 +63,9 @@ __DATA__
                 user = 'root',
                 password = 'abc123',
                 timeout = 3,
+                http_host = {
+                    "http://127.0.0.1:12379", 
+                },
             })
             check_res(etcd, err)
 
@@ -94,13 +97,13 @@ ok
 --- grep_error_log eval
 qr/uri: .+, timeout: \d+/
 --- grep_error_log_out
-uri: http://127.0.0.1:2379/v3/kv/put, timeout: 3
-uri: http://127.0.0.1:2379/v3/auth/authenticate, timeout: 3
-uri: http://127.0.0.1:2379/v3/kv/put, timeout: 3
-uri: http://127.0.0.1:2379/v3/kv/put, timeout: 3
-uri: http://127.0.0.1:2379/v3/kv/deleterange, timeout: 3
-uri: http://127.0.0.1:2379/v3/kv/deleterange, timeout: 3
-uri: http://127.0.0.1:2379/v3/kv/deleterange, timeout: 3
+uri: http://127.0.0.1:12379/v3/kv/put, timeout: 3
+uri: http://127.0.0.1:12379/v3/auth/authenticate, timeout: 3
+uri: http://127.0.0.1:12379/v3/kv/put, timeout: 3
+uri: http://127.0.0.1:12379/v3/kv/put, timeout: 3
+uri: http://127.0.0.1:12379/v3/kv/deleterange, timeout: 3
+uri: http://127.0.0.1:12379/v3/kv/deleterange, timeout: 3
+uri: http://127.0.0.1:12379/v3/kv/deleterange, timeout: 3
 
 
 
@@ -114,6 +117,9 @@ uri: http://127.0.0.1:2379/v3/kv/deleterange, timeout: 3
                 user = 'root',
                 password = '123',
                 timeout = 3,
+                http_host = {
+                    "http://127.0.0.1:12379", 
+                },
             })
             check_res(etcd, err)
 
@@ -140,10 +146,10 @@ ok
 --- grep_error_log eval
 qr/(uri: .+, timeout: \d+|v3 refresh jwt last err: [^,]+|authenticate refresh token fail)/
 --- grep_error_log_out
-uri: http://127.0.0.1:2379/v3/kv/put, timeout: 3
-uri: http://127.0.0.1:2379/v3/auth/authenticate, timeout: 3
-uri: http://127.0.0.1:2379/v3/kv/put, timeout: 3
-uri: http://127.0.0.1:2379/v3/kv/put, timeout: 3
+uri: http://127.0.0.1:12379/v3/kv/put, timeout: 3
+uri: http://127.0.0.1:12379/v3/auth/authenticate, timeout: 3
+uri: http://127.0.0.1:12379/v3/kv/put, timeout: 3
+uri: http://127.0.0.1:12379/v3/kv/put, timeout: 3
 authenticate refresh token fail
 v3 refresh jwt last err: authenticate refresh token fail
 authenticate refresh token fail
