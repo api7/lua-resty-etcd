@@ -258,7 +258,7 @@ function refresh_jwt_token(self, timeout)
     end
 
     if not res or not res.body or not res.body.token then
-        local err = 'authenticate refresh token fail'
+        err = 'authenticate refresh token fail'
         self.last_refresh_jwt_err = err
         wake_up_everyone(self)
         return nil, err
