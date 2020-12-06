@@ -84,6 +84,7 @@ end
 local ngx_log = ngx.log
 local ngx_ERR = ngx.ERR
 local ngx_INFO = ngx.INFO
+local ngx_WARN= ngx.WARN
 local function log_error(...)
     return ngx_log(ngx_ERR, ...)
 end
@@ -94,6 +95,13 @@ local function log_info( ... )
     return ngx_log(ngx_INFO, ...)
 end
 _M.log_info = log_info
+
+
+local function log_warn( ... )
+    return ngx_log(ngx_WARN, ...)
+end
+_M.log_warn = log_warn
+
 
 local function verify_key(key)
     if not key or #key == 0 then

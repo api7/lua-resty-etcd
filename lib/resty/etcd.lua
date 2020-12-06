@@ -1,9 +1,10 @@
-local etcdv2  = require("resty.etcd.v2")
-local etcdv3  = require("resty.etcd.v3")
-local utils   = require("resty.etcd.utils")
-local typeof  = require("typeof")
-local require = require
-local pcall   = pcall
+local etcdv2      = require("resty.etcd.v2")
+local etcdv3      = require("resty.etcd.v3")
+local utils       = require("resty.etcd.utils")
+local typeof      = require("typeof")
+local require     = require
+local pcall       = pcall
+local ngx_shared  = ngx.shared
 local prefix_v3 = {
     ["3.5."] = "/v3",
     ["3.4."] = "/v3",
@@ -44,6 +45,18 @@ function _M.new(opts)
     opts = opts or {}
     if not typeof.table(opts) then
         return nil, 'opts must be table'
+    end
+
+    -- health_check has value means enable etcd cluster health check
+    if opts.health_check then
+        local shared_dict = ngx_shared[opts.health_check.shm_name]
+        if not shared_dict then
+            return nil, "failed to get ngx.shared dict: " .. opts.health_check.shm_name
+        end
+
+        opts.health_check.failure_window = opts.health_check.failure_window or 1
+        opts.health_check.failure_times = opts.health_check.failure_times or 1
+        opts.health_check.disable_duration = opts.health_check.disable_duration or 100
     end
 
     opts.timeout = opts.timeout or 5    -- 5 sec
