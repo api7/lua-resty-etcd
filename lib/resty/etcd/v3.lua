@@ -63,6 +63,7 @@ local function restore(disable_duration, endpoint)
             return
         end
 
+        utils.log_info("restore an endpoint to health: ", endpoint.http_host)
         endpoint.health_status = 1
     end)
 
@@ -73,10 +74,11 @@ end
 
 
 local function report_failure(self, endpoint)
+    utils.log_info("report an endpoint failure: ", endpoint.http_host)
     local key = get_counter_key(endpoint.http_host, now(), self.failure_window)
     local failure_count, err = incr(key, self.shm_name, self.failure_window)
     if err then
-        utils.log_error("failed to start timer to restore etcd endpoint to health: ", err)
+        utils.log_error("failed to incr etcd endpoint fail times: ", err)
         return
     end
 
