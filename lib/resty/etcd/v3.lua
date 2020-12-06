@@ -999,7 +999,7 @@ function _M.grant(self, ttl, id)
 
     local endpoint= choose_endpoint(self)
     return _request_uri(self, endpoint, "POST",
-            endpoint .. "/lease/grant", opts)
+            endpoint.full_prefix .. "/lease/grant", opts)
 end
 
 function _M.revoke(self, id)
