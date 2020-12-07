@@ -19,9 +19,6 @@ local decode_json   = cjson.decode
 local encode_json   = cjson.encode
 local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
-local tostring      = tostring
-local string_format = string.format
-local math_floor    = math.floor
 local ngx_shared    = ngx.shared
 local ngx_timer_at  = ngx.timer.at
 
@@ -31,17 +28,6 @@ local mt = { __index = _M }
 
 -- define local refresh function variable
 local refresh_jwt_token
-
-
-local function get_id(time, window)
-    return tostring(math_floor(time / window))
-end
-
-
-local function get_counter_key(http_host, time, window)
-    local id = get_id(time, window)
-    return string_format("%s.%s.counter", http_host, id)
-end
 
 
 local function incr(key, shm_name, failure_window)
@@ -75,8 +61,7 @@ end
 
 local function report_failure(self, endpoint)
     utils.log_info("report an endpoint failure: ", endpoint.http_host)
-    local key = get_counter_key(endpoint.http_host, now(), self.failure_window)
-    local failure_count, err = incr(key, self.shm_name, self.failure_window)
+    local failure_count, err = incr(endpoint.http_host, self.shm_name, self.failure_window)
     if err then
         utils.log_error("failed to incr etcd endpoint fail times: ", err)
         return

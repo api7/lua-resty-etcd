@@ -118,7 +118,90 @@ GET /t
 
 
 
-=== TEST 4: report unhealthy endpoint
+=== TEST 4: verify `failure_window` works
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local etcd, err = require "resty.etcd" .new({
+                protocol = "v3",
+                http_host = {
+                    "http://127.0.0.1:42379",
+                    "http://127.0.0.1:22379",
+                    "http://127.0.0.1:32379",
+                },
+                user = 'root',
+                password = 'abc123',
+                health_check = {
+                    shm_name = "etcd_cluster_health_check",
+                    failure_window = 3,
+                    failure_times = 5,
+                },
+            })
+
+            etcd:set("/test", { a='abc'})
+            local counter = ngx.shared["etcd_cluster_health_check"]:get("http://127.0.0.1:42379")
+            assert(counter == 1)
+            ngx.sleep(1)
+
+            etcd:set("/test", { a='abc'})
+            counter = ngx.shared["etcd_cluster_health_check"]:get("http://127.0.0.1:42379")
+            assert(counter == 2)
+            ngx.sleep(2)
+
+            etcd:set("/test", { a='abc'})
+            counter = ngx.shared["etcd_cluster_health_check"]:get("http://127.0.0.1:42379")
+            assert(counter == 1)
+
+            ngx.say("all down")
+        }
+    }
+--- request
+GET /t
+--- timeout: 10
+--- response_body
+all down
+
+
+
+=== TEST 5: verify `failure_times` works
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local etcd, err = require "resty.etcd" .new({
+                protocol = "v3",
+                http_host = {
+                    "http://127.0.0.1:42379",
+                    "http://127.0.0.1:22379",
+                    "http://127.0.0.1:32379",
+                },
+                user = 'root',
+                password = 'abc123',
+                health_check = {
+                    shm_name = "etcd_cluster_health_check",
+                    failure_window = 3,
+                    failure_times = 2,
+                    disable_duration = 0,
+                },
+            })
+
+            etcd:set("/test", { a='abc'})
+            etcd:set("/test", { a='abc'})
+            local pending_count = ngx.timer.pending_count()
+            assert(pending_count == 1)
+            ngx.say("all down")
+        }
+    }
+--- request
+GET /t
+--- timeout: 10
+--- response_body
+all down
+
+
+
+=== TEST 6: report unhealthy endpoint
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -147,7 +230,7 @@ qr/report an endpoint failure: http:\/\/127.0.0.1:42379/
 
 
 
-=== TEST 5: restore endpoint to health
+=== TEST 7: restore endpoint to health
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -178,7 +261,7 @@ qr/restore an endpoint to health: http:\/\/127.0.0.1:42379/
 
 
 
-=== TEST 6: one endpoint only trigger mark unhealthy and restore once
+=== TEST 8: one endpoint only trigger mark unhealthy and restore once
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
