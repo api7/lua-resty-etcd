@@ -92,9 +92,9 @@ local function _request_uri(self, method, uri, opts, timeout, ignore_auth)
 end
 
 
-local function encode_json_base64(data)
+local function serialize_and_encode_base64(serialize_fn, data)
     local err
-    data, err = encode_json(data)
+    data, err = serialize_fn(data)
     if not data then
         return nil, err
     end
@@ -111,6 +111,7 @@ function _M.new(opts)
     local user       = opts.user
     local password   = opts.password
     local ssl_verify = opts.ssl_verify
+    local serializer = opts.serializer
 
     if not typeof.uint(timeout) then
         return nil, 'opts.timeout must be unsigned integer'
@@ -184,6 +185,7 @@ function _M.new(opts)
             endpoints  = endpoints,
             key_prefix = key_prefix,
             ssl_verify = ssl_verify,
+            serializer = serializer,
         },
         mt)
 end
@@ -282,7 +284,8 @@ local function set(self, key, val, attr)
     end
 
     key = encode_base64(key)
-    val, err = encode_json_base64(val)
+    val, err = serialize_and_encode_base64(self.serializer.serialize, val)
+
     if not val then
         return nil, err
     end
@@ -437,7 +440,7 @@ local function get(self, key, attr)
             for _, kv in ipairs(res.body.kvs) do
                 kv.key = decode_base64(kv.key)
                 kv.value = decode_base64(kv.value)
-                kv.value = decode_json(kv.value)
+                kv.value = self.serializer.deserialize(kv.value)
             end
         end
     end
@@ -594,12 +597,12 @@ local function request_chunk(self, method, scheme, host, port, path, opts, timeo
             for _, event in ipairs(body.result.events) do
                 if event.kv.value then   -- DELETE not have value
                     event.kv.value = decode_base64(event.kv.value)
-                    event.kv.value = decode_json(event.kv.value)
+                    event.kv.value = self.serializer.deserialize(event.kv.value)
                 end
                 event.kv.key = decode_base64(event.kv.key)
                 if event.prev_kv then
                     event.prev_kv.value = decode_base64(event.prev_kv.value)
-                    event.prev_kv.value = decode_json(event.prev_kv.value)
+                    event.prev_kv.value = self.serializer.deserialize(event.prev_kv.value)
                     event.prev_kv.key = decode_base64(event.prev_kv.key)
                 end
             end
@@ -828,7 +831,7 @@ function _M.setnx(self, key, val, opts)
     success[1].requestPut.key = encode_base64(key)
 
     local err
-    val, err = encode_json_base64(val)
+    val, err = serialize_and_encode_base64(self.serializer.serialize, val)
     if not val then
         return nil, "failed to encode val: " .. err
     end
@@ -854,7 +857,7 @@ function _M.setx(self, key, val, opts)
     failure[1].requestPut.key = encode_base64(key)
 
     local err
-    val, err = encode_json_base64(val)
+    val, err = serialize_and_encode_base64(self.serializer.serialize, val)
     if not val then
         return nil, "failed to encode val: " .. err
     end
@@ -877,7 +880,7 @@ function _M.txn(self, compare, success, failure, opts)
             rule.key = encode_base64(utils.get_real_key(self.key_prefix, rule.key))
 
             if rule.value then
-                rule.value, err = encode_json_base64(rule.value)
+                rule.value, err = serialize_and_encode_base64(self.serializer.serialize, rule.value)
                 if not rule.value then
                     return nil, "failed to encode value: " .. err
                 end
@@ -895,8 +898,7 @@ function _M.txn(self, compare, success, failure, opts)
             if rule.requestPut then
                 local requestPut = tab_clone(rule.requestPut)
                 requestPut.key = encode_base64(utils.get_real_key(self.key_prefix, requestPut.key))
-
-                requestPut.value, err = encode_json_base64(requestPut.value)
+                requestPut.value, err = serialize_and_encode_base64(self.serializer.serialize, requestPut.value)
                 if not requestPut.value then
                     return nil, "failed to encode value: " .. err
                 end
