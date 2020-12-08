@@ -2,6 +2,7 @@
 local typeof        = require("typeof")
 local cjson         = require("cjson.safe")
 local setmetatable  = setmetatable
+local random        = math.random
 local clear_tab     = require("table.clear")
 local utils         = require("resty.etcd.utils")
 local tab_nkeys     = require("table.nkeys")
@@ -19,6 +20,8 @@ local decode_json   = cjson.decode
 local encode_json   = cjson.encode
 local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
+local semaphore     = require("ngx.semaphore")
+local INIT_COUNT_RESIZE = 2e8
 local ngx_shared    = ngx.shared
 local ngx_timer_at  = ngx.timer.at
 
@@ -29,54 +32,8 @@ local mt = { __index = _M }
 -- define local refresh function variable
 local refresh_jwt_token
 
-
-local function incr(key, shm_name, failure_window)
-    local new_value, err, forcible = ngx_shared[shm_name]:incr(key, 1, 0, failure_window)
-    if err then
-        return nil, err
-    end
-
-    if forcible then
-        utils.log_warn("shared dict: ", shm_name, " is full, valid items forcibly overwritten")
-    end
-    return new_value, nil
-end
-
-
-local function restore(disable_duration, endpoint)
-    local ok, err = ngx_timer_at(disable_duration, function(premature)
-        if premature then
-            return
-        end
-
-        utils.log_info("restore an endpoint to health: ", endpoint.http_host)
-        endpoint.health_status = 1
-    end)
-
-    if not ok then
-        utils.log_error("failed to start timer to restore etcd endpoint to health: ", err)
-    end
-end
-
-
-local function report_failure(self, endpoint)
-    utils.log_info("report an endpoint failure: ", endpoint.http_host)
-    local failure_count, err = incr(endpoint.http_host, self.shm_name, self.failure_window)
-    if err then
-        utils.log_error("failed to incr etcd endpoint fail times: ", err)
-        return
-    end
-
-    -- only trigger once
-    if failure_count == self.failure_times then
-        endpoint.health_status = 0
-        restore(self.disable_duration, endpoint)
-        return
-    end
-end
-
-
-local function _request_uri(self, endpoint, method, uri, opts, timeout, ignore_auth)
+local function _request_uri(self, method, uri, opts, timeout, ignore_auth)
+    utils.log_info("v3 request uri: ", uri, ", timeout: ", timeout)
 
     local body
     if opts and opts.body and tab_nkeys(opts.body) > 0 then
@@ -92,7 +49,7 @@ local function _request_uri(self, endpoint, method, uri, opts, timeout, ignore_a
     if self.is_auth then
         if not ignore_auth then
             -- authentication reqeust not need auth request
-            local _, err = refresh_jwt_token(self)
+            local _, err = refresh_jwt_token(self, timeout)
             if err then
                 return nil, err
             end
@@ -238,19 +195,26 @@ function _M.new(opts)
         })
     end
 
+    local sema, err = semaphore.new()
+    if not sema then
+        return nil, err
+    end
+
     if opts.health_check then
         return setmetatable({
-            last_auth_time   = now(), -- save last Authentication time
-            jwt_token        = nil,       -- last Authentication token
-            is_auth          = not not (user and password),
-            user             = user,
-            password         = password,
-            timeout          = timeout,
-            ttl              = ttl,
-            is_cluster       = #endpoints > 1,
-            endpoints        = endpoints,
-            key_prefix       = key_prefix,
-            ssl_verify       = ssl_verify,
+            last_auth_time = now(), -- save last Authentication time
+            last_refresh_jwt_err = nil,
+            sema       = sema,
+            jwt_token  = nil,       -- last Authentication token
+            is_auth    = not not (user and password),
+            user       = user,
+            password   = password,
+            timeout    = timeout,
+            ttl        = ttl,
+            is_cluster = #endpoints > 1,
+            endpoints  = endpoints,
+            key_prefix = key_prefix,
+            ssl_verify = ssl_verify,
             failure_window   = failure_window,
             failure_times    = failure_times,
             disable_duration = disable_duration,
@@ -259,18 +223,21 @@ function _M.new(opts)
     end
 
     return setmetatable({
-        last_auth_time = now(), -- save last Authentication time
-        jwt_token  = nil,       -- last Authentication token
-        is_auth    = not not (user and password),
-        user       = user,
-        password   = password,
-        timeout    = timeout,
-        ttl        = ttl,
-        is_cluster = #endpoints > 1,
-        endpoints  = endpoints,
-        key_prefix = key_prefix,
-        ssl_verify = ssl_verify,
-    }, mt)
+            last_auth_time = now(), -- save last Authentication time
+            last_refresh_jwt_err = nil,
+            sema       = sema,
+            jwt_token  = nil,       -- last Authentication token
+            is_auth    = not not (user and password),
+            user       = user,
+            password   = password,
+            timeout    = timeout,
+            ttl        = ttl,
+            is_cluster = #endpoints > 1,
+            endpoints  = endpoints,
+            key_prefix = key_prefix,
+            ssl_verify = ssl_verify,
+        },
+        mt)
 end
 
 
@@ -288,14 +255,41 @@ local function choose_endpoint(self)
     end
 end
 
+
+local function wake_up_everyone(self)
+    local count = -self.sema:count()
+    if count > 0 then
+        self.sema:post(count)
+    end
+end
+
+
 -- return refresh_is_ok, error
-function refresh_jwt_token(self)
+function refresh_jwt_token(self, timeout)
     -- token exist and not expire
-    -- default is 5min, we use 3min
+    -- default is 5min, we use 3min plus random seconds to smooth the refresh across workers
     -- https://github.com/etcd-io/etcd/issues/8287
-    if self.jwt_token and now() - self.last_auth_time < 60 * 3 then
+    if self.jwt_token and now() - self.last_auth_time < 60 * 3 + random(0, 60) then
         return true, nil
     end
+
+    if self.requesting_token then
+        self.sema:wait(timeout)
+        if self.jwt_token and now() - self.last_auth_time < 60 * 3 + random(0, 60) then
+            return true, nil
+        end
+
+        if self.last_refresh_jwt_err then
+            utils.log_info("v3 refresh jwt last err: ", self.last_refresh_jwt_err)
+            return nil, self.last_refresh_jwt_err
+        end
+
+        -- something unexpected happened, try again
+        utils.log_info("v3 try auth after waiting, timeout: ", timeout)
+    end
+
+    self.last_refresh_jwt_err = nil
+    self.requesting_token = true
 
     local opts = {
         body = {
@@ -306,17 +300,25 @@ function refresh_jwt_token(self)
     local endpoint= choose_endpoint(self)
     local res, err = _request_uri(self, endpoint, 'POST',
             endpoint.full_prefix .. "/auth/authenticate",
-                        opts, 5, true)    -- default authenticate timeout 5 second
+                                  opts, timeout, true)
+    self.requesting_token = false
+
     if err then
+        self.last_refresh_jwt_err = err
+        wake_up_everyone(self)
         return nil, err
     end
 
     if not res or not res.body or not res.body.token then
-        return nil, 'authenticate refresh token fail'
+        err = 'authenticate refresh token fail'
+        self.last_refresh_jwt_err = err
+        wake_up_everyone(self)
+        return nil, err
     end
 
     self.jwt_token = res.body.token
     self.last_auth_time = now()
+    wake_up_everyone(self)
 
     return true, nil
 end
@@ -567,7 +569,7 @@ local function request_chunk(self, endpoint, method, scheme, host, port, path, o
     local headers = {}
     if self.is_auth then
         -- authentication reqeust not need auth request
-        _, err = refresh_jwt_token(self)
+        _, err = refresh_jwt_token(self, timeout)
         if err then
             return nil, err
         end
