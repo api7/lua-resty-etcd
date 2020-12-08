@@ -20,7 +20,7 @@ local decode_json   = cjson.decode
 local encode_json   = cjson.encode
 local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
-local semaphore = require("ngx.semaphore")
+local semaphore     = require("ngx.semaphore")
 local INIT_COUNT_RESIZE = 2e8
 
 local _M = {}
@@ -235,6 +235,7 @@ function refresh_jwt_token(self, timeout)
         end
 
         -- something unexpected happened, try again
+        utils.log_info("v3 try auth after waiting, timeout: ", timeout)
     end
 
     self.last_refresh_jwt_err = nil
