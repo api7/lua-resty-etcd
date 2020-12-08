@@ -21,7 +21,6 @@ local encode_json   = cjson.encode
 local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
 local semaphore     = require("ngx.semaphore")
-local INIT_COUNT_RESIZE = 2e8
 local ngx_shared    = ngx.shared
 local ngx_timer_at  = ngx.timer.at
 
@@ -32,7 +31,53 @@ local mt = { __index = _M }
 -- define local refresh function variable
 local refresh_jwt_token
 
-local function _request_uri(self, method, uri, opts, timeout, ignore_auth)
+local function incr(key, shm_name, failure_window)
+    local new_value, err, forcible = ngx_shared[shm_name]:incr(key, 1, 0, failure_window)
+    if err then
+        return nil, err
+    end
+
+    if forcible then
+        utils.log_warn("shared dict: ", shm_name, " is full, valid items forcibly overwritten")
+    end
+    return new_value, nil
+end
+
+
+local function restore(disable_duration, endpoint)
+    local ok, err = ngx_timer_at(disable_duration, function(premature)
+        if premature then
+            return
+        end
+
+        utils.log_info("restore an endpoint to health: ", endpoint.http_host)
+        endpoint.health_status = 1
+    end)
+
+    if not ok then
+        utils.log_error("failed to start timer to restore etcd endpoint to health: ", err)
+    end
+end
+
+
+local function report_failure(self, endpoint)
+    utils.log_info("report an endpoint failure: ", endpoint.http_host)
+    local failure_count, err = incr(endpoint.http_host, self.shm_name, self.failure_window)
+    if err then
+        utils.log_error("failed to incr etcd endpoint fail times: ", err)
+        return
+    end
+
+    -- only trigger once
+    if failure_count == self.failure_times then
+        endpoint.health_status = 0
+        restore(self.disable_duration, endpoint)
+        return
+    end
+end
+
+
+local function _request_uri(self, endpoint, method, uri, opts, timeout, ignore_auth)
     utils.log_info("v3 request uri: ", uri, ", timeout: ", timeout)
 
     local body
@@ -61,7 +106,9 @@ local function _request_uri(self, method, uri, opts, timeout, ignore_auth)
 
     local http_cli, err = utils.http.new()
     if err then
-        report_failure(self, endpoint)
+        if self.failure_times then
+            report_failure(self, endpoint)
+        end
         return nil, err
     end
 
@@ -79,7 +126,9 @@ local function _request_uri(self, method, uri, opts, timeout, ignore_auth)
     })
 
     if err then
-        report_failure(self, endpoint)
+        if self.failure_times then
+            report_failure(self, endpoint)
+        end
         return nil, err
     end
 
@@ -125,7 +174,6 @@ function _M.new(opts)
         disable_duration = opts.health_check.disable_duration
         shm_name         = opts.health_check.shm_name
     end
-
 
     if not typeof.uint(timeout) then
         return nil, 'opts.timeout must be unsigned integer'
@@ -248,11 +296,24 @@ local function choose_endpoint(self)
         return endpoints[1]
     end
 
-    for _, endpoint in ipairs(endpoints) do
-        if endpoint.health_status == 1 then
-            return endpoint
+    -- choose endpoint by health check
+    if self.failure_times then
+        for _, endpoint in ipairs(endpoints) do
+            if endpoint.health_status == 1 then
+                return endpoint
+            end
         end
+        utils.log_error("has no health etcd endpoint")
+        return nil
     end
+
+    self.init_count = (self.init_count or 0) + 1
+    local pos = self.init_count % endpoints_len + 1
+    if self.init_count >= INIT_COUNT_RESIZE then
+        self.init_count = 0
+    end
+
+    return endpoints[pos]
 end
 
 
@@ -592,7 +653,9 @@ local function request_chunk(self, endpoint, method, scheme, host, port, path, o
 
     ok, err = http_cli:connect(host, port)
     if not ok then
-        report_failure(self, endpoint)
+        if self.failure_times then
+            report_failure(self, endpoint)
+        end
         return nil, err
     end
 
@@ -645,7 +708,9 @@ local function request_chunk(self, endpoint, method, scheme, host, port, path, o
         if not body then
             return nil, "failed to decode json body: " .. (err or " unkwon")
         elseif body.error and body.error.http_code >= 500 then
-            report_failure(self, endpoint)
+            if self.failure_times then
+                report_failure(self, endpoint)
+            end
         end
 
         if body.result.events then
