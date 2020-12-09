@@ -234,12 +234,12 @@ function _M.new(opts)
         end
 
         tab_insert(endpoints, {
-            full_prefix   = host .. utils.normalize(api_prefix),
-            http_host     = host,
-            scheme        = m[1],
-            host          = m[2] or "127.0.0.1",
-            port          = m[3] or "2379",
-            api_prefix    = api_prefix,
+            full_prefix = host .. utils.normalize(api_prefix),
+            http_host   = host,
+            scheme      = m[1],
+            host        = m[2] or "127.0.0.1",
+            port        = m[3] or "2379",
+            api_prefix  = api_prefix,
             health_status = 1,
         })
     end
@@ -249,8 +249,7 @@ function _M.new(opts)
         return nil, err
     end
 
-    if opts.health_check then
-        return setmetatable({
+    return setmetatable({
             last_auth_time = now(), -- save last Authentication time
             last_refresh_jwt_err = nil,
             sema       = sema,
@@ -268,24 +267,8 @@ function _M.new(opts)
             failure_times    = failure_times,
             disable_duration = disable_duration,
             shm_name         = shm_name,
-        }, mt)
-    end
-
-    return setmetatable({
-            last_auth_time = now(), -- save last Authentication time
-            last_refresh_jwt_err = nil,
-            sema       = sema,
-            jwt_token  = nil,       -- last Authentication token
-            is_auth    = not not (user and password),
-            user       = user,
-            password   = password,
-            timeout    = timeout,
-            ttl        = ttl,
-            is_cluster = #endpoints > 1,
-            endpoints  = endpoints,
-            key_prefix = key_prefix,
-            ssl_verify = ssl_verify,
-        }, mt)
+        },
+        mt)
 end
 
 

@@ -8,6 +8,7 @@ Synopsis
 http {
     # required declares a shared memory zone to store endpoints's health status
     lua_shared_dict healthcheck_shm 1m;
+
     server {
         location = /healthcheck {
             content_by_lua_block {
@@ -67,10 +68,10 @@ when use `require "resty.etcd" .new` to create a connection, you can override th
         user = 'root',
         password = 'abc123',
         health_check = {
-        	shm_name = "etcd_cluster_health_check",
-        	failure_window = 3,
-        	failure_times = 2,
-       		disable_duration = 10,
+            shm_name = "etcd_cluster_health_check",
+            failure_window = 3,
+            failure_times = 2,
+            disable_duration = 10,
         },
     })
 ```
