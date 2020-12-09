@@ -32,7 +32,7 @@ local mt = { __index = _M }
 -- define local refresh function variable
 local refresh_jwt_token
 
-local function count(key, shm_name, fail_timeout)
+local function fault_count(key, shm_name, fail_timeout)
     local new_value, err, forcible = ngx_shared[shm_name]:incr(key, 1, 0, fail_timeout)
     if err then
         return nil, err
@@ -61,16 +61,16 @@ local function restore(disable_duration, endpoint)
 end
 
 
-local function report_failure(self, endpoint)
+local function report_fault(self, endpoint)
     utils.log_info("report an endpoint failure: ", endpoint.http_host)
-    local failure_count, err = count(endpoint.http_host, self.shm_name, self.fail_timeout)
+    local fails, err = fault_count(self, endpoint.http_host, self.shm_name, self.fail_timeout)
     if err then
         utils.log_error("failed to incr etcd endpoint fail times: ", err)
         return
     end
 
     -- only trigger once
-    if failure_count == self.max_fails then
+    if fails == self.max_fails then
         endpoint.health_status = 0
         restore(self.disable_duration, endpoint)
         return
@@ -108,7 +108,7 @@ local function _request_uri(self, endpoint, method, uri, opts, timeout, ignore_a
     local http_cli, err = utils.http.new()
     if err then
         if self.max_fails then
-            report_failure(self, endpoint)
+            report_fault(self, endpoint)
         end
         return nil, err
     end
@@ -128,7 +128,7 @@ local function _request_uri(self, endpoint, method, uri, opts, timeout, ignore_a
 
     if err then
         if self.max_fails then
-            report_failure(self, endpoint)
+            report_fault(self, endpoint)
         end
         return nil, err
     end
@@ -274,7 +274,7 @@ local function choose_endpoint(self)
         return endpoints[1]
     end
 
-    -- choose endpoint by health check
+    -- if enable health check
     if self.max_fails then
         for _, endpoint in ipairs(endpoints) do
             if endpoint.health_status == 1 then
@@ -632,7 +632,7 @@ local function request_chunk(self, endpoint, method, scheme, host, port, path, o
     ok, err = http_cli:connect(host, port)
     if not ok then
         if self.max_fails then
-            report_failure(self, endpoint)
+            report_fault(self, endpoint)
         end
         return nil, err
     end
@@ -687,7 +687,7 @@ local function request_chunk(self, endpoint, method, scheme, host, port, path, o
             return nil, "failed to decode json body: " .. (err or " unkwon")
         elseif body.error and body.error.http_code >= 500 then
             if self.max_fails then
-                report_failure(self, endpoint)
+                report_fault(self, endpoint)
             end
         end
 
