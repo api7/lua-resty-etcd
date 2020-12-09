@@ -439,7 +439,7 @@ local function get(self, key, attr)
         if res.body.kvs and tab_nkeys(res.body.kvs) > 0 then
             for _, kv in ipairs(res.body.kvs) do
                 kv.key = decode_base64(kv.key)
-                kv.value = decode_base64(kv.value)
+                kv.value = decode_base64(kv.value or "")
                 kv.value = self.serializer.deserialize(kv.value)
             end
         end
@@ -596,12 +596,12 @@ local function request_chunk(self, method, scheme, host, port, path, opts, timeo
         if body.result.events then
             for _, event in ipairs(body.result.events) do
                 if event.kv.value then   -- DELETE not have value
-                    event.kv.value = decode_base64(event.kv.value)
+                    event.kv.value = decode_base64(event.kv.value or "")
                     event.kv.value = self.serializer.deserialize(event.kv.value)
                 end
                 event.kv.key = decode_base64(event.kv.key)
                 if event.prev_kv then
-                    event.prev_kv.value = decode_base64(event.prev_kv.value)
+                    event.prev_kv.value = decode_base64(event.prev_kv.value or "")
                     event.prev_kv.value = self.serializer.deserialize(event.prev_kv.value)
                     event.prev_kv.key = decode_base64(event.prev_kv.key)
                 end
@@ -898,7 +898,8 @@ function _M.txn(self, compare, success, failure, opts)
             if rule.requestPut then
                 local requestPut = tab_clone(rule.requestPut)
                 requestPut.key = encode_base64(utils.get_real_key(self.key_prefix, requestPut.key))
-                requestPut.value, err = serialize_and_encode_base64(self.serializer.serialize, requestPut.value)
+                requestPut.value, err = serialize_and_encode_base64(self.serializer.serialize,
+                                        requestPut.value)
                 if not requestPut.value then
                     return nil, "failed to encode value: " .. err
                 end
