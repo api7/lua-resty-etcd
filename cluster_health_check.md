@@ -36,9 +36,9 @@ Description
 
 Implement a passive health check mechanism, when the connection/read/write fails occurs, recorded as a endpoint' failure.
 
-In a certain period of time, if there are n consecutive failures, the endpoint is marked unhealthy,  the unhealthy endpoint will not be choosed to connect for a certain period of time in the future. 
+In a `failure_window`, if there are `failure_times` consecutive failures, the endpoint is marked as unhealthy,  the unhealthy endpoint will not be choosed to connect for a `disable_duration` time in the future. 
 
-Health check mechanism would switch endpoint only when the previously choosed endpoint is marked unhealthy.
+Health check mechanism would switch endpoint only when the previously choosed endpoint is marked as unhealthy.
 
 Config
 ========
@@ -77,7 +77,7 @@ when use `require "resty.etcd" .new` to create a connection, you can override th
 
 configurations that are not overridden will use the default configuration.
 
-- `shm_name` : the shared memory zone for storing the health status of endpoints.
+- `shm_name` : the declarative `lua_shared_dict` is used to store the health status of endpoints.
 - `failure_window` : the duration of endpoint occurs n consecutive failures(in seconds).
 - `failure_times` : the times of failures that occurred before the endpoint was marked as unhealthy.
 - `disable_duration` : the duration of the unhealthy endpoint will not be choosed to connect(in seconds).
