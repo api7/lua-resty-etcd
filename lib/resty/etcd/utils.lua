@@ -84,7 +84,7 @@ end
 local ngx_log = ngx.log
 local ngx_ERR = ngx.ERR
 local ngx_INFO = ngx.INFO
-local ngx_WARN= ngx.WARN
+local ngx_WARN = ngx.WARN
 local function log_error(...)
     return ngx_log(ngx_ERR, ...)
 end

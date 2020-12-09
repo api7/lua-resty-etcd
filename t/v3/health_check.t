@@ -44,8 +44,8 @@ __DATA__
             })
 
             assert(etcd.shm_name == nil)
-            assert(etcd.failure_times == nil)
-            assert(etcd.failure_window == nil)
+            assert(etcd.max_fails == nil)
+            assert(etcd.fail_timeout == nil)
             assert(etcd.disable_duration == nil)
 
             local res, err = etcd:set("/health_check", "disabled")
@@ -112,8 +112,8 @@ failed to get ngx.shared dict: wrong_shm_name
                 },
             })
 
-            assert(etcd.failure_times == 1)
-            assert(etcd.failure_window == 1)
+            assert(etcd.max_fails == 1)
+            assert(etcd.fail_timeout == 1)
             assert(etcd.disable_duration == 100)
         }
     }
@@ -124,7 +124,7 @@ GET /t
 
 
 
-=== TEST 4: verify `failure_window` works
+=== TEST 4: verify `fail_timeout` works
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -140,8 +140,8 @@ GET /t
                 password = 'abc123',
                 health_check = {
                     shm_name = "etcd_cluster_health_check",
-                    failure_window = 3,
-                    failure_times = 5,
+                    fail_timeout = 3,
+                    max_fails = 5,
                 },
             })
 
@@ -170,7 +170,7 @@ all down
 
 
 
-=== TEST 5: verify `failure_times` works
+=== TEST 5: verify `max_fails` works
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -186,8 +186,8 @@ all down
                 password = 'abc123',
                 health_check = {
                     shm_name = "etcd_cluster_health_check",
-                    failure_window = 3,
-                    failure_times = 2,
+                    fail_timeout = 3,
+                    max_fails = 2,
                     disable_duration = 0,
                 },
             })

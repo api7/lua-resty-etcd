@@ -54,8 +54,8 @@ function _M.new(opts)
             return nil, "failed to get ngx.shared dict: " .. opts.health_check.shm_name
         end
 
-        opts.health_check.failure_window = opts.health_check.failure_window or 1
-        opts.health_check.failure_times = opts.health_check.failure_times or 1
+        opts.health_check.fail_timeout = opts.health_check.fail_timeout or 1
+        opts.health_check.max_fails = opts.health_check.max_fails or 1
         opts.health_check.disable_duration = opts.health_check.disable_duration or 100
     end
 

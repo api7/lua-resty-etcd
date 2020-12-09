@@ -21,9 +21,13 @@ http {
                     },
                     user = 'root',
                     password = 'abc123',
-                    # minimal configuration to enable etcd cluster health check
-                    cluster_healthcheck ={
+
+                    # the health check feature is optional, and can be enabled with the following configuration.
+                    health_check = {
                         shm_name = 'healthcheck_shm',
+                        fail_timeout = 1,
+                        max_fails = 1,
+                        disable_duration = 100
                     }
                 })
             }
@@ -35,9 +39,9 @@ http {
 Description
 ========
 
-Implement a passive health check mechanism, when the connection/read/write fails occurs, recorded as a endpoint' failure.
+Implement a passive health check mechanism, when the connection/read/write fails occurs, recorded as an endpoint' failure.
 
-In a `failure_window`, if there are `failure_times` consecutive failures, the endpoint is marked as unhealthy,  the unhealthy endpoint will not be choosed to connect for a `disable_duration` time in the future. 
+In a `fail_timeout`, if there are `max_fails` consecutive failures, the endpoint is marked as unhealthy,  the unhealthy endpoint will not be choosed to connect for a `disable_duration` time in the future. 
 
 Health check mechanism would switch endpoint only when the previously choosed endpoint is marked as unhealthy.
 
@@ -49,8 +53,8 @@ The default configuration is as follows:
 ```lua
 health_check = {
     shm_name = "healthcheck_shm",
-    failure_window = 1,
-    failure_times = 1,
+    fail_timeout = 1,
+    max_fails = 1,
     disable_duration = 100
 }
 ```
@@ -69,8 +73,8 @@ when use `require "resty.etcd" .new` to create a connection, you can override th
         password = 'abc123',
         health_check = {
             shm_name = "etcd_cluster_health_check",
-            failure_window = 3,
-            failure_times = 2,
+            fail_timeout = 3,
+            max_fails = 2,
             disable_duration = 10,
         },
     })
@@ -78,10 +82,7 @@ when use `require "resty.etcd" .new` to create a connection, you can override th
 
 configurations that are not overridden will use the default configuration.
 
-- `shm_name` : the declarative `lua_shared_dict` is used to store the health status of endpoints.
-- `failure_window` : the duration of endpoint occurs n consecutive failures(in seconds).
-- `failure_times` : the times of failures that occurred before the endpoint was marked as unhealthy.
-- `disable_duration` : the duration of the unhealthy endpoint will not be choosed to connect(in seconds).
-
-### tips
-- enable the cluster health check by config the `health_check`
+- `shm_name`: the declarative `lua_shared_dict` is used to store the health status of endpoints.
+- `fail_timeout`: set the time during which a number of failed attempts must happen for the endpoint to be marked unavailable(in seconds).
+- `max_fails`: set the number of failed attempts that must occur during the `fail_timeout` period for the endpoint to be marked unavailable
+- `disable_duration`: the time for which the unhealthy endpoint won't be choosed to connect(in seconds).
