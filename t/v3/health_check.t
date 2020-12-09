@@ -62,36 +62,7 @@ disabled
 
 
 
-=== TEST 2: compatible etcd failure without health check
---- http_config eval: $::HttpConfig
---- config
-    location /t {
-        content_by_lua_block {
-            local etcd, err = require "resty.etcd" .new({
-                protocol = "v3",
-                http_host = {
-                    "http://127.0.0.1:42379",
-                    "http://127.0.0.1:22379",
-                    "http://127.0.0.1:32379",
-                },
-                user = 'root',
-                password = 'abc123',
-            })
-
-            local res, err = etcd:set("/test", { a='abc'})
-            ngx.say(err)
-        }
-    }
---- request
-GET /t
---- no_error_log
-[error]
---- response_body
-connection refused
-
-
-
-=== TEST 3: failed enable health check with wrong shm_name
+=== TEST 2: failed enable health check with wrong shm_name
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -122,7 +93,7 @@ failed to get ngx.shared dict: wrong_shm_name
 
 
 
-=== TEST 4: valid default config values
+=== TEST 3: valid default config values
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -153,7 +124,7 @@ GET /t
 
 
 
-=== TEST 5: verify `failure_window` works
+=== TEST 4: verify `failure_window` works
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -199,7 +170,7 @@ all down
 
 
 
-=== TEST 6: verify `failure_times` works
+=== TEST 5: verify `failure_times` works
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -236,7 +207,7 @@ all down
 
 
 
-=== TEST 7: report unhealthy endpoint
+=== TEST 6: report unhealthy endpoint
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -265,7 +236,7 @@ qr/report an endpoint failure: http:\/\/127.0.0.1:42379/
 
 
 
-=== TEST 8: restore endpoint to health
+=== TEST 7: restore endpoint to health
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -296,7 +267,7 @@ qr/restore an endpoint to health: http:\/\/127.0.0.1:42379/
 
 
 
-=== TEST 9: one endpoint only trigger mark unhealthy and restore once
+=== TEST 8: one endpoint only trigger mark unhealthy and restore once
 --- http_config eval: $::HttpConfig
 --- config
     location /t {

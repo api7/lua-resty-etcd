@@ -23,6 +23,7 @@ local decode_base64 = ngx.decode_base64
 local semaphore     = require("ngx.semaphore")
 local ngx_shared    = ngx.shared
 local ngx_timer_at  = ngx.timer.at
+local INIT_COUNT_RESIZE = 2e8
 
 local _M = {}
 
@@ -284,8 +285,7 @@ function _M.new(opts)
             endpoints  = endpoints,
             key_prefix = key_prefix,
             ssl_verify = ssl_verify,
-        },
-        mt)
+        }, mt)
 end
 
 
