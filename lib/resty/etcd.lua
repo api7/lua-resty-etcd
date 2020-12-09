@@ -1,9 +1,9 @@
-local etcdv2      = require("resty.etcd.v2")
-local etcdv3      = require("resty.etcd.v3")
-local utils       = require("resty.etcd.utils")
-local typeof      = require("typeof")
-local require     = require
-local pcall       = pcall
+local etcdv2  = require("resty.etcd.v2")
+local etcdv3  = require("resty.etcd.v3")
+local utils   = require("resty.etcd.utils")
+local typeof  = require("typeof")
+local require = require
+local pcall   = pcall
 local ngx_shared  = ngx.shared
 local prefix_v3 = {
     ["3.5."] = "/v3",
