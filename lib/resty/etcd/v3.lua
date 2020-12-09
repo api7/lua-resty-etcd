@@ -341,7 +341,7 @@ function refresh_jwt_token(self, timeout)
             password     = self.password,
         }
     }
-    local endpoint= choose_endpoint(self)
+    local endpoint = choose_endpoint(self)
     local res, err = _request_uri(self, endpoint, 'POST',
             endpoint.full_prefix .. "/auth/authenticate",
                                   opts, timeout, true)
@@ -415,7 +415,7 @@ local function set(self, key, val, attr)
         }
     }
 
-    local endpoint= choose_endpoint(self)
+    local endpoint = choose_endpoint(self)
     local res
     res, err = _request_uri(self, endpoint, 'POST',
             endpoint.full_prefix .. "/kv/put",
@@ -523,7 +523,7 @@ local function get(self, key, attr)
         }
     }
 
-    local endpoint= choose_endpoint(self)
+    local endpoint = choose_endpoint(self)
     local res
     res, err = _request_uri(self, endpoint, "POST",
             endpoint.full_prefix .. "/kv/range",
@@ -565,7 +565,7 @@ local function delete(self, key, attr)
         },
     }
 
-    local endpoint= choose_endpoint(self)
+    local endpoint = choose_endpoint(self)
     return _request_uri(self, endpoint, "POST",
             endpoint.full_prefix .. "/kv/deleterange",
                     opts, self.timeout)
@@ -589,7 +589,7 @@ local function txn(self, opts_arg, compare, success, failure)
         },
     }
 
-    local endpoint= choose_endpoint(self)
+    local endpoint = choose_endpoint(self)
     return _request_uri(self, endpoint, "POST",
             endpoint.full_prefix .. "/kv/txn",
                         opts, timeout or self.timeout)
@@ -1034,7 +1034,7 @@ function _M.grant(self, ttl, id)
         },
     }
 
-    local endpoint= choose_endpoint(self)
+    local endpoint = choose_endpoint(self)
     return _request_uri(self, endpoint, "POST",
             endpoint.full_prefix .. "/lease/grant", opts)
 end
@@ -1050,7 +1050,7 @@ function _M.revoke(self, id)
         },
     }
 
-    local endpoint= choose_endpoint(self)
+    local endpoint = choose_endpoint(self)
     return _request_uri(self, endpoint, "POST",
             endpoint.full_prefix .. "/kv/lease/revoke", opts)
 end
@@ -1066,7 +1066,7 @@ function _M.keepalive(self, id)
         },
     }
 
-    local endpoint= choose_endpoint(self)
+    local endpoint = choose_endpoint(self)
     return _request_uri(self, endpoint, "POST",
             endpoint.full_prefix .. "/lease/keepalive", opts)
 end
@@ -1084,7 +1084,7 @@ function _M.timetolive(self, id, keys)
         },
     }
 
-    local endpoint= choose_endpoint(self)
+    local endpoint = choose_endpoint(self)
     local res, err = _request_uri(self, endpoint, "POST",
             endpoint.full_prefix .. "/kv/lease/timetolive", opts)
 
@@ -1100,7 +1100,7 @@ function _M.timetolive(self, id, keys)
 end
 
 function _M.leases(self)
-    local endpoint= choose_endpoint(self)
+    local endpoint = choose_endpoint(self)
     return _request_uri(self, endpoint, "POST",
             endpoint.full_prefix .. "/lease/leases")
 end
@@ -1108,7 +1108,7 @@ end
 
 -- /version
 function _M.version(self)
-    local endpoint= choose_endpoint(self)
+    local endpoint = choose_endpoint(self)
     return _request_uri(self, endpoint, "GET",
             endpoint.http_host .. "/version",
                         nil, self.timeout)
@@ -1116,21 +1116,21 @@ end
 
 -- /stats
 function _M.stats_leader(self)
-    local endpoint= choose_endpoint(self)
+    local endpoint = choose_endpoint(self)
     return _request_uri(self, endpoint, "GET",
             endpoint.http_host .. "/v2/stats/leader",
                         nil, self.timeout)
 end
 
 function _M.stats_self(self)
-    local endpoint= choose_endpoint(self)
+    local endpoint = choose_endpoint(self)
     return _request_uri(self, endpoint, "GET",
             endpoint.http_host .. "/v2/stats/self",
                         nil, self.timeout)
 end
 
 function _M.stats_store(self)
-    local endpoint= choose_endpoint(self)
+    local endpoint = choose_endpoint(self)
     return _request_uri(self, endpoint, "GET",
             endpoint.http_host .. "/v2/stats/store",
                         nil, self.timeout)
