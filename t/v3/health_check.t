@@ -321,3 +321,36 @@ GET /t
 --- timeout: 5
 --- response_body
 all down
+
+
+
+=== TEST 9: no healthy endpoints when enable health check
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local etcd, err = require "resty.etcd" .new({
+                protocol = "v3",
+                http_host = {
+                    "http://127.0.0.1:12379",
+                    "http://127.0.0.1:22379",
+                    "http://127.0.0.1:32379",
+                },
+                user = 'root',
+                password = 'abc123',
+                health_check = {
+                    shm_name = "etcd_cluster_health_check",
+                },
+            })
+
+            for _, endpoint in ipairs(etcd.endpoints) do
+                endpoint.health_status = 0
+            end
+            local res, err = etcd:set("/test", { a='abc'})
+        }
+    }
+--- request
+GET /t
+--- error_code: 500
+--- error_log eval
+qr/has no health etcd endpoint/
