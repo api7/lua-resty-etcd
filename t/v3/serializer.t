@@ -1,8 +1,15 @@
-use Test::Nginx::Socket::Lua 'no_plan';
+use Test::Nginx::Socket::Lua;
 
-log_level('warn');
+log_level('info');
 no_long_string();
-repeat_each(2);
+repeat_each(1);
+
+my $etcd_version = `etcd --version`;
+if ($etcd_version =~ /^etcd Version: 2/ || $etcd_version =~ /^etcd Version: 3.1./) {
+    plan(skip_all => "etcd is too old, skip v3 protocol");
+} else {
+    plan 'no_plan';
+}
 
 our $HttpConfig = <<'_EOC_';
     lua_socket_log_errors off;
@@ -13,6 +20,7 @@ our $HttpConfig = <<'_EOC_';
         function check_res(data, err, val, status)
             if err then
                 ngx.say("err: ", err)
+                ngx.exit(200)
             end
 
             if val then
@@ -23,6 +31,7 @@ our $HttpConfig = <<'_EOC_';
                     ngx.say("failed to check value")
                     ngx.log(ngx.ERR, "failed to check value, got: ", data.body.kvs[1].value,
                             ", expect: ", val)
+                    ngx.exit(200)
                 else
                     ngx.say("checked val as expect: ", val)
                 end
@@ -53,9 +62,6 @@ __DATA__
             check_res(etcd, err)
 
             local res
-            res, err = etcd:set("/dir/v3/a", 111)
-            check_res(res, err)
-
             res, err = etcd:set("/dir/v3/b", '"foo"')
             check_res(res, err)
 
@@ -74,6 +80,9 @@ __DATA__
 
             res, err = etcd:get("/dir/v3/d")
             check_res(res, err, "", 200)
+
+            res, err = etcd:set("/dir/v3/a", 111)
+            check_res(res, err)
         }
     }
 --- request
@@ -81,10 +90,10 @@ GET /t
 --- no_error_log
 [error]
 --- response_body
-err: unsupported type for number
 checked val as expect: "foo"
 checked val as expect: {"a":1}
 checked val as expect: 
+err: unsupported type for number
 
 
 === TEST 2: json serializer
