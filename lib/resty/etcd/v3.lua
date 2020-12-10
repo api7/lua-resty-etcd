@@ -63,7 +63,7 @@ end
 
 local function report_fault(self, endpoint)
     utils.log_info("report an endpoint failure: ", endpoint.http_host)
-    local fails, err = fault_count(self, endpoint.http_host, self.shm_name, self.fail_timeout)
+    local fails, err = fault_count(endpoint.http_host, self.shm_name, self.fail_timeout)
     if err then
         utils.log_error("failed to incr etcd endpoint fail times: ", err)
         return
