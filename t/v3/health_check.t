@@ -145,18 +145,19 @@ GET /t
                 },
             })
 
-            etcd:set("/test", { a='abc'})
-            local counter = ngx.shared["etcd_cluster_health_check"]:get("http://127.0.0.1:42379")
+            local key = ngx.worker.id() .. "-" .. "http://127.0.0.1:42379"
+            etcd:set("/fail_timeout", "works")
+            local counter = ngx.shared["etcd_cluster_health_check"]:get(key)
             assert(counter == 1)
             ngx.sleep(1)
 
-            etcd:set("/test", { a='abc'})
-            counter = ngx.shared["etcd_cluster_health_check"]:get("http://127.0.0.1:42379")
+            etcd:set("/fail_timeout", "works")
+            counter = ngx.shared["etcd_cluster_health_check"]:get(key)
             assert(counter == 2)
             ngx.sleep(2)
 
-            etcd:set("/test", { a='abc'})
-            counter = ngx.shared["etcd_cluster_health_check"]:get("http://127.0.0.1:42379")
+            etcd:set("/fail_timeout", "works")
+            counter = ngx.shared["etcd_cluster_health_check"]:get(key)
             assert(counter == 1)
 
             ngx.say("all down")
@@ -192,8 +193,8 @@ all down
                 },
             })
 
-            etcd:set("/test", { a='abc'})
-            etcd:set("/test", { a='abc'})
+            etcd:set("/max_fails", "works")
+            etcd:set("/max_fails", "works")
             local pending_count = ngx.timer.pending_count()
             assert(pending_count == 1)
             ngx.say("all down")
@@ -226,7 +227,7 @@ all down
                 },
             })
 
-            local res, err = etcd:set("/test", { a='abc'})
+            local res, err = etcd:set("/report", "unhealthy")
         }
     }
 --- request
@@ -256,7 +257,7 @@ qr/report an endpoint failure: http:\/\/127.0.0.1:42379/
                 },
             })
 
-            local res, err = etcd:set("/test", { a='abc'})
+            local res, err = etcd:set("/restore", "unhealthy")
             ngx.sleep(0.1)
         }
     }
@@ -267,7 +268,7 @@ qr/restore an endpoint to health: http:\/\/127.0.0.1:42379/
 
 
 
-=== TEST 8: one endpoint only trigger mark unhealthy and restore once
+=== TEST 8: endpoint fails shared by Lua VM, trigger by different etcd client configurations
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -283,12 +284,14 @@ qr/restore an endpoint to health: http:\/\/127.0.0.1:42379/
                 password = 'abc123',
                 health_check = {
                     shm_name = "etcd_cluster_health_check",
-                    disable_duration = 1
+                    max_fails = 3,
+                    fail_timeout = 3,
+                    disable_duration = 10,
                 },
             })
-
-            etcd1:set("/test", { a='abc'})
-            etcd1:set("/test", { a='abc'})
+            etcd1:set("/shared_in_worker", "etcd1")
+            etcd1:set("/shared_in_worker", "etcd1")
+            etcd1:set("/shared_in_worker", "etcd1")
 
             local etcd2, err = require "resty.etcd" .new({
                 protocol = "v3",
@@ -301,18 +304,22 @@ qr/restore an endpoint to health: http:\/\/127.0.0.1:42379/
                 password = 'abc123',
                 health_check = {
                     shm_name = "etcd_cluster_health_check",
-                    disable_duration = 1
+                    max_fails = 5,
+                    fail_timeout = 3,
+                    disable_duration = 10,
                 },
             })
+            etcd2:set("/shared_in_worker", "etcd2")
+            etcd2:set("/shared_in_worker", "etcd2")
 
-            etcd2:set("/test", { a='abc'})
-            etcd2:set("/test", { a='abc'})
+            local key = ngx.worker.id() .. "-" .. "http://127.0.0.1:42379"
+            local fails, err = ngx.shared["etcd_cluster_health_check"]:get(key)
+            assert(fails == 5)
 
             assert(tostring(etcd1) ~= tostring(etcd2))
             local pending_count = ngx.timer.pending_count()
-            assert(pending_count == 1)
+            assert(pending_count == 2)
 
-            ngx.sleep(1.5)
             ngx.say("all down")
         }
     }
@@ -346,7 +353,7 @@ all down
             for _, endpoint in ipairs(etcd.endpoints) do
                 endpoint.health_status = 0
             end
-            local res, err = etcd:set("/test", { a='abc'})
+            local res, err = etcd:set("/no_healthy_endpoint", "yes")
         }
     }
 --- request

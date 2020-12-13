@@ -23,6 +23,7 @@ local decode_base64 = ngx.decode_base64
 local semaphore     = require("ngx.semaphore")
 local ngx_shared    = ngx.shared
 local ngx_timer_at  = ngx.timer.at
+local worker_id     = ngx.worker.id
 local INIT_COUNT_RESIZE = 2e8
 
 local _M = {}
@@ -31,6 +32,7 @@ local mt = { __index = _M }
 
 -- define local refresh function variable
 local refresh_jwt_token
+local fails
 
 local function fault_count(key, shm_name, fail_timeout)
     local new_value, err, forcible = ngx_shared[shm_name]:incr(key, 1, 0, fail_timeout)
@@ -63,7 +65,9 @@ end
 
 local function report_fault(self, endpoint)
     utils.log_info("report an endpoint failure: ", endpoint.http_host)
-    local fails, err = fault_count(endpoint.http_host, self.shm_name, self.fail_timeout)
+    local key = worker_id() .. "-" .. endpoint.http_host
+    local err
+    fails, err = fault_count(key, self.shm_name, self.fail_timeout)
     if err then
         utils.log_error("failed to incr etcd endpoint fail times: ", err)
         return
