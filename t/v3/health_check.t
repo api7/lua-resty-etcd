@@ -46,7 +46,6 @@ __DATA__
             assert(etcd.shm_name == nil)
             assert(etcd.max_fails == nil)
             assert(etcd.fail_timeout == nil)
-            assert(etcd.disable_duration == nil)
 
             local res, err = etcd:set("/health_check", "disabled")
             res, err = etcd:get("/health_check")
@@ -113,8 +112,7 @@ failed to get ngx.shared dict: wrong_shm_name
             })
 
             assert(etcd.max_fails == 1)
-            assert(etcd.fail_timeout == 1)
-            assert(etcd.disable_duration == 100)
+            assert(etcd.fail_timeout == 10)
         }
     }
 --- request
@@ -187,9 +185,8 @@ all down
                 password = 'abc123',
                 health_check = {
                     shm_name = "etcd_cluster_health_check",
-                    fail_timeout = 3,
+                    fail_timeout = 1,
                     max_fails = 2,
-                    disable_duration = 0,
                 },
             })
 
@@ -253,12 +250,12 @@ qr/report an endpoint failure: http:\/\/127.0.0.1:42379/
                 password = 'abc123',
                 health_check = {
                     shm_name = "etcd_cluster_health_check",
-                    disable_duration = 0
+                    fail_timeout = 1,
                 },
             })
 
             local res, err = etcd:set("/restore", "unhealthy")
-            ngx.sleep(0.1)
+            ngx.sleep(1.1)
         }
     }
 --- request
@@ -286,7 +283,6 @@ qr/restore an endpoint to health: http:\/\/127.0.0.1:42379/
                     shm_name = "etcd_cluster_health_check",
                     max_fails = 3,
                     fail_timeout = 3,
-                    disable_duration = 10,
                 },
             })
             etcd1:set("/shared_in_worker", "etcd1")
@@ -306,7 +302,6 @@ qr/restore an endpoint to health: http:\/\/127.0.0.1:42379/
                     shm_name = "etcd_cluster_health_check",
                     max_fails = 5,
                     fail_timeout = 3,
-                    disable_duration = 10,
                 },
             })
             etcd2:set("/shared_in_worker", "etcd2")
@@ -325,7 +320,6 @@ qr/restore an endpoint to health: http:\/\/127.0.0.1:42379/
     }
 --- request
 GET /t
---- timeout: 5
 --- response_body
 all down
 

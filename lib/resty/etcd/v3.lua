@@ -47,8 +47,8 @@ local function fault_count(key, shm_name, fail_timeout)
 end
 
 
-local function restore(disable_duration, endpoint)
-    local ok, err = ngx_timer_at(disable_duration, function(premature)
+local function restore(fail_timeout, endpoint)
+    local ok, err = ngx_timer_at(fail_timeout, function(premature)
         if premature then
             return
         end
@@ -76,7 +76,7 @@ local function report_fault(self, endpoint)
     -- only trigger once
     if fails == self.max_fails then
         endpoint.health_status = 0
-        restore(self.disable_duration, endpoint)
+        restore(self.fail_timeout, endpoint)
         return
     end
 end
@@ -172,7 +172,6 @@ function _M.new(opts)
     local health_check = opts.health_check or {}
     local fail_timeout = health_check.fail_timeout
     local max_fails = health_check.max_fails
-    local disable_duration = health_check.disable_duration
     local shm_name = health_check.shm_name
 
     if not typeof.uint(timeout) then
@@ -210,10 +209,6 @@ function _M.new(opts)
 
         if max_fails and not typeof.uint(max_fails) then
             return nil, 'opts.health_check.max_fails must be unsigned integer or ignore'
-        end
-
-        if disable_duration and not typeof.uint(disable_duration) then
-            return nil, 'opts.health_check.disable_duration must be unsigned integer or ignore'
         end
     end
 
@@ -264,8 +259,7 @@ function _M.new(opts)
             ssl_verify = ssl_verify,
             fail_timeout   = fail_timeout,
             max_fails    = max_fails,
-            disable_duration = disable_duration,
-            shm_name         = shm_name,
+            shm_name     = shm_name,
         },
         mt)
 end
