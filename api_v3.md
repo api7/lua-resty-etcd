@@ -192,7 +192,8 @@ res = cli:watchcancel(http_cli)
     * `sort_order`: (int [SortNone:0, SortAscend:1, SortDescend:2]) sort_order is the order for returned sorted results.  
     * `sort_target`: (int [SortByKey:0, SortByVersion:1, SortByCreateRevision:2, SortByModRevision:3, SortByValue:4]) sort_target is the key-value field to use for sorting.
     * `keys_only`: (bool) keys_only when set returns only the keys and not the values.  
-    * `count_only`: (bool) count_only when set returns only the count of the keys in the range. 
+    * `count_only`: (bool) count_only when set returns only the count of the keys in the range.
+    * `start_key`: (string value) the start_key is the start key for the dir range. 
 
 To read the directory.
 
