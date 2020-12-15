@@ -70,7 +70,7 @@ __DATA__
 
             res, err = etcd:get("/dir/v3/a")
             check_res(res, err, '"foo"')
-            
+
             local s = cjson.encode({a = 1})
             res, err = etcd:setx("/dir/v3/a", s)
             check_res(res, err, nil, 200)
@@ -151,7 +151,62 @@ err: unsupported type for number
 --- request
 GET /t
 --- no_error_log
-failed to check value, got: nil, expect:
+[error]
+--- response_body
+checked val as expect: 111
+checked val as expect: "foo"
+checked val as expect: {"a":1}
+checked val as expect: 
+
+=== TEST 3: default serializer
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local cjson = require("cjson.safe")
+
+            local etcd, err = require("resty.etcd").new({
+                protocol = "v3",
+            })
+            check_res(etcd, err)
+
+            local res
+            res, err = etcd:rmdir("/dir")
+            check_res(res, err, nil, 200)
+
+            res, err = etcd:set("/dir/v3/a", 111)
+            check_res(res, err)
+
+            res, err = etcd:get("/dir/v3/a")
+            check_res(res, err, 111)
+
+            res, err = etcd:set("/dir/v3/a", '"foo"')
+            check_res(res, err)
+
+            res, err = etcd:get("/dir/v3/a")
+            check_res(res, err, '"foo"')
+
+            local s = cjson.encode({a = 1})
+            res, err = etcd:setx("/dir/v3/a", s)
+            check_res(res, err, nil, 200)
+
+            res, err = etcd:get("/dir/v3/a")
+            check_res(res, err, s, 200)
+
+            res, err = etcd:setnx("/dir/v3/not_exist", "")
+            check_res(res, err, nil, 200)
+
+            res, err = etcd:get("/dir/v3/not_exist")
+            check_res(res, err, "", 200)
+
+            res, err = etcd:rmdir("/dir")
+            check_res(res, err, nil, 200)
+        }
+    }
+--- request
+GET /t
+--- no_error_log
+[error]
 --- response_body
 checked val as expect: 111
 checked val as expect: "foo"
