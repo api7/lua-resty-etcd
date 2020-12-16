@@ -51,6 +51,8 @@ function _M.new(opts)
     opts.ttl  = opts.ttl or -1
 
     local protocol = opts and opts.protocol or "v2"
+    local serializer_name = typeof.string(opts.serializer) and opts.serializer
+    opts.serializer = require_serializer(serializer_name)
 
     if protocol == "v3" then
         -- if opts special the api_prefix,no need to check version
@@ -66,8 +68,6 @@ function _M.new(opts)
     end
 
     opts.api_prefix = "/v2"
-    local serializer_name = typeof.string(opts.serializer) and opts.serializer
-    opts.serializer = require_serializer(serializer_name)
 
     return etcdv2.new(opts)
 end
