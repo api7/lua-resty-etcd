@@ -59,7 +59,7 @@ run_tests();
 
 __DATA__
 
-=== TEST 1: set + readdir + readdir with start_key + rmdir
+=== TEST 1: set + readdir + readdir with range_start + rmdir
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -87,9 +87,9 @@ __DATA__
                 ngx.say("failed")
             end
 
-            res, err = etcd:readdir("/dir", {start_key = "/dir/a"})
-            check_res(res, err, "a")
-            if tab_nkeys(res.body.kvs) == 3 then
+            res, err = etcd:readdir("/dir", {range_start = "/dir/b"})
+            check_res(res, err, "b")
+            if tab_nkeys(res.body.kvs) == 2 then
                 ngx.say("ok")
             else
                 ngx.say("failed")
@@ -105,5 +105,5 @@ GET /t
 [error]
 --- response_body
 ok
-checked val as expect: a
+checked val as expect: b
 ok

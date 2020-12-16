@@ -767,8 +767,8 @@ function _M.readdir(self, key, opts)
     attr.keys_only    = opts and opts.keys_only
     attr.count_only   = opts and opts.count_only
 
-    if opts and opts.start_key then
-        key = utils.get_real_key(self.key_prefix, opts.start_key)
+    if opts and opts.range_start then
+        key = utils.get_real_key(self.key_prefix, opts.range_start)
     end
 
     return get(self, key, attr)
