@@ -43,7 +43,7 @@ The client methods returns either a `HTTP Response Entity` or an `error string`.
 `HTTP Response Entity` contains the following fields except `408` timeout status;
 
 - `status`: number - HTTP status code.
-- `header`: table - response header if `status` is not `408` timeout status.
+- `headers`: table - response header if `status` is not `408` timeout status.
 - `body`: string or table - response body if `status` is not `408` timeout status.
 
 **Note:** a client method will decode a response body as a JSON string if a `Content-Type` response header value is a `application/json`.
