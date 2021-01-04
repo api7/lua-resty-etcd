@@ -22,7 +22,7 @@ local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
 local semaphore     = require("ngx.semaphore")
 local INIT_COUNT_RESIZE = 2e8
-local checker       = require("resty.etcd.health_check")
+local health_check  = require("resty.etcd.health_check")
 
 local _M = {}
 
@@ -77,12 +77,12 @@ local function _request_uri(self, endpoint, method, uri, opts, timeout, ignore_a
     })
 
     if err then
-        checker.report_fault(endpoint.http_host)
+        health_check.report_fault(endpoint.http_host)
         return nil, err
     end
 
     if res.status >= 500 then
-        checker.report_fault(endpoint.http_host)
+        health_check.report_fault(endpoint.http_host)
         return nil, "invalid response code: " .. res.status
     end
 
@@ -201,18 +201,20 @@ local function choose_endpoint(self)
         return endpoints[1]
     end
 
-    --for _, endpoint in ipairs(endpoints) do
-    --    if checker.is_healthy(endpoint.http_host) then
-    --        return endpoint
-    --    end
-    --end
+    if health_check.conf ~= nil then
+        for _, endpoint in ipairs(endpoints) do
+            if health_check.is_healthy(endpoint.http_host) then
+                return endpoint
+            end
+        end
+    end
 
     self.init_count = (self.init_count or 0) + 1
     local pos = self.init_count % endpoints_len + 1
     if self.init_count >= INIT_COUNT_RESIZE then
         self.init_count = 0
     end
-    ngx.log(ngx.WARN, "endpoints[pos]: ", require("resty.inspect")(endpoints[pos]))
+
     return endpoints[pos]
 end
 
@@ -554,7 +556,7 @@ local function request_chunk(self, endpoint, method, scheme, host, port, path, o
 
     ok, err = http_cli:connect(host, port)
     if not ok then
-        checker.report_fault(endpoint.http_host)
+        health_check.report_fault(endpoint.http_host)
         return nil, err
     end
 
@@ -607,7 +609,7 @@ local function request_chunk(self, endpoint, method, scheme, host, port, path, o
         if not body then
             return nil, "failed to decode json body: " .. (err or " unkwon")
         elseif body.error and body.error.http_code >= 500 then
-            checker.report_fault(endpoint.http_host)
+            health_check.report_fault(endpoint.http_host)
         end
 
         if body.result.events then

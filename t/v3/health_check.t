@@ -34,11 +34,10 @@ __DATA__
         content_by_lua_block {
             local health_check, err = require "resty.etcd.health_check" .new({
                 shm_name = "etcd_cluster_health_check",
-                fail_timeout = 10,
-                max_fails = 1,
+                fail_timeout = 5,
+                max_fails = 3,
             })
 
-           ngx.log(ngx.WARN, "health_check: ", require("resty.inspect")(health_check))
            local etcd, err = require "resty.etcd" .new({
                 protocol = "v3",
                 http_host = {
@@ -48,16 +47,40 @@ __DATA__
                 }
             })
            local res, err = etcd:set("/health_check", { a='abc'})
-           ngx.sleep(0.2)
            res, err = etcd:get("/health_check")
            res, err = etcd:get("/health_check")
-           ngx.log(ngx.WARN, "res.body.kvs[1].value: ", require("resty.inspect")(res.body.kvs[1].value))
+           res, err = etcd:get("/health_check")
+           res, err = etcd:get("/health_check")
+           res, err = etcd:get("/health_check")
+           res, err = etcd:get("/health_check")
+           res, err = etcd:get("/health_check")
+           res, err = etcd:get("/health_check")
+           res, err = etcd:get("/health_check")
+           res, err = etcd:get("/health_check")
+           res, err = etcd:get("/health_check")
+           res, err = etcd:get("/health_check")
+           res, err = etcd:get("/health_check")
+           res, err = etcd:get("/health_check")
+           res, err = etcd:get("/health_check")
+           res, err = etcd:get("/health_check")
+           res, err = etcd:get("/health_check")
+           res, err = etcd:get("/health_check")
+           res, err = etcd:get("/health_check")
+           res, err = etcd:get("/health_check")
+           res, err = etcd:get("/health_check")
+           res, err = etcd:get("/health_check")
+           res, err = etcd:get("/health_check")
+           res, err = etcd:get("/health_check")
+           res, err = etcd:get("/health_check")
+           res, err = etcd:get("/health_check")
+           res, err = etcd:get("/health_check")
+           res, err = etcd:get("/health_check")
            ngx.say("all down")
         }
     }
 --- request
 GET /t
---- timeout: 10
+--- timeout: 30
 --- no_error_log
 [error]
 --- response_body
