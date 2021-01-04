@@ -39,22 +39,25 @@ __DATA__
             })
 
            ngx.log(ngx.WARN, "health_check: ", require("resty.inspect")(health_check))
-            local etcd, err = require "resty.etcd" .new({
+           local etcd, err = require "resty.etcd" .new({
                 protocol = "v3",
                 http_host = {
-                    "http://127.0.0.1:12379",
+                    "http://127.0.0.1:42379",
                     "http://127.0.0.1:22379",
                     "http://127.0.0.1:32379",
-                },
-                user = 'root',
-                password = 'abc123',
+                }
             })
-
-            ngx.say("all down")
+           local res, err = etcd:set("/health_check", { a='abc'})
+           ngx.sleep(0.2)
+           res, err = etcd:get("/health_check")
+           res, err = etcd:get("/health_check")
+           ngx.log(ngx.WARN, "res.body.kvs[1].value: ", require("resty.inspect")(res.body.kvs[1].value))
+           ngx.say("all down")
         }
     }
 --- request
 GET /t
+--- timeout: 10
 --- no_error_log
 [error]
 --- response_body
