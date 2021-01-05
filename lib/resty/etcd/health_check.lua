@@ -60,7 +60,7 @@ local function report_fault(etcd_host)
         if unhealthy_endpoint == nil then
             ngx_shared[conf.shm_name]:set(unhealthy_key, etcd_host,
                     conf.fail_timeout)
-            utils.log_warn("update endpoint : ", etcd_host, " to unhealthy")
+            utils.log_warn("update endpoint: ", etcd_host, " to unhealthy")
         end
     end
 end

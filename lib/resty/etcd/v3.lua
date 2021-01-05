@@ -77,12 +77,16 @@ local function _request_uri(self, endpoint, method, uri, opts, timeout, ignore_a
     })
 
     if err then
-        health_check.report_fault(endpoint.http_host)
+        if health_check.conf ~= nil then
+            health_check.report_fault(endpoint.http_host)
+        end
         return nil, err
     end
 
     if res.status >= 500 then
-        health_check.report_fault(endpoint.http_host)
+        if health_check.conf ~= nil then
+            health_check.report_fault(endpoint.http_host)
+        end
         return nil, "invalid response code: " .. res.status
     end
 
@@ -556,7 +560,9 @@ local function request_chunk(self, endpoint, method, scheme, host, port, path, o
 
     ok, err = http_cli:connect(host, port)
     if not ok then
-        health_check.report_fault(endpoint.http_host)
+        if health_check.conf ~= nil then
+            health_check.report_fault(endpoint.http_host)
+        end
         return nil, err
     end
 
@@ -609,7 +615,9 @@ local function request_chunk(self, endpoint, method, scheme, host, port, path, o
         if not body then
             return nil, "failed to decode json body: " .. (err or " unkwon")
         elseif body.error and body.error.http_code >= 500 then
-            health_check.report_fault(endpoint.http_host)
+            if health_check.conf ~= nil then
+                health_check.report_fault(endpoint.http_host)
+            end
         end
 
         if body.result.events then
