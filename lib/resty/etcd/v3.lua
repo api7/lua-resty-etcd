@@ -211,6 +211,7 @@ local function choose_endpoint(self)
                 return endpoint
             end
         end
+        utils.log_warn("has no healthy endpoint")
     end
 
     self.init_count = (self.init_count or 0) + 1

@@ -144,8 +144,6 @@ failed to get ngx.shared dict: error_shm_name
                 fail_timeout = 10,
                 max_fails = 1,
             })
-            assert( err == nil)
-            assert( health_check.conf ~= nil)
 
             local etcd, err = require "resty.etcd" .new({
                 protocol = "v3",
@@ -168,3 +166,217 @@ GET /t
 qr/update endpoint: http:\/\/127.0.0.1:42379 to unhealthy/
 --- response_body
 done
+
+
+
+=== TEST 5: fault count
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local health_check, err = require "resty.etcd.health_check" .new({
+                shm_name = "etcd_cluster_health_check",
+                fail_timeout = 5,
+                max_fails = 3,
+            })
+
+            local etcd, err = require "resty.etcd" .new({
+                protocol = "v3",
+                http_host = {
+                    "http://127.0.0.1:42379",
+                    "http://127.0.0.1:22379",
+                    "http://127.0.0.1:32379",
+                },
+                user = 'root',
+                password = 'abc123',
+            })
+
+            etcd:set("/fault_count", { a='abc'})
+            etcd:set("/fault_count", { a='abc'})
+            local fails, err = ngx.shared["etcd_cluster_health_check"]:get("http://127.0.0.1:42379")
+            if err then
+                ngx.say(err)
+            end
+            ngx.say(fails)
+        }
+    }
+--- request
+GET /t
+--- response_body
+2
+--- no_error_log
+[error]
+
+
+
+=== TEST 6: check endpoint is healthy
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local health_check, err = require "resty.etcd.health_check" .new({
+                shm_name = "etcd_cluster_health_check",
+                fail_timeout = 3,
+                max_fails = 1,
+            })
+
+            local etcd, err = require "resty.etcd" .new({
+                protocol = "v3",
+                http_host = {
+                    "http://127.0.0.1:42379",
+                    "http://127.0.0.1:22379",
+                    "http://127.0.0.1:32379",
+                },
+                user = 'root',
+                password = 'abc123',
+            })
+
+            etcd:set("/is_healthy", { a='abc'})
+
+            local healthy = health_check.is_healthy("http://127.0.0.1:42379")
+            ngx.say(healthy)
+        }
+    }
+--- request
+GET /t
+--- response_body
+false
+--- no_error_log
+[error]
+
+
+
+=== TEST 7: make sure `fail_timeout` works
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local health_check, err = require "resty.etcd.health_check" .new({
+                shm_name = "etcd_cluster_health_check",
+                fail_timeout = 2,
+                max_fails = 1,
+            })
+
+            local etcd, err = require "resty.etcd" .new({
+                protocol = "v3",
+                http_host = {
+                    "http://127.0.0.1:42379",
+                    "http://127.0.0.1:22379",
+                    "http://127.0.0.1:32379",
+                },
+                user = 'root',
+                password = 'abc123',
+            })
+
+            local res, err = etcd:set("/fail_timeout", "http://127.0.0.1:42379")  -- trigger http://127.0.0.1:42379 to unhealthy
+
+            res, err = etcd:set("/fail_timeout", "http://127.0.0.1:22379") -- choose http://127.0.0.1:22379 to set value
+            res, err = etcd:get("/fail_timeout")
+            assert(res.body.kvs[1].value == "http://127.0.0.1:22379")
+
+            ngx.sleep(2)
+
+            res, err = etcd:set("/fail_timeout", "http://127.0.0.1:42379") -- choose http://127.0.0.1:42379 to set value
+            res, err = etcd:get("/fail_timeout")
+            assert(res.body.kvs[1].value == "http://127.0.0.1:22379")
+
+            ngx.say("done")
+        }
+    }
+--- request
+GET /t
+--- timeout: 5
+--- response_body
+done
+--- no_error_log
+[error]
+
+
+
+=== TEST 8: has no healthy etcd endpoint, follow old style
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local health_check, err = require "resty.etcd.health_check" .new({
+                shm_name = "etcd_cluster_health_check",
+                fail_timeout = 3,
+                max_fails = 1,
+            })
+
+            local etcd, err = require "resty.etcd" .new({
+                protocol = "v3",
+                http_host = {
+                    "http://127.0.0.1:12379",
+                    "http://127.0.0.1:22379",
+                    "http://127.0.0.1:32379",
+                },
+                user = 'root',
+                password = 'abc123',
+            })
+
+            health_check.report_fault("http://127.0.0.1:12379")
+            health_check.report_fault("http://127.0.0.1:22379")
+            health_check.report_fault("http://127.0.0.1:32379")
+
+            local res, err = etcd:set("/no_healthy_endpoint", "hello")
+            check_res(etcd, err)
+
+            ngx.say("done")
+        }
+    }
+--- request
+GET /t
+--- response_body
+done
+--- error_log eval
+qr/has no healthy endpoint/
+
+
+
+=== TEST 9: `health_check` shared by different etcd clients
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local health_check, err = require "resty.etcd.health_check" .new({
+                shm_name = "etcd_cluster_health_check",
+                fail_timeout = 3,
+                max_fails = 2,
+            })
+
+            local etcd1, err = require "resty.etcd" .new({
+                protocol = "v3",
+                http_host = {
+                    "http://127.0.0.1:42379",
+                    "http://127.0.0.1:22379",
+                    "http://127.0.0.1:32379",
+                },
+                user = 'root',
+                password = 'abc123',
+            })
+
+            local etcd2, err = require "resty.etcd" .new({
+                protocol = "v3",
+                http_host = {
+                    "http://127.0.0.1:42379",
+                    "http://127.0.0.1:22379",
+                    "http://127.0.0.1:32379",
+                },
+                user = 'root',
+                password = 'abc123',
+            })
+
+            assert(tostring(etcd1) ~= tostring(etcd2))
+            etcd1:set("/etcd1", "hello")
+            etcd2:set("/etcd2", "hello")
+
+            ngx.say("done")
+        }
+    }
+--- request
+GET /t
+--- response_body
+done
+--- error_log eval
+qr/update endpoint: http:\/\/127.0.0.1:42379 to unhealthy/
