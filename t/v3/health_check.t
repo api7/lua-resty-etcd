@@ -380,3 +380,60 @@ GET /t
 done
 --- error_log eval
 qr/update endpoint: http:\/\/127.0.0.1:42379 to unhealthy/
+
+
+
+=== TEST 10: mock etcd error and report fault
+--- http_config eval: $::HttpConfig
+--- config
+    location /v3/auth/authenticate {  --- mock normal authenticate response
+        content_by_lua_block {
+            ngx.print([[{
+              body = '{"header":{"cluster_id":"17237436991929493444","member_id":"9372538179322589801","revision":"40","raft_term":"633"},"token":"KicnFPYazDaiMHBG.74"}',
+              reason = "OK",
+              status = 200
+            }]])
+        }
+    }
+
+    location /v3/kv/put {
+        content_by_lua_block { --- mock abnormal put key response
+            ngx.print([[{
+              body = '{"error":"etcdserver: request timed out","message":"etcdserver: request timed out","code":14}',
+              body_reader = <function 1>,
+              reason = "Service Unavailable",
+              status = 503,
+            }]])
+        }
+    }
+
+    location /t {
+        content_by_lua_block {
+            local health_check, err = require "resty.etcd.health_check" .new({
+                shm_name = "etcd_cluster_health_check",
+                fail_timeout = 10,
+                max_fails = 1,
+            })
+
+            local etcd, err = require "resty.etcd" .new({
+                protocol = "v3",
+                http_host = {
+                    "http://127.0.0.1:12379",
+                },
+                user = 'root',
+                password = 'abc123',
+            })
+
+            etcd.endpoints[1].full_prefix="http://localhost:1984/v3" ---replace the endpoint with mock
+            etcd.endpoints[1].http_host="http://localhost:1984"
+            local res, err = etcd:set("/etcd_error", "hello")
+            local fails, err = ngx.shared["etcd_cluster_health_check"]:get("http://localhost:1984")
+            ngx.say(fails)
+        }
+    }
+--- request
+GET /t
+--- response_body
+1
+--- error_log eval
+qr/update endpoint: http:\/\/localhost:1984 to unhealthy/
