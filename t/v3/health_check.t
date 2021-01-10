@@ -386,8 +386,8 @@ qr/update endpoint: http:\/\/127.0.0.1:42379 to unhealthy/
 === TEST 10: mock etcd error and report fault
 --- http_config eval: $::HttpConfig
 --- config
-    location /v3/auth/authenticate {  --- mock normal authenticate response
-        content_by_lua_block {
+    location /v3/auth/authenticate {
+        content_by_lua_block { -- mock normal authenticate response
             ngx.print([[{
               body = '{"header":{"cluster_id":"17237436991929493444","member_id":"9372538179322589801","revision":"40","raft_term":"633"},"token":"KicnFPYazDaiMHBG.74"}',
               reason = "OK",
@@ -397,7 +397,7 @@ qr/update endpoint: http:\/\/127.0.0.1:42379 to unhealthy/
     }
 
     location /v3/kv/put {
-        content_by_lua_block { --- mock abnormal put key response
+        content_by_lua_block { -- mock abnormal put key response
             ngx.print([[{
               body = '{"error":"etcdserver: request timed out","message":"etcdserver: request timed out","code":14}',
               body_reader = <function 1>,
@@ -424,7 +424,7 @@ qr/update endpoint: http:\/\/127.0.0.1:42379 to unhealthy/
                 password = 'abc123',
             })
 
-            etcd.endpoints[1].full_prefix="http://localhost:1984/v3" ---replace the endpoint with mock
+            etcd.endpoints[1].full_prefix="http://localhost:1984/v3" -- replace the endpoint with mock
             etcd.endpoints[1].http_host="http://localhost:1984"
             local res, err = etcd:set("/etcd_error", "hello")
             local fails, err = ngx.shared["etcd_cluster_health_check"]:get("http://localhost:1984")
