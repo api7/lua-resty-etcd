@@ -67,7 +67,7 @@ end
 _M.report_fault = report_fault
 
 
-function _M.new(opts)
+function _M.init(opts)
     if conf == nil then
         conf = {}
         local shared_dict = ngx_shared[opts.shm_name]

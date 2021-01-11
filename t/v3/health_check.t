@@ -60,7 +60,7 @@ __DATA__
 --- config
     location /t {
         content_by_lua_block {
-            local health_check, err = require "resty.etcd.health_check" .new({
+            local health_check, err = require "resty.etcd.health_check" .init({
                 shm_name = "etcd_cluster_health_check",
                 fail_timeout = 5,
                 max_fails = 3,
@@ -97,7 +97,7 @@ done
 --- config
     location /t {
         content_by_lua_block {
-            local health_check, err = require "resty.etcd.health_check" .new({
+            local health_check, err = require "resty.etcd.health_check" .init({
                 shm_name = "etcd_cluster_health_check",
             })
             ngx.say(health_check.conf.max_fails)
@@ -119,7 +119,7 @@ GET /t
 --- config
     location /t {
         content_by_lua_block {
-            local health_check, err = require "resty.etcd.health_check" .new({
+            local health_check, err = require "resty.etcd.health_check" .init({
                 shm_name = "error_shm_name",
             })
             ngx.say(err)
@@ -139,7 +139,7 @@ failed to get ngx.shared dict: error_shm_name
 --- config
     location /t {
         content_by_lua_block {
-            local health_check, err = require "resty.etcd.health_check" .new({
+            local health_check, err = require "resty.etcd.health_check" .init({
                 shm_name = "etcd_cluster_health_check",
                 fail_timeout = 10,
                 max_fails = 1,
@@ -174,7 +174,7 @@ done
 --- config
     location /t {
         content_by_lua_block {
-            local health_check, err = require "resty.etcd.health_check" .new({
+            local health_check, err = require "resty.etcd.health_check" .init({
                 shm_name = "etcd_cluster_health_check",
                 fail_timeout = 5,
                 max_fails = 3,
@@ -214,7 +214,7 @@ GET /t
 --- config
     location /t {
         content_by_lua_block {
-            local health_check, err = require "resty.etcd.health_check" .new({
+            local health_check, err = require "resty.etcd.health_check" .init({
                 shm_name = "etcd_cluster_health_check",
                 fail_timeout = 3,
                 max_fails = 1,
@@ -251,7 +251,7 @@ false
 --- config
     location /t {
         content_by_lua_block {
-            local health_check, err = require "resty.etcd.health_check" .new({
+            local health_check, err = require "resty.etcd.health_check" .init({
                 shm_name = "etcd_cluster_health_check",
                 fail_timeout = 2,
                 max_fails = 1,
@@ -298,7 +298,7 @@ done
 --- config
     location /t {
         content_by_lua_block {
-            local health_check, err = require "resty.etcd.health_check" .new({
+            local health_check, err = require "resty.etcd.health_check" .init({
                 shm_name = "etcd_cluster_health_check",
                 fail_timeout = 3,
                 max_fails = 1,
@@ -339,7 +339,7 @@ qr/has no healthy endpoint/
 --- config
     location /t {
         content_by_lua_block {
-            local health_check, err = require "resty.etcd.health_check" .new({
+            local health_check, err = require "resty.etcd.health_check" .init({
                 shm_name = "etcd_cluster_health_check",
                 fail_timeout = 3,
                 max_fails = 2,
@@ -409,7 +409,7 @@ qr/update endpoint: http:\/\/127.0.0.1:42379 to unhealthy/
 
     location /t {
         content_by_lua_block {
-            local health_check, err = require "resty.etcd.health_check" .new({
+            local health_check, err = require "resty.etcd.health_check" .init({
                 shm_name = "etcd_cluster_health_check",
                 fail_timeout = 10,
                 max_fails = 1,
