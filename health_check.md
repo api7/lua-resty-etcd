@@ -13,7 +13,7 @@ http {
         location = /healthcheck {
             content_by_lua_block {
                 # the health check feature is optional, and can be enabled with the following configuration.
-                local health_check, err = require "resty.etcd.health_check".new({
+                local health_check, err = require "resty.etcd.health_check".init({
                     shm_name = "healthcheck_shm",
                     fail_timeout = 10,
                     max_fails = 1,

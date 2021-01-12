@@ -400,7 +400,6 @@ qr/update endpoint: http:\/\/127.0.0.1:42379 to unhealthy/
         content_by_lua_block { -- mock abnormal put key response
             ngx.print([[{
               body = '{"error":"etcdserver: request timed out","message":"etcdserver: request timed out","code":14}',
-              body_reader = <function 1>,
               reason = "Service Unavailable",
               status = 503,
             }]])
