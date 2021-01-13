@@ -34,6 +34,7 @@ http {
 ```
 
 ## Description
+
 Implement a passive health check mechanism, when the connection/read/write fails occurs, recorded as an endpoint' failure.
 
 ## Config
