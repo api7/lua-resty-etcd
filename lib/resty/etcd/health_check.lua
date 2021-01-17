@@ -8,7 +8,7 @@ local function gen_unhealthy_key(etcd_host)
     return "unhealthy-" .. etcd_host
 end
 
-local function is_healthy(etcd_host)
+local function get_target_status(etcd_host)
     if conf == nil then
         return
     end
@@ -27,7 +27,7 @@ local function is_healthy(etcd_host)
 
     return false
 end
-_M.is_healthy = is_healthy
+_M.get_target_status = get_target_status
 
 
 local function fault_count(key, shm_name, fail_timeout)
@@ -43,7 +43,7 @@ local function fault_count(key, shm_name, fail_timeout)
 end
 
 
-local function report_fault(etcd_host)
+local function report_failure(etcd_host)
     if conf == nil then
         return
     end
@@ -64,7 +64,7 @@ local function report_fault(etcd_host)
         end
     end
 end
-_M.report_fault = report_fault
+_M.report_failure = report_failure
 
 
 function _M.init(opts)

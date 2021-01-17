@@ -231,9 +231,9 @@ GET /t
                 password = 'abc123',
             })
 
-            etcd:set("/is_healthy", { a='abc'})
+            etcd:set("/get_target_status", { a='abc'})
 
-            local healthy = health_check.is_healthy("http://127.0.0.1:42379")
+            local healthy = health_check.get_target_status("http://127.0.0.1:42379")
             ngx.say(healthy)
         }
     }
@@ -315,9 +315,9 @@ done
                 password = 'abc123',
             })
 
-            health_check.report_fault("http://127.0.0.1:12379")
-            health_check.report_fault("http://127.0.0.1:22379")
-            health_check.report_fault("http://127.0.0.1:32379")
+            health_check.report_failure("http://127.0.0.1:12379")
+            health_check.report_failure("http://127.0.0.1:22379")
+            health_check.report_failure("http://127.0.0.1:32379")
 
             local res, err = etcd:set("/no_healthy_endpoint", "hello")
             check_res(etcd, err)

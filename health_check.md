@@ -37,6 +37,30 @@ http {
 
 Implement a passive health check mechanism, when the connection/read/write fails occurs, recorded as an endpoint' failure.
 
+## Methods
+
+* [init](#init)
+* [report_failure](#report_failure)
+* [get_target_status](#get_target_status)
+
+###  init
+
+`syntax: health_check, err = health_check.init(params)`
+
+Initializes the health check object, overring default params with the ones given. In case of failures, returns `nil` and a string describing the error.
+
+###  report_failure
+
+`syntax: health_check.report_failure(etcd_host)`
+
+Report a health failure. Reports a health failure which will count against the number of occurrences required to make a target "fall". 
+
+###  get_target_status
+
+`syntax: healthy, err = health_check.get_target_status(etcd_host)`
+
+Get the current status of the target.
+
 ## Config
 
 | name         | Type    | Requirement | Default | Description                                                  |
