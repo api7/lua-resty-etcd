@@ -45,9 +45,9 @@ Implement a passive health check mechanism, when the connection/read/write fails
 
 ###  init
 
-`syntax: health_check, err = health_check.init(params)`
+`syntax: health_check, err = health_check.init(conf)`
 
-Initializes the health check object, overring default params with the ones given. In case of failures, returns `nil` and a string describing the error.
+Initializes the health check object, overring default config with the ones given. In case of failures, returns `nil` and a string describing the error.
 
 ###  report_failure
 
