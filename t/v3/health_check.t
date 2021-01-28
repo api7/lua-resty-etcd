@@ -293,7 +293,7 @@ done
 
 
 
-=== TEST 8: has no healthy etcd endpoint, return err
+=== TEST 8: has no healthy etcd endpoint, directly return an error message
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
