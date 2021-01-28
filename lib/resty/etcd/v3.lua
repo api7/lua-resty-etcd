@@ -755,7 +755,7 @@ local function watch(self, key, attr)
         return nil, err
     end
 
-    local callback_fun
+    local callback_fun, http_cli
     callback_fun, err, http_cli = request_chunk(self, endpoint, 'POST',
                                 endpoint.scheme,
                                 endpoint.host,
