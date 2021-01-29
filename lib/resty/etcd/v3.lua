@@ -211,6 +211,7 @@ local function choose_endpoint(self)
                 return endpoint
             end
         end
+        utils.log_warn("has no healthy etcd endpoint available")
         return nil, "has no healthy etcd endpoint available"
     end
 
