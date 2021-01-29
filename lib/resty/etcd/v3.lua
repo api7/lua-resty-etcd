@@ -211,7 +211,8 @@ local function choose_endpoint(self)
                 return endpoint
             end
         end
-        utils.log_warn("has no healthy endpoint")
+        utils.log_warn("has no healthy etcd endpoint available")
+        return nil, "has no healthy etcd endpoint available"
     end
 
     self.init_count = (self.init_count or 0) + 1
@@ -265,8 +266,14 @@ function refresh_jwt_token(self, timeout)
             password     = self.password,
         }
     }
-    local endpoint = choose_endpoint(self)
-    local res, err = _request_uri(self, endpoint, 'POST',
+
+    local endpoint, err = choose_endpoint(self)
+    if not endpoint then
+        return nil, err
+    end
+
+    local res
+    res, err = _request_uri(self, endpoint, 'POST',
                                   endpoint.full_prefix .. "/auth/authenticate",
                                   opts, timeout, true)
     self.requesting_token = false
@@ -340,7 +347,12 @@ local function set(self, key, val, attr)
         }
     }
 
-    local endpoint = choose_endpoint(self)
+    local endpoint
+    endpoint, err = choose_endpoint(self)
+    if not endpoint then
+        return nil, err
+    end
+
     local res
     res, err = _request_uri(self, endpoint, 'POST',
                         endpoint.full_prefix .. "/kv/put",
@@ -448,7 +460,12 @@ local function get(self, key, attr)
         }
     }
 
-    local endpoint = choose_endpoint(self)
+    local endpoint
+    endpoint, err = choose_endpoint(self)
+    if not endpoint then
+        return nil, err
+    end
+
     local res
     res, err = _request_uri(self, endpoint, "POST",
                         endpoint.full_prefix .. "/kv/range",
@@ -490,7 +507,11 @@ local function delete(self, key, attr)
         },
     }
 
-    local endpoint = choose_endpoint(self)
+    local endpoint, err = choose_endpoint(self)
+    if not endpoint then
+        return nil, err
+    end
+
     return _request_uri(self, endpoint, "POST",
                     endpoint.full_prefix .. "/kv/deleterange",
                     opts, self.timeout)
@@ -514,7 +535,11 @@ local function txn(self, opts_arg, compare, success, failure)
         },
     }
 
-    local endpoint = choose_endpoint(self)
+    local endpoint, err = choose_endpoint(self)
+    if not endpoint then
+        return nil, err
+    end
+
     return _request_uri(self, endpoint, "POST",
                         endpoint.full_prefix .. "/kv/txn",
                         opts, timeout or self.timeout)
@@ -726,9 +751,13 @@ local function watch(self, key, attr)
         need_cancel = need_cancel,
     }
 
-    local endpoint = choose_endpoint(self)
+    local endpoint, err = choose_endpoint(self)
+    if not endpoint then
+        return nil, err
+    end
 
-    local callback_fun, err, http_cli = request_chunk(self, endpoint, 'POST',
+    local callback_fun, http_cli
+    callback_fun, err, http_cli = request_chunk(self, endpoint, 'POST',
                                 endpoint.scheme,
                                 endpoint.host,
                                 endpoint.port,
@@ -959,7 +988,11 @@ function _M.grant(self, ttl, id)
         },
     }
 
-    local endpoint = choose_endpoint(self)
+    local endpoint, err = choose_endpoint(self)
+    if not endpoint then
+        return nil, err
+    end
+
     return _request_uri(self, endpoint, "POST",
                         endpoint.full_prefix .. "/lease/grant", opts)
 end
@@ -975,7 +1008,11 @@ function _M.revoke(self, id)
         },
     }
 
-    local endpoint = choose_endpoint(self)
+    local endpoint, err = choose_endpoint(self)
+    if not endpoint then
+        return nil, err
+    end
+
     return _request_uri(self, endpoint, "POST",
                         endpoint.full_prefix .. "/kv/lease/revoke", opts)
 end
@@ -991,7 +1028,11 @@ function _M.keepalive(self, id)
         },
     }
 
-    local endpoint = choose_endpoint(self)
+    local endpoint, err = choose_endpoint(self)
+    if not endpoint then
+        return nil, err
+    end
+
     return _request_uri(self, endpoint, "POST",
                         endpoint.full_prefix .. "/lease/keepalive", opts)
 end
@@ -1009,8 +1050,13 @@ function _M.timetolive(self, id, keys)
         },
     }
 
-    local endpoint = choose_endpoint(self)
-    local res, err = _request_uri(self, endpoint, "POST",
+    local endpoint, err = choose_endpoint(self)
+    if not endpoint then
+        return nil, err
+    end
+
+    local res
+    res, err = _request_uri(self, endpoint, "POST",
                         endpoint.full_prefix .. "/kv/lease/timetolive", opts)
 
     if res and res.status == 200 then
@@ -1025,7 +1071,10 @@ function _M.timetolive(self, id, keys)
 end
 
 function _M.leases(self)
-    local endpoint = choose_endpoint(self)
+    local endpoint, err = choose_endpoint(self)
+    if not endpoint then
+        return nil, err
+    end
     return _request_uri(self, endpoint, "POST",
                         endpoint.full_prefix .. "/lease/leases")
 end
@@ -1033,7 +1082,10 @@ end
 
 -- /version
 function _M.version(self)
-    local endpoint = choose_endpoint(self)
+    local endpoint, err = choose_endpoint(self)
+    if not endpoint then
+        return nil, err
+    end
     return _request_uri(self, endpoint, "GET",
                         endpoint.http_host .. "/version",
                         nil, self.timeout)
@@ -1041,21 +1093,30 @@ end
 
 -- /stats
 function _M.stats_leader(self)
-    local endpoint = choose_endpoint(self)
+    local endpoint, err = choose_endpoint(self)
+    if not endpoint then
+        return nil, err
+    end
     return _request_uri(self, endpoint, "GET",
                         endpoint.http_host .. "/v2/stats/leader",
                         nil, self.timeout)
 end
 
 function _M.stats_self(self)
-    local endpoint = choose_endpoint(self)
+    local endpoint, err = choose_endpoint(self)
+    if not endpoint then
+        return nil, err
+    end
     return _request_uri(self, endpoint, "GET",
                         endpoint.http_host .. "/v2/stats/self",
                         nil, self.timeout)
 end
 
 function _M.stats_store(self)
-    local endpoint = choose_endpoint(self)
+    local endpoint, err = choose_endpoint(self)
+    if not endpoint then
+        return nil, err
+    end
     return _request_uri(self, endpoint, "GET",
                         endpoint.http_host .. "/v2/stats/store",
                         nil, self.timeout)

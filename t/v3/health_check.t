@@ -293,7 +293,7 @@ done
 
 
 
-=== TEST 8: has no healthy etcd endpoint, follow old style
+=== TEST 8: has no healthy etcd endpoint, directly return an error message
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -320,17 +320,17 @@ done
             health_check.report_failure("http://127.0.0.1:32379")
 
             local res, err = etcd:set("/no_healthy_endpoint", "hello")
-            check_res(etcd, err)
-
-            ngx.say("done")
+            ngx.say(err)
         }
     }
 --- request
 GET /t
 --- response_body
-done
+has no healthy etcd endpoint available
+--- no_error_log
+[error]
 --- error_log eval
-qr/has no healthy endpoint/
+qr/has no healthy etcd endpoint available/
 
 
 
