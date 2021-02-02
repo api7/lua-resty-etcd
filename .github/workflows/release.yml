@@ -1,0 +1,35 @@
+name: Build and Release
+
+on:
+  push:
+    tags: ['v*']
+    branches: [master]
+
+jobs:
+  release:
+    name: Build and Release
+    if: ${{ secrets.LUAROCKS_TOKEN }} != null
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install luarocks
+        uses: leafo/gh-actions-luarocks@v4
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: ${{ github.ref }}
+          draft: false
+          prerelease: false
+
+      # use ${tag:1} to filter out the heading "v" of "v1.0"
+      - name: Upload to luarocks
+        run: |
+          tag=${{ github.ref }}
+          luarocks upload rockspec/lua-resty-etcd-${tag:1}-0.rockspec --api-key=${{ secrets.LUAROCKS_TOKEN }}
