@@ -182,6 +182,9 @@ deleted key as expect
                 ngx.say("Wrong lease got keepalived")
             end
 
+            local data, err = etcd:revoke(123)
+            check_res(data, err)
+
             ngx.say("all done")
         }
     }
