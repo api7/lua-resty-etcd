@@ -52,10 +52,10 @@ local function _request_uri(self, endpoint, method, uri, opts, timeout, ignore_a
             if err then
                 return nil, err
             end
+            headers.Authorization = self.jwt_token
         else
             keepalive = false   -- jwt_token not keepalive
         end
-        headers.Authorization = self.jwt_token
     end
 
     local http_cli, err = utils.http.new()
