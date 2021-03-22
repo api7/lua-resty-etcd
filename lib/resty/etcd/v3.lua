@@ -74,6 +74,8 @@ local function _request_uri(self, endpoint, method, uri, opts, timeout, ignore_a
         headers = headers,
         keepalive = keepalive,
         ssl_verify = self.ssl_verify,
+        ssl_cert_path = self.ssl_cert_path,
+        ssl_key_path = self.ssl_key_path,
     })
 
     if err then
@@ -118,6 +120,9 @@ function _M.new(opts)
     local user       = opts.user
     local password   = opts.password
     local ssl_verify = opts.ssl_verify
+    if ssl_verify == nil then
+        ssl_verify = true
+    end
     local serializer = opts.serializer
 
     if not typeof.uint(timeout) then
@@ -193,6 +198,9 @@ function _M.new(opts)
             key_prefix = key_prefix,
             ssl_verify = ssl_verify,
             serializer = serializer,
+
+            ssl_cert_path = opts.ssl_cert_path,
+            ssl_key_path = opts.ssl_key_path,
         },
         mt)
 end
@@ -584,24 +592,19 @@ local function request_chunk(self, endpoint, method, scheme, host, port, path, o
         end
     end
 
-    ok, err = http_cli:connect(host, port)
+    ok, err = http_cli:connect({
+        scheme = scheme,
+        host = host,
+        port = port,
+        ssl_verify = self.ssl_verify,
+        ssl_cert_path = self.ssl_cert_path,
+        ssl_key_path = self.ssl_key_path,
+    })
     if not ok then
         if health_check.conf ~= nil then
             health_check.report_failure(endpoint.http_host)
         end
         return nil, err
-    end
-
-    if scheme == "https" then
-        local verify = true
-        if self.ssl_verify == false then
-            verify = false
-        end
-
-        ok, err = http_cli:ssl_handshake(nil, host, verify)
-        if not ok then
-            return nil, err
-        end
     end
 
     local res
