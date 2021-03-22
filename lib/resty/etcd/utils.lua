@@ -1,4 +1,4 @@
--- https://github.com/ledgetech/lua-resty-http
+-- https://github.com/api7/lua-resty-http
 local http          = require("resty.http")
 local clear_tab     = require("table.clear")
 local split         = require("ngx.re").split
@@ -9,6 +9,11 @@ local select        = select
 local ipairs        = ipairs
 local pairs         = pairs
 local type          = type
+
+
+if not http.tls_handshake then
+    error("Bad http library. Should use api7-lua-resty-http instead")
+end
 
 
 local _M = {http = http}

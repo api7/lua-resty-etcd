@@ -41,6 +41,8 @@ Method
     to suit [etcd v3 api gateway](https://github.com/etcd-io/etcd/blob/master/Documentation/dev-guide/api_grpc_gateway.md#notes).
     it will autofill by fetching etcd version if this option empty.
   - `ssl_verify`: boolean - whether to verify the etcd certificate when originating TLS connection with etcd (if you want to communicate to etcd with TLS connection, use `https` scheme in your `http_host`), default is `true`.
+  - `ssl_cert_path`： string - path to the client certificate
+  - `ssl_key_path`： string - path to the client key
   - `serializer`: string - serializer type, default `json`, also support `raw` to keep origin string value.
 
 The client method returns either a `etcd` object or an `error string`.
