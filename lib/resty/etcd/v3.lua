@@ -22,6 +22,7 @@ local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
 local semaphore     = require("ngx.semaphore")
 local INIT_COUNT_RESIZE = 2e8
+local health_check  = require("resty.etcd.health_check")
 
 local _M = {}
 
@@ -30,7 +31,7 @@ local mt = { __index = _M }
 -- define local refresh function variable
 local refresh_jwt_token
 
-local function _request_uri(self, method, uri, opts, timeout, ignore_auth)
+local function _request_uri(self, endpoint, method, uri, opts, timeout, ignore_auth)
     utils.log_info("v3 request uri: ", uri, ", timeout: ", timeout)
 
     local body
@@ -51,10 +52,10 @@ local function _request_uri(self, method, uri, opts, timeout, ignore_auth)
             if err then
                 return nil, err
             end
+            headers.Authorization = self.jwt_token
         else
             keepalive = false   -- jwt_token not keepalive
         end
-        headers.Authorization = self.jwt_token
     end
 
     local http_cli, err = utils.http.new()
@@ -73,13 +74,21 @@ local function _request_uri(self, method, uri, opts, timeout, ignore_auth)
         headers = headers,
         keepalive = keepalive,
         ssl_verify = self.ssl_verify,
+        ssl_cert_path = self.ssl_cert_path,
+        ssl_key_path = self.ssl_key_path,
     })
 
     if err then
+        if health_check.conf ~= nil then
+            health_check.report_failure(endpoint.http_host)
+        end
         return nil, err
     end
 
     if res.status >= 500 then
+        if health_check.conf ~= nil then
+            health_check.report_failure(endpoint.http_host)
+        end
         return nil, "invalid response code: " .. res.status
     end
 
@@ -111,6 +120,9 @@ function _M.new(opts)
     local user       = opts.user
     local password   = opts.password
     local ssl_verify = opts.ssl_verify
+    if ssl_verify == nil then
+        ssl_verify = true
+    end
     local serializer = opts.serializer
 
     if not typeof.uint(timeout) then
@@ -186,6 +198,9 @@ function _M.new(opts)
             key_prefix = key_prefix,
             ssl_verify = ssl_verify,
             serializer = serializer,
+
+            ssl_cert_path = opts.ssl_cert_path,
+            ssl_key_path = opts.ssl_key_path,
         },
         mt)
 end
@@ -196,6 +211,16 @@ local function choose_endpoint(self)
     local endpoints_len = #endpoints
     if endpoints_len == 1 then
         return endpoints[1]
+    end
+
+    if health_check.conf ~= nil then
+        for _, endpoint in ipairs(endpoints) do
+            if health_check.get_target_status(endpoint.http_host) then
+                return endpoint
+            end
+        end
+        utils.log_warn("has no healthy etcd endpoint available")
+        return nil, "has no healthy etcd endpoint available"
     end
 
     self.init_count = (self.init_count or 0) + 1
@@ -249,8 +274,15 @@ function refresh_jwt_token(self, timeout)
             password     = self.password,
         }
     }
-    local res, err = _request_uri(self, 'POST',
-                                  choose_endpoint(self).full_prefix .. "/auth/authenticate",
+
+    local endpoint, err = choose_endpoint(self)
+    if not endpoint then
+        return nil, err
+    end
+
+    local res
+    res, err = _request_uri(self, endpoint, 'POST',
+                                  endpoint.full_prefix .. "/auth/authenticate",
                                   opts, timeout, true)
     self.requesting_token = false
 
@@ -323,9 +355,15 @@ local function set(self, key, val, attr)
         }
     }
 
+    local endpoint
+    endpoint, err = choose_endpoint(self)
+    if not endpoint then
+        return nil, err
+    end
+
     local res
-    res, err = _request_uri(self, 'POST',
-                        choose_endpoint(self).full_prefix .. "/kv/put",
+    res, err = _request_uri(self, endpoint, 'POST',
+                        endpoint.full_prefix .. "/kv/put",
                         opts, self.timeout)
     if err then
         return nil, err
@@ -430,9 +468,15 @@ local function get(self, key, attr)
         }
     }
 
+    local endpoint
+    endpoint, err = choose_endpoint(self)
+    if not endpoint then
+        return nil, err
+    end
+
     local res
-    res, err = _request_uri(self, "POST",
-                        choose_endpoint(self).full_prefix .. "/kv/range",
+    res, err = _request_uri(self, endpoint, "POST",
+                        endpoint.full_prefix .. "/kv/range",
                         opts, attr and attr.timeout or self.timeout)
 
     if res and res.status == 200 then
@@ -471,8 +515,13 @@ local function delete(self, key, attr)
         },
     }
 
-    return _request_uri(self, "POST",
-                    choose_endpoint(self).full_prefix .. "/kv/deleterange",
+    local endpoint, err = choose_endpoint(self)
+    if not endpoint then
+        return nil, err
+    end
+
+    return _request_uri(self, endpoint, "POST",
+                    endpoint.full_prefix .. "/kv/deleterange",
                     opts, self.timeout)
 end
 
@@ -494,13 +543,18 @@ local function txn(self, opts_arg, compare, success, failure)
         },
     }
 
-    return _request_uri(self, "POST",
-                        choose_endpoint(self).full_prefix .. "/kv/txn",
+    local endpoint, err = choose_endpoint(self)
+    if not endpoint then
+        return nil, err
+    end
+
+    return _request_uri(self, endpoint, "POST",
+                        endpoint.full_prefix .. "/kv/txn",
                         opts, timeout or self.timeout)
 end
 
 
-local function request_chunk(self, method, scheme, host, port, path, opts, timeout)
+local function request_chunk(self, endpoint, method, scheme, host, port, path, opts, timeout)
     local body, err, _
     if opts and opts.body and tab_nkeys(opts.body) > 0 then
         body, err = encode_json(opts.body)
@@ -538,21 +592,19 @@ local function request_chunk(self, method, scheme, host, port, path, opts, timeo
         end
     end
 
-    ok, err = http_cli:connect(host, port)
+    ok, err = http_cli:connect({
+        scheme = scheme,
+        host = host,
+        port = port,
+        ssl_verify = self.ssl_verify,
+        ssl_cert_path = self.ssl_cert_path,
+        ssl_key_path = self.ssl_key_path,
+    })
     if not ok then
+        if health_check.conf ~= nil then
+            health_check.report_failure(endpoint.http_host)
+        end
         return nil, err
-    end
-
-    if scheme == "https" then
-        local verify = true
-        if self.ssl_verify == false then
-            verify = false
-        end
-
-        ok, err = http_cli:ssl_handshake(nil, host, verify)
-        if not ok then
-            return nil, err
-        end
     end
 
     local res
@@ -591,6 +643,10 @@ local function request_chunk(self, method, scheme, host, port, path, opts, timeo
         body, err = decode_json(body)
         if not body then
             return nil, "failed to decode json body: " .. (err or " unkwon")
+        elseif body.error and body.error.http_code >= 500 then
+            if health_check.conf ~= nil then
+                health_check.report_failure(endpoint.http_host)
+            end
         end
 
         if body.result.events then
@@ -698,9 +754,13 @@ local function watch(self, key, attr)
         need_cancel = need_cancel,
     }
 
-    local endpoint = choose_endpoint(self)
+    local endpoint, err = choose_endpoint(self)
+    if not endpoint then
+        return nil, err
+    end
 
-    local callback_fun, err, http_cli = request_chunk(self, 'POST',
+    local callback_fun, http_cli
+    callback_fun, err, http_cli = request_chunk(self, endpoint, 'POST',
                                 endpoint.scheme,
                                 endpoint.host,
                                 endpoint.port,
@@ -931,8 +991,13 @@ function _M.grant(self, ttl, id)
         },
     }
 
-    return _request_uri(self, "POST",
-                        choose_endpoint(self).full_prefix .. "/lease/grant", opts)
+    local endpoint, err = choose_endpoint(self)
+    if not endpoint then
+        return nil, err
+    end
+
+    return _request_uri(self, endpoint, "POST",
+                        endpoint.full_prefix .. "/lease/grant", opts)
 end
 
 function _M.revoke(self, id)
@@ -946,8 +1011,13 @@ function _M.revoke(self, id)
         },
     }
 
-    return _request_uri(self, "POST",
-                        choose_endpoint(self).full_prefix .. "/kv/lease/revoke", opts)
+    local endpoint, err = choose_endpoint(self)
+    if not endpoint then
+        return nil, err
+    end
+
+    return _request_uri(self, endpoint, "POST",
+                        endpoint.full_prefix .. "/kv/lease/revoke", opts)
 end
 
 function _M.keepalive(self, id)
@@ -961,8 +1031,13 @@ function _M.keepalive(self, id)
         },
     }
 
-    return _request_uri(self, "POST",
-                        choose_endpoint(self).full_prefix .. "/lease/keepalive", opts)
+    local endpoint, err = choose_endpoint(self)
+    if not endpoint then
+        return nil, err
+    end
+
+    return _request_uri(self, endpoint, "POST",
+                        endpoint.full_prefix .. "/lease/keepalive", opts)
 end
 
 function _M.timetolive(self, id, keys)
@@ -978,8 +1053,14 @@ function _M.timetolive(self, id, keys)
         },
     }
 
-    local res, err = _request_uri(self, "POST",
-                        choose_endpoint(self).full_prefix .. "/kv/lease/timetolive", opts)
+    local endpoint, err = choose_endpoint(self)
+    if not endpoint then
+        return nil, err
+    end
+
+    local res
+    res, err = _request_uri(self, endpoint, "POST",
+                        endpoint.full_prefix .. "/kv/lease/timetolive", opts)
 
     if res and res.status == 200 then
         if res.body.keys and tab_nkeys(res.body.keys) > 0 then
@@ -993,34 +1074,54 @@ function _M.timetolive(self, id, keys)
 end
 
 function _M.leases(self)
-    return _request_uri(self, "POST",
-                        choose_endpoint(self).full_prefix .. "/lease/leases")
+    local endpoint, err = choose_endpoint(self)
+    if not endpoint then
+        return nil, err
+    end
+    return _request_uri(self, endpoint, "POST",
+                        endpoint.full_prefix .. "/lease/leases")
 end
 
 
 -- /version
 function _M.version(self)
-    return _request_uri(self, "GET",
-                        choose_endpoint(self).http_host .. "/version",
+    local endpoint, err = choose_endpoint(self)
+    if not endpoint then
+        return nil, err
+    end
+    return _request_uri(self, endpoint, "GET",
+                        endpoint.http_host .. "/version",
                         nil, self.timeout)
 end
 
 -- /stats
 function _M.stats_leader(self)
-    return _request_uri(self, "GET",
-                        choose_endpoint(self).http_host .. "/v2/stats/leader",
+    local endpoint, err = choose_endpoint(self)
+    if not endpoint then
+        return nil, err
+    end
+    return _request_uri(self, endpoint, "GET",
+                        endpoint.http_host .. "/v2/stats/leader",
                         nil, self.timeout)
 end
 
 function _M.stats_self(self)
-    return _request_uri(self, "GET",
-                        choose_endpoint(self).http_host .. "/v2/stats/self",
+    local endpoint, err = choose_endpoint(self)
+    if not endpoint then
+        return nil, err
+    end
+    return _request_uri(self, endpoint, "GET",
+                        endpoint.http_host .. "/v2/stats/self",
                         nil, self.timeout)
 end
 
 function _M.stats_store(self)
-    return _request_uri(self, "GET",
-                        choose_endpoint(self).http_host .. "/v2/stats/store",
+    local endpoint, err = choose_endpoint(self)
+    if not endpoint then
+        return nil, err
+    end
+    return _request_uri(self, endpoint, "GET",
+                        endpoint.http_host .. "/v2/stats/store",
                         nil, self.timeout)
 end
 
