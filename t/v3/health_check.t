@@ -192,6 +192,7 @@ http://127.0.0.1:42379: connection refused
             local body_chunk_fun, err = etcd:watch("/trigger_unhealthy")
             if not body_chunk_fun then
                 ngx.say(err)
+            end
         }
     }
 --- request
@@ -200,6 +201,7 @@ GET /t
 qr/update endpoint: http:\/\/127.0.0.1:42379 to unhealthy/
 --- response_body
 http://127.0.0.1:42379: connection refused
+
 
 
 === TEST 6: fault count
