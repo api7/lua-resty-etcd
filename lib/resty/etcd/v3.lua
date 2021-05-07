@@ -647,6 +647,7 @@ local function request_chunk(self, endpoint, method, scheme, host, port, path, o
             if health_check.conf ~= nil then
                 health_check.report_failure(endpoint.http_host)
             end
+            return nil, body.error.http_status .. ": " .. endpoint.http_host
         end
 
         if body.result.events then
