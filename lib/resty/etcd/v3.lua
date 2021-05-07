@@ -85,7 +85,7 @@ local function _request_uri(self, endpoint, method, uri, opts, timeout, ignore_a
         return nil, endpoint.http_host .. ": " .. err
     end
 
-    if res.status >= 500 then
+    if res.status >= 400 then
         if health_check.conf ~= nil then
             health_check.report_failure(endpoint.http_host)
         end
@@ -643,7 +643,7 @@ local function request_chunk(self, endpoint, method, scheme, host, port, path, o
         body, err = decode_json(body)
         if not body then
             return nil, "failed to decode json body: " .. (err or " unkwon")
-        elseif body.error and body.error.http_code >= 500 then
+        elseif body.error and body.error.http_code >= 400 then
             if health_check.conf ~= nil then
                 health_check.report_failure(endpoint.http_host)
             end
