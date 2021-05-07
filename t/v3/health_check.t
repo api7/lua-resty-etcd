@@ -134,7 +134,7 @@ failed to get ngx.shared dict: error_shm_name
 
 
 
-=== TEST 4: trigger unhealthy
+=== TEST 4: trigger unhealthy with set
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -157,7 +157,7 @@ failed to get ngx.shared dict: error_shm_name
             })
 
             local res, err = etcd:set("/trigger_unhealthy", { a='abc'})
-            ngx.say("done")
+            ngx.say(err)
         }
     }
 --- request
@@ -165,11 +165,44 @@ GET /t
 --- error_log eval
 qr/update endpoint: http:\/\/127.0.0.1:42379 to unhealthy/
 --- response_body
-done
+http://127.0.0.1:42379: connection refused
 
 
 
-=== TEST 5: fault count
+=== TEST 5: trigger unhealthy with watch
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local health_check, err = require "resty.etcd.health_check" .init({
+                shm_name = "etcd_cluster_health_check",
+                fail_timeout = 10,
+                max_fails = 1,
+            })
+
+            local etcd, err = require "resty.etcd" .new({
+                protocol = "v3",
+                http_host = {
+                    "http://127.0.0.1:42379",
+                    "http://127.0.0.1:22379",
+                    "http://127.0.0.1:32379",
+                },
+            })
+
+            local body_chunk_fun, err = etcd:watch("/trigger_unhealthy")
+            if not body_chunk_fun then
+                ngx.say(err)
+        }
+    }
+--- request
+GET /t
+--- error_log eval
+qr/update endpoint: http:\/\/127.0.0.1:42379 to unhealthy/
+--- response_body
+http://127.0.0.1:42379: connection refused
+
+
+=== TEST 6: fault count
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -209,7 +242,7 @@ GET /t
 
 
 
-=== TEST 6: check endpoint is healthy
+=== TEST 7: check endpoint is healthy
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -246,7 +279,7 @@ false
 
 
 
-=== TEST 7: make sure `fail_timeout` works
+=== TEST 8: make sure `fail_timeout` works
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -293,7 +326,7 @@ done
 
 
 
-=== TEST 8: has no healthy etcd endpoint, directly return an error message
+=== TEST 9: has no healthy etcd endpoint, directly return an error message
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -334,7 +367,7 @@ qr/has no healthy etcd endpoint available/
 
 
 
-=== TEST 9: `health_check` shared by different etcd clients
+=== TEST 10: `health_check` shared by different etcd clients
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -383,7 +416,7 @@ qr/update endpoint: http:\/\/127.0.0.1:42379 to unhealthy/
 
 
 
-=== TEST 10: mock etcd error and report fault
+=== TEST 11: mock etcd error and report fault
 --- http_config eval: $::HttpConfig
 --- config
     location /v3/auth/authenticate {

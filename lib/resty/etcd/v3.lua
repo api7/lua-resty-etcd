@@ -82,7 +82,7 @@ local function _request_uri(self, endpoint, method, uri, opts, timeout, ignore_a
         if health_check.conf ~= nil then
             health_check.report_failure(endpoint.http_host)
         end
-        return nil, err
+        return nil, endpoint.http_host .. ": " .. err
     end
 
     if res.status >= 500 then
@@ -604,7 +604,7 @@ local function request_chunk(self, endpoint, method, scheme, host, port, path, o
         if health_check.conf ~= nil then
             health_check.report_failure(endpoint.http_host)
         end
-        return nil, err
+        return nil, endpoint.http_host .. ": " .. err
     end
 
     local res
@@ -647,7 +647,7 @@ local function request_chunk(self, endpoint, method, scheme, host, port, path, o
             if health_check.conf ~= nil then
                 health_check.report_failure(endpoint.http_host)
             end
-            return nil, body.error.http_status .. ": " .. endpoint.http_host
+            return nil, endpoint.http_host .. ": " .. body.error.http_status
         end
 
         if body.result.events then
