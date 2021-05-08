@@ -64,7 +64,7 @@ __DATA__
                 password = 'abc123',
                 timeout = 3,
                 http_host = {
-                    "http://127.0.0.1:12379", 
+                    "http://127.0.0.1:12379",
                 },
             })
             check_res(etcd, err)
@@ -118,7 +118,7 @@ uri: http://127.0.0.1:12379/v3/kv/deleterange, timeout: 3
                 password = '123',
                 timeout = 3,
                 http_host = {
-                    "http://127.0.0.1:12379", 
+                    "http://127.0.0.1:12379",
                 },
             })
             check_res(etcd, err)

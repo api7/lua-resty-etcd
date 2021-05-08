@@ -81,6 +81,7 @@ local function _request_uri(self, endpoint, method, uri, opts, timeout, ignore_a
     if err then
         if health_check.conf ~= nil then
             health_check.report_failure(endpoint.http_host)
+            err = endpoint.http_host .. ": " .. err
         end
         return nil, err
     end
@@ -604,7 +605,7 @@ local function request_chunk(self, endpoint, method, scheme, host, port, path, o
         if health_check.conf ~= nil then
             health_check.report_failure(endpoint.http_host)
         end
-        return nil, err
+        return nil, endpoint.http_host .. ": " .. err
     end
 
     local res
@@ -647,9 +648,10 @@ local function request_chunk(self, endpoint, method, scheme, host, port, path, o
             if health_check.conf ~= nil then
                 health_check.report_failure(endpoint.http_host)
             end
+            return nil, endpoint.http_host .. ": " .. body.error.http_status
         end
 
-        if body.result.events then
+        if body.result and body.result.events then
             for _, event in ipairs(body.result.events) do
                 if event.kv.value then   -- DELETE not have value
                     event.kv.value = decode_base64(event.kv.value or "")
