@@ -230,7 +230,8 @@ local function choose_endpoint(self)
         return nil, "has no healthy etcd endpoint available"
     end
 
-    self.init_count = (self.init_count or 0) + 1
+    local init_pos = random(1, endpoints_len)
+    self.init_count = (self.init_count or 0) + init_pos
     local pos = self.init_count % endpoints_len + 1
     if self.init_count >= INIT_COUNT_RESIZE then
         self.init_count = 0
