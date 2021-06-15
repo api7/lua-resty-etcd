@@ -215,7 +215,13 @@ local function choose_endpoint(self)
     end
 
     if health_check.conf ~= nil then
-        for _, endpoint in ipairs(endpoints) do
+        local shuffled_endpoints = {}
+        for _, v in ipairs(endpoints) do
+            local pos = random(1, #shuffled_endpoints+1)
+            tab_insert(shuffled_endpoints, pos, v)
+        end
+
+        for _, endpoint in ipairs(shuffled_endpoints) do
             if health_check.get_target_status(endpoint.http_host) then
                 return endpoint
             end
