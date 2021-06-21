@@ -364,8 +364,6 @@ GET /t
 has no healthy etcd endpoint available
 --- no_error_log
 [error]
---- error_log eval
-qr/has no healthy etcd endpoint available/
 
 
 
