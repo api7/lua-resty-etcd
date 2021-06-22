@@ -48,13 +48,56 @@ local function choose_endpoint(self)
         return nil, "has no healthy etcd endpoint available"
     end
 
-    self.init_count = (self.init_count or 0) + 1
-    local pos = self.init_count % endpoints_len + 1
+    self.init_count = (self.init_count or 0)
+    local pos = self.init_count % endpoints_len
     if self.init_count >= INIT_COUNT_RESIZE then
         self.init_count = 0
     end
 
     return endpoints[pos]
+end
+
+
+local function http_request_uri(self, http_cli, method, uri, body, headers, keepalive)
+    local endpoint, err = choose_endpoint(self)
+    if not endpoint then
+        return nil, err
+    end
+
+    local full_uri
+    if utils.starts_with(uri, "/version") or utils.starts_with(uri, "/v2") then
+        full_uri = endpoint.http_host .. uri
+    else
+        full_uri = endpoint.full_prefix .. uri
+    end
+
+    local res
+    res, err = http_cli:request_uri(full_uri, {
+        method = method,
+        body = body,
+        headers = headers,
+        keepalive = keepalive,
+        ssl_verify = self.ssl_verify,
+        ssl_cert_path = self.ssl_cert_path,
+        ssl_key_path = self.ssl_key_path,
+    })
+
+    if err then
+        if health_check.conf ~= nil then
+            health_check.report_failure(endpoint.http_host)
+            err = endpoint.http_host .. ": " .. err
+        end
+        return nil, err
+    end
+
+    if res.status >= 500 then
+        if health_check.conf ~= nil then
+            health_check.report_failure(endpoint.http_host)
+        end
+        return nil, "invalid response code: " .. res.status
+    end
+
+    return res
 end
 
 
@@ -94,59 +137,16 @@ local function _request_uri(self, method, uri, opts, timeout, ignore_auth)
         http_cli:set_timeout(timeout * 1000)
     end
 
-    local function http_request()
-        local endpoint
-        endpoint, err = choose_endpoint(self)
-        if not endpoint then
-            return nil, err
-        end
-
-        local full_uri
-        if utils.starts_with(uri, "/version") or utils.starts_with(uri, "/v2") then
-            full_uri = endpoint.http_host .. uri
-        else
-            full_uri = endpoint.full_prefix .. uri
-        end
-
-        local res
-        res, err = http_cli:request_uri(full_uri, {
-            method = method,
-            body = body,
-            headers = headers,
-            keepalive = keepalive,
-            ssl_verify = self.ssl_verify,
-            ssl_cert_path = self.ssl_cert_path,
-            ssl_key_path = self.ssl_key_path,
-        })
-
-        if err then
-            if health_check.conf ~= nil then
-                health_check.report_failure(endpoint.http_host)
-                err = endpoint.http_host .. ": " .. err
-            end
-            return nil, err
-        end
-
-        if res.status >= 500 then
-            if health_check.conf ~= nil then
-                health_check.report_failure(endpoint.http_host)
-            end
-            return nil, "invalid response code: " .. res.status
-        end
-
-        return res
-    end
-
     local res
     if health_check.conf == nil or not health_check.conf.retry then
-        res, err = http_request()
+        res, err = http_request_uri(self, http_cli, method, uri, body, headers, keepalive)
         if err then
             return nil, err
         end
     else
         local max_retry = #self.endpoints * health_check.conf.max_fails + 1
         for _ = 1, max_retry do
-            res, err = http_request()
+            res, err = http_request_uri(self, http_cli, method, uri, body, headers, keepalive)
             if err then
                 utils.log_warn(err .. ". Retrying")
                 if err == "has no healthy etcd endpoint available" then
@@ -557,6 +557,32 @@ local function txn(self, opts_arg, compare, success, failure)
 end
 
 
+local function http_request_chunk(self, http_cli)
+    local endpoint, err = choose_endpoint(self)
+    if not endpoint then
+        return nil, err
+    end
+
+    local ok
+    ok, err = http_cli:connect({
+        scheme = endpoint.scheme,
+        host = endpoint.host,
+        port = endpoint.port,
+        ssl_verify = self.ssl_verify,
+        ssl_cert_path = self.ssl_cert_path,
+        ssl_key_path = self.ssl_key_path,
+    })
+    if not ok then
+        if health_check.conf ~= nil then
+            health_check.report_failure(endpoint.http_host)
+        end
+        return nil, endpoint.http_host .. ": " .. err
+    end
+
+    return endpoint, err
+end
+
+
 local function request_chunk(self, method, path, opts, timeout)
     local body, err, _
     if opts and opts.body and tab_nkeys(opts.body) > 0 then
@@ -595,41 +621,16 @@ local function request_chunk(self, method, path, opts, timeout)
         end
     end
 
-    local function http_request()
-        local endpoint
-        endpoint, err = choose_endpoint(self)
-        if not endpoint then
-            return nil, err
-        end
-
-        ok, err = http_cli:connect({
-            scheme = endpoint.scheme,
-            host = endpoint.host,
-            port = endpoint.port,
-            ssl_verify = self.ssl_verify,
-            ssl_cert_path = self.ssl_cert_path,
-            ssl_key_path = self.ssl_key_path,
-        })
-        if not ok then
-            if health_check.conf ~= nil then
-                health_check.report_failure(endpoint.http_host)
-            end
-            return nil, endpoint.http_host .. ": " .. err
-        end
-
-        return endpoint, err
-    end
-
     local endpoint
     if health_check.conf == nil or not health_check.conf.retry then
-        endpoint, err = http_request()
+        endpoint, err = http_request_chunk(self, http_cli)
         if err then
             return nil, err
         end
     else
         local max_retry = #self.endpoints * health_check.conf.max_fails + 1
         for _ = 1, max_retry do
-            endpoint, err = http_request()
+            endpoint, err = http_request_chunk(self, http_cli)
             if err then
                 utils.log_warn(err .. ". Retrying")
                 if err == "has no healthy etcd endpoint available" then
@@ -680,7 +681,7 @@ local function request_chunk(self, method, path, opts, timeout)
         elseif body.error and body.error.http_code >= 500 then
             if health_check.conf ~= nil then
                 -- health_check retry should do nothing here
-                -- and let connection broke to create a new one
+                -- and let connection closed to create a new one
                 health_check.report_failure(endpoint.http_host)
             end
             return nil, endpoint.http_host .. ": " .. body.error.http_status
