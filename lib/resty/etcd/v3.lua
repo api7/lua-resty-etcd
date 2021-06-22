@@ -613,7 +613,6 @@ local function request_chunk(self, method, path, opts, timeout)
         return nil, err
     end
 
-    local ok, _
     if timeout then
         _, err = http_cli:set_timeout(timeout * 1000)
         if err then
