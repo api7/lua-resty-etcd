@@ -31,7 +31,77 @@ local mt = { __index = _M }
 -- define local refresh function variable
 local refresh_jwt_token
 
-local function _request_uri(self, endpoint, method, uri, opts, timeout, ignore_auth)
+
+local function choose_endpoint(self)
+    local endpoints = self.endpoints
+    local endpoints_len = #endpoints
+    if endpoints_len == 1 then
+        return endpoints[1]
+    end
+
+    if health_check.conf ~= nil then
+        for _, endpoint in ipairs(endpoints) do
+            if health_check.get_target_status(endpoint.http_host) then
+                return endpoint
+            end
+        end
+        return nil, "has no healthy etcd endpoint available"
+    end
+
+    self.init_count = (self.init_count or -1) + 1
+    local pos = self.init_count % endpoints_len + 1
+    if self.init_count >= INIT_COUNT_RESIZE then
+        self.init_count = 0
+    end
+
+    return endpoints[pos]
+end
+
+
+local function http_request_uri(self, http_cli, method, uri, body, headers, keepalive)
+    local endpoint, err = choose_endpoint(self)
+    if not endpoint then
+        return nil, err
+    end
+
+    local full_uri
+    if utils.starts_with(uri, "/version") or utils.starts_with(uri, "/v2") then
+        full_uri = endpoint.http_host .. uri
+    else
+        full_uri = endpoint.full_prefix .. uri
+    end
+
+    local res
+    res, err = http_cli:request_uri(full_uri, {
+        method = method,
+        body = body,
+        headers = headers,
+        keepalive = keepalive,
+        ssl_verify = self.ssl_verify,
+        ssl_cert_path = self.ssl_cert_path,
+        ssl_key_path = self.ssl_key_path,
+    })
+
+    if err then
+        if health_check.conf ~= nil then
+            health_check.report_failure(endpoint.http_host)
+            err = endpoint.http_host .. ": " .. err
+        end
+        return nil, err
+    end
+
+    if res.status >= 500 then
+        if health_check.conf ~= nil then
+            health_check.report_failure(endpoint.http_host)
+        end
+        return nil, "invalid response code: " .. res.status
+    end
+
+    return res
+end
+
+
+local function _request_uri(self, method, uri, opts, timeout, ignore_auth)
     utils.log_info("v3 request uri: ", uri, ", timeout: ", timeout)
 
     local body
@@ -68,29 +138,24 @@ local function _request_uri(self, endpoint, method, uri, opts, timeout, ignore_a
     end
 
     local res
-    res, err = http_cli:request_uri(uri, {
-        method = method,
-        body = body,
-        headers = headers,
-        keepalive = keepalive,
-        ssl_verify = self.ssl_verify,
-        ssl_cert_path = self.ssl_cert_path,
-        ssl_key_path = self.ssl_key_path,
-    })
-
-    if err then
-        if health_check.conf ~= nil then
-            health_check.report_failure(endpoint.http_host)
-            err = endpoint.http_host .. ": " .. err
+    if health_check.conf == nil or not health_check.conf.retry then
+        res, err = http_request_uri(self, http_cli, method, uri, body, headers, keepalive)
+        if err then
+            return nil, err
         end
-        return nil, err
-    end
-
-    if res.status >= 500 then
-        if health_check.conf ~= nil then
-            health_check.report_failure(endpoint.http_host)
+    else
+        local max_retry = #self.endpoints * health_check.conf.max_fails - 1
+        for _ = 1, max_retry do
+            res, err = http_request_uri(self, http_cli, method, uri, body, headers, keepalive)
+            if err then
+                utils.log_warn(err .. ". Retrying")
+                if err == "has no healthy etcd endpoint available" then
+                    return nil, err
+                end
+            else
+                break
+            end
         end
-        return nil, "invalid response code: " .. res.status
     end
 
     if not typeof.string(res.body) then
@@ -207,33 +272,6 @@ function _M.new(opts)
 end
 
 
-local function choose_endpoint(self)
-    local endpoints = self.endpoints
-    local endpoints_len = #endpoints
-    if endpoints_len == 1 then
-        return endpoints[1]
-    end
-
-    if health_check.conf ~= nil then
-        for _, endpoint in ipairs(endpoints) do
-            if health_check.get_target_status(endpoint.http_host) then
-                return endpoint
-            end
-        end
-        utils.log_warn("has no healthy etcd endpoint available")
-        return nil, "has no healthy etcd endpoint available"
-    end
-
-    self.init_count = (self.init_count or 0) + 1
-    local pos = self.init_count % endpoints_len + 1
-    if self.init_count >= INIT_COUNT_RESIZE then
-        self.init_count = 0
-    end
-
-    return endpoints[pos]
-end
-
-
 local function wake_up_everyone(self)
     local count = -self.sema:count()
     if count > 0 then
@@ -276,15 +314,8 @@ function refresh_jwt_token(self, timeout)
         }
     }
 
-    local endpoint, err = choose_endpoint(self)
-    if not endpoint then
-        return nil, err
-    end
-
-    local res
-    res, err = _request_uri(self, endpoint, 'POST',
-                                  endpoint.full_prefix .. "/auth/authenticate",
-                                  opts, timeout, true)
+    local res, err
+    res, err = _request_uri(self, 'POST', "/auth/authenticate", opts, timeout, true)
     self.requesting_token = false
 
     if err then
@@ -356,16 +387,8 @@ local function set(self, key, val, attr)
         }
     }
 
-    local endpoint
-    endpoint, err = choose_endpoint(self)
-    if not endpoint then
-        return nil, err
-    end
-
     local res
-    res, err = _request_uri(self, endpoint, 'POST',
-                        endpoint.full_prefix .. "/kv/put",
-                        opts, self.timeout)
+    res, err = _request_uri(self, 'POST', "/kv/put", opts, self.timeout)
     if err then
         return nil, err
     end
@@ -469,16 +492,8 @@ local function get(self, key, attr)
         }
     }
 
-    local endpoint
-    endpoint, err = choose_endpoint(self)
-    if not endpoint then
-        return nil, err
-    end
-
     local res
-    res, err = _request_uri(self, endpoint, "POST",
-                        endpoint.full_prefix .. "/kv/range",
-                        opts, attr and attr.timeout or self.timeout)
+    res, err = _request_uri(self, "POST", "/kv/range", opts, attr and attr.timeout or self.timeout)
 
     if res and res.status == 200 then
         if res.body.kvs and tab_nkeys(res.body.kvs) > 0 then
@@ -516,14 +531,8 @@ local function delete(self, key, attr)
         },
     }
 
-    local endpoint, err = choose_endpoint(self)
-    if not endpoint then
-        return nil, err
-    end
 
-    return _request_uri(self, endpoint, "POST",
-                    endpoint.full_prefix .. "/kv/deleterange",
-                    opts, self.timeout)
+    return _request_uri(self, "POST", "/kv/deleterange", opts, self.timeout)
 end
 
 local function txn(self, opts_arg, compare, success, failure)
@@ -544,18 +553,37 @@ local function txn(self, opts_arg, compare, success, failure)
         },
     }
 
+    return _request_uri(self, "POST", "/kv/txn", opts, timeout or self.timeout)
+end
+
+
+local function http_request_chunk(self, http_cli)
     local endpoint, err = choose_endpoint(self)
     if not endpoint then
         return nil, err
     end
 
-    return _request_uri(self, endpoint, "POST",
-                        endpoint.full_prefix .. "/kv/txn",
-                        opts, timeout or self.timeout)
+    local ok
+    ok, err = http_cli:connect({
+        scheme = endpoint.scheme,
+        host = endpoint.host,
+        port = endpoint.port,
+        ssl_verify = self.ssl_verify,
+        ssl_cert_path = self.ssl_cert_path,
+        ssl_key_path = self.ssl_key_path,
+    })
+    if not ok then
+        if health_check.conf ~= nil then
+            health_check.report_failure(endpoint.http_host)
+        end
+        return nil, endpoint.http_host .. ": " .. err
+    end
+
+    return endpoint, err
 end
 
 
-local function request_chunk(self, endpoint, method, scheme, host, port, path, opts, timeout)
+local function request_chunk(self, method, path, opts, timeout)
     local body, err, _
     if opts and opts.body and tab_nkeys(opts.body) > 0 then
         body, err = encode_json(opts.body)
@@ -585,7 +613,6 @@ local function request_chunk(self, endpoint, method, scheme, host, port, path, o
         return nil, err
     end
 
-    local ok, _
     if timeout then
         _, err = http_cli:set_timeout(timeout * 1000)
         if err then
@@ -593,25 +620,31 @@ local function request_chunk(self, endpoint, method, scheme, host, port, path, o
         end
     end
 
-    ok, err = http_cli:connect({
-        scheme = scheme,
-        host = host,
-        port = port,
-        ssl_verify = self.ssl_verify,
-        ssl_cert_path = self.ssl_cert_path,
-        ssl_key_path = self.ssl_key_path,
-    })
-    if not ok then
-        if health_check.conf ~= nil then
-            health_check.report_failure(endpoint.http_host)
+    local endpoint
+    if health_check.conf == nil or not health_check.conf.retry then
+        endpoint, err = http_request_chunk(self, http_cli)
+        if err then
+            return nil, err
         end
-        return nil, endpoint.http_host .. ": " .. err
+    else
+        local max_retry = #self.endpoints * health_check.conf.max_fails - 1
+        for _ = 1, max_retry do
+            endpoint, err = http_request_chunk(self, http_cli)
+            if err then
+                utils.log_warn(err .. ". Retrying")
+                if err == "has no healthy etcd endpoint available" then
+                    return nil, err
+                end
+            else
+                break
+            end
+        end
     end
 
     local res
     res, err = http_cli:request({
         method  = method,
-        path    = path,
+        path    = endpoint.api_prefix .. path,
         body    = body,
         query   = query,
         headers = headers,
@@ -646,6 +679,8 @@ local function request_chunk(self, endpoint, method, scheme, host, port, path, o
             return nil, "failed to decode json body: " .. (err or " unkwon")
         elseif body.error and body.error.http_code >= 500 then
             if health_check.conf ~= nil then
+                -- health_check retry should do nothing here
+                -- and let connection closed to create a new one
                 health_check.report_failure(endpoint.http_host)
             end
             return nil, endpoint.http_host .. ": " .. body.error.http_status
@@ -762,12 +797,8 @@ local function watch(self, key, attr)
     end
 
     local callback_fun, http_cli
-    callback_fun, err, http_cli = request_chunk(self, endpoint, 'POST',
-                                endpoint.scheme,
-                                endpoint.host,
-                                endpoint.port,
-                                endpoint.api_prefix .. '/watch', opts,
-                                attr.timeout or self.timeout)
+    callback_fun, err, http_cli = request_chunk(self, 'POST', '/watch',
+                                                opts, attr.timeout or self.timeout)
     if not callback_fun then
         return nil, err
     end
@@ -993,13 +1024,7 @@ function _M.grant(self, ttl, id)
         },
     }
 
-    local endpoint, err = choose_endpoint(self)
-    if not endpoint then
-        return nil, err
-    end
-
-    return _request_uri(self, endpoint, "POST",
-                        endpoint.full_prefix .. "/lease/grant", opts)
+    return _request_uri(self, "POST", "/lease/grant", opts)
 end
 
 function _M.revoke(self, id)
@@ -1013,13 +1038,7 @@ function _M.revoke(self, id)
         },
     }
 
-    local endpoint, err = choose_endpoint(self)
-    if not endpoint then
-        return nil, err
-    end
-
-    return _request_uri(self, endpoint, "POST",
-                        endpoint.full_prefix .. "/kv/lease/revoke", opts)
+    return _request_uri(self, "POST", "/kv/lease/revoke", opts)
 end
 
 function _M.keepalive(self, id)
@@ -1033,13 +1052,7 @@ function _M.keepalive(self, id)
         },
     }
 
-    local endpoint, err = choose_endpoint(self)
-    if not endpoint then
-        return nil, err
-    end
-
-    return _request_uri(self, endpoint, "POST",
-                        endpoint.full_prefix .. "/lease/keepalive", opts)
+    return _request_uri(self, "POST", "/lease/keepalive", opts)
 end
 
 function _M.timetolive(self, id, keys)
@@ -1055,14 +1068,8 @@ function _M.timetolive(self, id, keys)
         },
     }
 
-    local endpoint, err = choose_endpoint(self)
-    if not endpoint then
-        return nil, err
-    end
-
-    local res
-    res, err = _request_uri(self, endpoint, "POST",
-                        endpoint.full_prefix .. "/kv/lease/timetolive", opts)
+    local res, err
+    res, err = _request_uri(self, "POST", "/kv/lease/timetolive", opts)
 
     if res and res.status == 200 then
         if res.body.keys and tab_nkeys(res.body.keys) > 0 then
@@ -1076,55 +1083,26 @@ function _M.timetolive(self, id, keys)
 end
 
 function _M.leases(self)
-    local endpoint, err = choose_endpoint(self)
-    if not endpoint then
-        return nil, err
-    end
-    return _request_uri(self, endpoint, "POST",
-                        endpoint.full_prefix .. "/lease/leases")
+    return _request_uri(self, "POST", "/lease/leases")
 end
 
 
 -- /version
 function _M.version(self)
-    local endpoint, err = choose_endpoint(self)
-    if not endpoint then
-        return nil, err
-    end
-    return _request_uri(self, endpoint, "GET",
-                        endpoint.http_host .. "/version",
-                        nil, self.timeout)
+    return _request_uri(self, "GET", "/version", nil, self.timeout)
 end
 
 -- /stats
 function _M.stats_leader(self)
-    local endpoint, err = choose_endpoint(self)
-    if not endpoint then
-        return nil, err
-    end
-    return _request_uri(self, endpoint, "GET",
-                        endpoint.http_host .. "/v2/stats/leader",
-                        nil, self.timeout)
+    return _request_uri(self, "GET", "/v2/stats/leader", nil, self.timeout)
 end
 
 function _M.stats_self(self)
-    local endpoint, err = choose_endpoint(self)
-    if not endpoint then
-        return nil, err
-    end
-    return _request_uri(self, endpoint, "GET",
-                        endpoint.http_host .. "/v2/stats/self",
-                        nil, self.timeout)
+    return _request_uri(self, "GET", "/v2/stats/self", nil, self.timeout)
 end
 
 function _M.stats_store(self)
-    local endpoint, err = choose_endpoint(self)
-    if not endpoint then
-        return nil, err
-    end
-    return _request_uri(self, endpoint, "GET",
-                        endpoint.http_host .. "/v2/stats/store",
-                        nil, self.timeout)
+    return _request_uri(self, "GET", "/v2/stats/store", nil, self.timeout)
 end
 
 

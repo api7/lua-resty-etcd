@@ -364,8 +364,6 @@ GET /t
 has no healthy etcd endpoint available
 --- no_error_log
 [error]
---- error_log eval
-qr/has no healthy etcd endpoint available/
 
 
 
@@ -471,3 +469,98 @@ GET /t
 1
 --- error_log eval
 qr/update endpoint: http:\/\/localhost:1984 to unhealthy/
+
+
+
+=== TEST 12: test if retry works for request_uri
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local health_check, err = require "resty.etcd.health_check" .init({
+                shm_name = "etcd_cluster_health_check",
+                fail_timeout = 10,
+                max_fails = 3,
+                retry = true,
+            })
+
+            local etcd, err = require "resty.etcd" .new({
+                protocol = "v3",
+                http_host = {
+                    "http://127.0.0.1:42379",
+                    "http://127.0.0.1:22379",
+                    "http://127.0.0.1:32379",
+                },
+                user = 'root',
+                password = 'abc123',
+            })
+
+            local res, err = etcd:set("/trigger_unhealthy", "abc")
+            check_res(res, err)
+            local res, err = etcd:get("/trigger_unhealthy")
+            check_res(res, err, "abc")
+        }
+    }
+--- request
+GET /t
+--- error_log eval
+qr/update endpoint: http:\/\/127.0.0.1:42379 to unhealthy/
+--- response_body
+checked val as expect: abc
+
+
+=== TEST 13: test if retry works for request_chunk
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local health_check, err = require "resty.etcd.health_check" .init({
+                shm_name = "etcd_cluster_health_check",
+                fail_timeout = 10,
+                max_fails = 3,
+                retry = true,
+            })
+
+            local etcd, err = require "resty.etcd" .new({
+                protocol = "v3",
+                http_host = {
+                    "http://127.0.0.1:42379",
+                    "http://127.0.0.1:22379",
+                    "http://127.0.0.1:32379",
+                },
+                user = 'root',
+                password = 'abc123',
+            })
+
+            local body_chunk_fun, err = etcd:watch("/trigger_unhealthy", {timeout = 0.5})
+            check_res(body_chunk_fun, err)
+
+            ngx.timer.at(0.1, function ()
+                etcd:set("/trigger_unhealthy", "abc")
+            end)
+
+            local idx = 0
+            while true do
+                local chunk, err = body_chunk_fun()
+
+                if not chunk then
+                    if err then
+                        ngx.say(err)
+                    end
+                    break
+                end
+
+                idx = idx + 1
+                ngx.say(idx, ": ", require("cjson").encode(chunk.result))
+            end
+        }
+    }
+--- request
+GET /t
+--- error_log eval
+qr/update endpoint: http:\/\/127.0.0.1:42379 to unhealthy/
+--- response_body_like eval
+qr/1:.*"created":true.*
+2:.*"value":"abc".*
+timeout/
+--- timeout: 5

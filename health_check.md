@@ -20,7 +20,7 @@ Initializes the health check object, overiding default params with the given one
 
 `syntax: health_check.report_failure(etcd_host)`
 
-Reports a health failure which will count against the number of occurrences required to make a target "fail". 
+Reports a health failure which will count against the number of occurrences required to make a target "fail".
 
 ###  get_target_status
 
@@ -35,6 +35,7 @@ Get the current status of the target.
 | shm_name     | string  | required    |         | the declarative `lua_shared_dict` is used to store the health status of endpoints. |
 | fail_timeout | integer | optional    | 10s     | sets the time during which the specified number of unsuccessful attempts to communicate with the endpoint should happen to marker the endpoint unavailable, and also sets the period of time the endpoint will be marked unavailable. |
 | max_fails    | integer | optional    | 1       | sets the number of failed attempts that must occur during the `fail_timeout` period for the endpoint to be marked unavailable. |
+| retry        | bool    | optional    | false   | automatically retry another endpoint when operations failed. |
 
 lua example:
 
@@ -43,16 +44,17 @@ local health_check, err = require("resty.etcd.health_check").init({
     shm_name = "healthcheck_shm",
     fail_timeout = 10,
     max_fails = 1,
+    retry = false,
 })
 ```
 
-In a `fail_timeout`, if there are `max_fails` consecutive failures, the endpoint is marked as unhealthy,  the unhealthy endpoint will not be choosed to connect for a `fail_timeout` time in the future. 
+In a `fail_timeout`, if there are `max_fails` consecutive failures, the endpoint is marked as unhealthy,  the unhealthy endpoint will not be choosed to connect for a `fail_timeout` time in the future.
 
 Health check mechanism would switch endpoint only when the previously choosed endpoint is marked as unhealthy.
 
 The failure counter and health status of each etcd endpoint are shared across workers and by different etcd clients.
 
-Also note that the `fail_timeout` and `max_fails` of the health check cannot be changed once it has been created.
+Also note that the `fail_timeout`, `max_fails` and `retry` of the health check cannot be changed once it has been created.
 
 ##  Synopsis
 
@@ -69,12 +71,13 @@ http {
                     shm_name = "healthcheck_shm",
                     fail_timeout = 10,
                     max_fails = 1,
+                    retry = false,
                 })
 
                 local etcd, err = require("resty.etcd").new({
                     protocol = "v3",
                     http_host = {
-                        "http://127.0.0.1:12379", 
+                        "http://127.0.0.1:12379",
                         "http://127.0.0.1:22379",
                         "http://127.0.0.1:32379",
                     },

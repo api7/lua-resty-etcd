@@ -86,6 +86,10 @@ function _M.has_value(arr, val)
     return false
 end
 
+function _M.starts_with(str, start)
+    return str:sub(1, #start) == start
+end
+
 local ngx_log = ngx.log
 local ngx_ERR = ngx.ERR
 local ngx_INFO = ngx.INFO
