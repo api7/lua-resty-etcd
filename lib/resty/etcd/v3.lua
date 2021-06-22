@@ -49,7 +49,7 @@ local function choose_endpoint(self)
     end
 
     self.init_count = (self.init_count or 0)
-    local pos = self.init_count % endpoints_len
+    local pos = self.init_count % endpoints_len + 1
     if self.init_count >= INIT_COUNT_RESIZE then
         self.init_count = 0
     end
@@ -144,7 +144,7 @@ local function _request_uri(self, method, uri, opts, timeout, ignore_auth)
             return nil, err
         end
     else
-        local max_retry = #self.endpoints * health_check.conf.max_fails + 1
+        local max_retry = #self.endpoints * health_check.conf.max_fails - 1
         for _ = 1, max_retry do
             res, err = http_request_uri(self, http_cli, method, uri, body, headers, keepalive)
             if err then
@@ -627,7 +627,7 @@ local function request_chunk(self, method, path, opts, timeout)
             return nil, err
         end
     else
-        local max_retry = #self.endpoints * health_check.conf.max_fails + 1
+        local max_retry = #self.endpoints * health_check.conf.max_fails - 1
         for _ = 1, max_retry do
             endpoint, err = http_request_chunk(self, http_cli)
             if err then
