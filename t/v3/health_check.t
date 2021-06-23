@@ -564,3 +564,60 @@ qr/1:.*"created":true.*
 2:.*"value":"abc".*
 timeout/
 --- timeout: 5
+
+
+=== TEST 14: test retry failure could return correctly
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local health_check, err = require "resty.etcd.health_check" .init({
+                shm_name = "etcd_cluster_health_check",
+                fail_timeout = 10,
+                max_fails = 3,
+                retry = true,
+            })
+
+            local etcd, err = require "resty.etcd" .new({
+                protocol = "v3",
+                http_host = {
+                    "http://127.0.0.1:12379",
+                    "http://127.0.0.1:22379",
+                    "http://127.0.0.1:32379",
+                },
+                user = 'root',
+                password = 'abc123',
+            })
+            check_res(res, err)
+
+            local res, err = etcd:set("/foo", "abc")
+            check_res(res, err)
+
+            os.execute("goreman run stop-all")
+            ngx.say("etcd closed")
+            ngx.sleep(1)
+
+            local res, err = etcd:get("/foo")
+            if err ~= "has no healthy etcd endpoint available" then
+                ngx.say("err should not be: " .. err)
+                ngx.exit(200)
+            end
+
+            os.execute("goreman -f ./t/Procfile-single-enable-v2 start > goreman.log 2>&1 &")
+            ngx.say("etcd restarted")
+            ngx.sleep(1)
+
+            local res, err = etcd:set("/foo", "abc")
+            check_res(res, err)
+        }
+    }
+--- request
+GET /t
+--- error_log eval
+qr/update endpoint: http:\/\/127.0.0.1:12379 to unhealthy/
+qr/update endpoint: http:\/\/127.0.0.1:22379 to unhealthy/
+qr/update endpoint: http:\/\/127.0.0.1:32379 to unhealthy/
+--- response_body
+etcd closed
+etcd restarted
+--- ONLY
