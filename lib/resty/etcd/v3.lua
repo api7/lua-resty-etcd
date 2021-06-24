@@ -35,9 +35,6 @@ local refresh_jwt_token
 local function choose_endpoint(self)
     local endpoints = self.endpoints
     local endpoints_len = #endpoints
-    if endpoints_len == 1 then
-        return endpoints[1]
-    end
 
     if health_check.conf ~= nil then
         for _, endpoint in ipairs(endpoints) do
