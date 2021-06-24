@@ -509,6 +509,7 @@ qr/update endpoint: http:\/\/127.0.0.1:42379 to unhealthy/
 checked val as expect: abc
 
 
+
 === TEST 13: test if retry works for request_chunk
 --- http_config eval: $::HttpConfig
 --- config
@@ -564,3 +565,65 @@ qr/1:.*"created":true.*
 2:.*"value":"abc".*
 timeout/
 --- timeout: 5
+
+
+
+=== TEST 14: test retry failure could return correctly
+--- http_config eval: $::HttpConfig
+--- config
+    location /v3/auth/authenticate {
+        content_by_lua_block { -- mock normal authenticate response
+            ngx.print([[{
+              body = '{"header":{"cluster_id":"17237436991929493444","member_id":"9372538179322589801","revision":"40","raft_term":"633"},"token":"KicnFPYazDaiMHBG.74"}',
+              reason = "OK",
+              status = 200
+            }]])
+        }
+    }
+
+    location /v3/kv/put {
+        content_by_lua_block { -- mock abnormal put key response
+            ngx.status = 500
+            ngx.print([[{
+              body = '{"error":"etcdserver: request timed out","message":"etcdserver: request timed out","code":14}',
+              reason = "Service Unavailable",
+              status = 503,
+            }]])
+            ngx.say("this is my own error page content")
+            ngx.exit(500)
+        }
+    }
+
+    location /t {
+        content_by_lua_block {
+            local health_check, err = require "resty.etcd.health_check" .init({
+                shm_name = "etcd_cluster_health_check",
+                fail_timeout = 10,
+                max_fails = 3,
+                retry = true,
+            })
+
+            local etcd, err = require "resty.etcd" .new({
+                protocol = "v3",
+                http_host = {
+                    "http://127.0.0.1:12379",
+                },
+            })
+            etcd.endpoints[1].full_prefix="http://127.0.0.1:1984/v3" -- replace the endpoint with mock
+            etcd.endpoints[1].http_host="http://127.0.0.1:1984"
+
+            local res, err = etcd:set("/etcd_error", "hello")
+            local fails = ngx.shared["etcd_cluster_health_check"]:get("http://127.0.0.1:1984")
+            ngx.say(fails)
+            if err ~= "has no healthy etcd endpoint available" then
+                ngx.say(err)
+                ngx.exit(200)
+            end
+        }
+    }
+--- request
+GET /t
+--- error_log eval
+qr/update endpoint: http:\/\/127.0.0.1:1984 to unhealthy/
+--- response_body
+3
