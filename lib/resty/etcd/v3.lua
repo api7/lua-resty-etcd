@@ -145,10 +145,10 @@ local function _request_uri(self, method, uri, opts, timeout, ignore_auth)
         for _ = 1, max_retry do
             res, err = http_request_uri(self, http_cli, method, uri, body, headers, keepalive)
             if err then
-                utils.log_warn(err .. ". Retrying")
                 if err == "has no healthy etcd endpoint available" then
                     return nil, err
                 end
+                utils.log_warn(err .. ". Retrying")
             else
                 break
             end
