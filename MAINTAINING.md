@@ -1,8 +1,7 @@
 ## Version Publish
 
-After [#117](https://github.com/api7/lua-resty-etcd/pull/117) got merged, we could publish new version of lua-resty-etcd easily. All you need to do is:
+After [#137](https://github.com/api7/lua-resty-etcd/pull/137) got merged, we could publish new version of lua-resty-etcd easily. All you need to do is:
 
-- Create a PR that add the rockspec for the new version.
-- Create a tag with format like 'v1.0'.
+- Create a PR following the format `feat: release VERSION`, where `VERSION` should be the version used in the rockspec name, like `1.0` for `lua-resty-etcd-1.0-0.rockspec`.
 
-The tag would trigger Github Actions to upload to both luarocks and github release.
+When the PR got merged, it would trigger Github Actions to upload to both github release and luarocks.
