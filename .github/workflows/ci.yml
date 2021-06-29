@@ -23,10 +23,10 @@ jobs:
             conf: Procfile-single-enable-v2
           - version: 3.4.0
             conf: Procfile-single-enable-v2
-          - version: 3.4.0
-            conf: Procfile-single-enable-tls
           - version: 3.5.0
             conf: Procfile-single-enable-v2
+          - version: 3.4.0
+            conf: Procfile-single-enable-tls
           - version: 3.4.0
             conf: Procfile-single-enable-mtls
 
