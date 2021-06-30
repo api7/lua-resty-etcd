@@ -2,8 +2,10 @@ name: Release
 
 on:
   push:
-    tags:
-      - '*'
+    branches:
+      - "master"
+    paths:
+      - 'rockspec/**'
 
 jobs:
   release:
@@ -19,27 +21,34 @@ jobs:
       - name: Install Luarocks
         uses: leafo/gh-actions-luarocks@v4
 
-      - name: Extract tag name
-        id: tag_env
+      - name: Extract release name
+        id: release_env
         shell: bash
-        run: echo "##[set-output name=version;]$(echo ${GITHUB_REF##*/})"
+        run: |
+          title="${{ github.event.head_commit.message }}"
+          re="^feat: release v*(\S+)"
+          if [[ $title =~ $re ]]; then
+              v=v${BASH_REMATCH[1]}
+              echo "##[set-output name=version;]${v}"
+              echo "##[set-output name=version_withou_v;]${BASH_REMATCH[1]}"
+          else
+              echo "commit format is not correct"
+              exit 1
+          fi
 
-      # use ${tag:1} to filter out the heading "v" of "v1.0" 
+      - name: Create Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.release_env.outputs.version }}
+          release_name: ${{ steps.release_env.outputs.version }}
+          draft: false
+          prerelease: false
+
       - name: Upload to luarocks
         env:
           LUAROCKS_TOKEN: ${{ secrets.LUAROCKS_TOKEN }}
         run: |
           luarocks install dkjson
-          tag=${{ steps.tag_env.outputs.version }}
-          luarocks upload rockspec/lua-resty-etcd-${tag:1}-0.rockspec --api-key=${LUAROCKS_TOKEN}
-
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ steps.tag_env.outputs.version }}
-          release_name: ${{ steps.tag_env.outputs.version }}
-          draft: false
-          prerelease: false
+          luarocks upload rockspec/lua-resty-etcd-${{ steps.release_env.outputs.version_withou_v }}-0.rockspec --api-key=${LUAROCKS_TOKEN}
