@@ -14,7 +14,7 @@ else {
 
 our $HttpConfig = <<'_EOC_';
     lua_socket_log_errors off;
-    lua_package_path 'lib/?.lua;/usr/local/share/lua/5.3/?.lua;/usr/share/lua/5.1/?.lua;;';
+    lua_package_path 'lib/?.lua;/usr/local/share/lua/5.4/?.lua;/usr/local/share/lua/5.3/?.lua;/usr/share/lua/5.1/?.lua;;';
     init_by_lua_block {
         function check_res(data, err, val, err_msg)
             if err then
