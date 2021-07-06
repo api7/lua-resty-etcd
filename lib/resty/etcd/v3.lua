@@ -111,7 +111,7 @@ local function _request_uri(self, method, uri, opts, timeout, ignore_auth)
     end
 
     local headers = {}
-    local keepalive = true
+    local keepalive = false
     if self.is_auth then
         if not ignore_auth then
             -- authentication reqeust not need auth request
