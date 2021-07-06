@@ -35,7 +35,7 @@ Method
     append this prefix path string to key operation url `'/v2/keys'`.
   - `timeout`: int
     request timeout seconds.
-  - `serializer`: string - serializer type, default `json`, also support `raw` to keep origin string value. 
+  - `serializer`: string - serializer type, default `json`, also support `raw` to keep origin string value.
   - `ssl_verify`: boolean - whether to verify the etcd certificate when originating TLS connection with etcd (if you want to communicate to etcd with TLS connection, use `https` scheme in your `http_host`), default is `true`.
 
 The client methods returns either a `HTTP Response Entity` or an `error string`.
@@ -43,7 +43,7 @@ The client methods returns either a `HTTP Response Entity` or an `error string`.
 `HTTP Response Entity` contains the following fields except `408` timeout status;
 
 - `status`: number - HTTP status code.
-- `header`: table - response header if `status` is not `408` timeout status.
+- `headers`: table - response header if `status` is not `408` timeout status.
 - `body`: string or table - response body if `status` is not `408` timeout status.
 
 **Note:** a client method will decode a response body as a JSON string if a `Content-Type` response header value is a `application/json`.

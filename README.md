@@ -16,7 +16,7 @@ Table of Contents
 
 > Dependencies
 
-- lua-resty-http: https://github.com/ledgetech/lua-resty-http
+- api7-lua-resty-http: https://github.com/api7/lua-resty-http
 - lua-typeof: https://github.com/iresty/lua-typeof
 
 > install by luarocks

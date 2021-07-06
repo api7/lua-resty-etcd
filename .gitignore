@@ -56,3 +56,6 @@ go
 t/servroot
 utils/lj-releng
 [\.]*
+!.github/
+*.etcd
+*.log
