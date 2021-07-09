@@ -89,7 +89,9 @@ __DATA__
 
             res, err = etcd:readdir("/dir", {range_start = "/dir/b"})
             check_res(res, err, "b")
-            if tab_nkeys(res.body.kvs) == 2 then
+            if tab_nkeys(res.body.kvs) == 2 and 
+                res.body.kvs[1].key == "/dir/b" and 
+                res.body.kvs[2].key == "/dir/c" then
                 ngx.say("ok")
             else
                 ngx.say("failed")
