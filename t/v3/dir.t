@@ -64,8 +64,8 @@ __DATA__
 --- config
     location /t {
         content_by_lua_block {
-            local tab_nkeys     = require "table.nkeys"
-            local etcd, err = require "resty.etcd" .new({protocol = "v3"})
+            local tab_nkeys = require("table.nkeys")
+            local etcd, err = require("resty.etcd").new({protocol = "v3"})
             check_res(etcd, err)
 
             local res, err = etcd:rmdir("/dir")
