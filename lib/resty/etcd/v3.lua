@@ -153,7 +153,7 @@ local function _request_uri(self, method, uri, opts, timeout, ignore_auth)
                 break
             end
             if i == max_retry then
-                return nil, "etcd request failed"
+                return nil, err or "request etcd failed"
             end
         end
     end
