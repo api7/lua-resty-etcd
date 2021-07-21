@@ -144,7 +144,7 @@ local function _request_uri(self, method, uri, opts, timeout, ignore_auth)
         local max_retry = #self.endpoints * health_check.conf.max_fails + 1
         for i = 1, max_retry do
             res, err = http_request_uri(self, http_cli, method, uri, body, headers, keepalive)
-            if not res then
+            if err then
                 if err == "has no healthy etcd endpoint available" then
                     return nil, err
                 end
@@ -153,9 +153,13 @@ local function _request_uri(self, method, uri, opts, timeout, ignore_auth)
                 break
             end
             if i == max_retry then
-                return nil, err or "request etcd failed"
+                return nil, err
             end
         end
+    end
+
+    if not res then
+        return nil, "request etcd get nil response"
     end
 
     if not typeof.string(res.body) then
