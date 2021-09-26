@@ -12,6 +12,7 @@ local sub_str       = string.sub
 local str_byte      = string.byte
 local str_char      = string.char
 local ipairs        = ipairs
+local pairs         = pairs
 local re_match      = ngx.re.match
 local type          = type
 local tab_insert    = table.insert
@@ -125,6 +126,15 @@ local function _request_uri(self, method, uri, opts, timeout, ignore_auth)
         end
     end
 
+    if self.extra_headers and type(self.extra_headers) == "table" then
+        for key, value in pairs(self.extra_headers) do
+            if key ~= "Authorization" then
+                headers[key] = value
+            end
+        end
+        utils.log_info("request uri headers: ", encode_json(headers))
+    end
+
     local http_cli, err = utils.http.new()
     if err then
         return nil, err
@@ -187,6 +197,7 @@ function _M.new(opts)
         ssl_verify = true
     end
     local serializer = opts.serializer
+    local extra_headers = opts.extra_headers
 
     if not typeof.uint(timeout) then
         return nil, 'opts.timeout must be unsigned integer'
@@ -264,6 +275,7 @@ function _M.new(opts)
 
             ssl_cert_path = opts.ssl_cert_path,
             ssl_key_path = opts.ssl_key_path,
+            extra_headers = extra_headers,
         },
         mt)
 end
@@ -602,6 +614,15 @@ local function request_chunk(self, method, path, opts, timeout)
             return nil, err
         end
         headers.Authorization = self.jwt_token
+    end
+
+    if self.extra_headers and type(self.extra_headers) == "table" then
+        for key, value in pairs(self.extra_headers) do
+            if key ~= "Authorization" then
+                headers[key] = value
+            end
+        end
+        utils.log_info("request chunk headers: ", encode_json(headers))
     end
 
     local http_cli
