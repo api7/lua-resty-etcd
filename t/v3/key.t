@@ -284,7 +284,8 @@ timeout/
 --- timeout: 5
 
 
-=== TEST 4.1: watchdir(key=="")
+
+=== TEST 6.1: watchdir(key=="")
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -348,7 +349,7 @@ timeout/
 
 
 
-=== TEST 6: setx(key, val) failed
+=== TEST 7: setx(key, val) failed
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -369,7 +370,7 @@ GET /t
 
 
 
-=== TEST 7: setx(key, val) success
+=== TEST 8: setx(key, val) success
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -395,7 +396,7 @@ checked val as expect: abd
 
 
 
-=== TEST 8: setnx(key, val)
+=== TEST 9: setnx(key, val)
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -422,3 +423,92 @@ GET /t
 [error]
 --- response_body
 checked val as expect: aaa
+
+
+
+=== TEST 10: set extra_headers for request_uri
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local etcd, err = require "resty.etcd" .new({
+                protocol = "v3",
+                extra_headers = {
+                    foo = "bar",
+                }
+            })
+            check_res(etcd, err)
+
+            local res, err = etcd:set("/test", "abc", {prev_kv = true})
+            check_res(res, err)
+
+            local data, err = etcd:get("/test")
+            check_res(data, err, "abc")
+        }
+    }
+--- request
+GET /t
+--- no_error_log
+[error]
+--- response_body
+checked val as expect: abc
+--- error_log
+request uri headers: {"foo":"bar"}
+
+
+
+=== TEST 11: Authorization header will not be overridden
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local etcd, err = require "resty.etcd" .new({
+                protocol = "v3",
+                extra_headers = {
+                    Authorization = "bar",
+                }
+            })
+            check_res(etcd, err)
+
+            local res, err = etcd:set("/test", "abc", {prev_kv = true})
+            check_res(res, err)
+
+            local data, err = etcd:get("/test")
+            check_res(data, err, "abc")
+        }
+    }
+--- request
+GET /t
+--- no_error_log
+[error]
+--- response_body
+checked val as expect: abc
+--- error_log
+request uri headers: {}
+
+
+
+=== TEST 12: set extra_headers for request_chunk
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local etcd, err = require "resty.etcd" .new({
+                protocol = "v3",
+                extra_headers = {
+                    foo = "bar",
+                }
+            })
+            local res, err = etcd:set("/test", "abc")
+            local body_chunk_fun, _ = etcd:watch("/test", {timeout = 0.5})
+            ngx.say("passed")
+        }
+    }
+--- request
+GET /t
+--- response_body
+passed
+--- error_log
+request chunk headers: {"foo":"bar"}
+--- no_error_log
+[error]

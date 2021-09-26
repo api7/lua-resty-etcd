@@ -42,6 +42,7 @@ Method
     it will autofill by fetching etcd version if this option empty.
   - `ssl_verify`: boolean - whether to verify the etcd certificate when originating TLS connection with etcd (if you want to communicate to etcd with TLS connection, use `https` scheme in your `http_host`), default is `true`.
   - `serializer`: string - serializer type, default `json`, also support `raw` to keep origin string value.
+  - `extra_headers`: table - adding custom headers for etcd requests.
 
 The client method returns either a `etcd` object or an `error string`.
 
