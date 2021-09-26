@@ -285,7 +285,7 @@ timeout/
 
 
 
-=== TEST 6.1: watchdir(key=="")
+=== TEST 6: watchdir(key=="")
 --- http_config eval: $::HttpConfig
 --- config
     location /t {

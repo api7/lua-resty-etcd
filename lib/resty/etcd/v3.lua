@@ -16,6 +16,7 @@ local pairs         = pairs
 local re_match      = ngx.re.match
 local type          = type
 local tab_insert    = table.insert
+local str_lower     = string.lower
 local tab_clone     = require("table.clone")
 local decode_json   = cjson.decode
 local encode_json   = cjson.encode
@@ -28,6 +29,15 @@ local health_check  = require("resty.etcd.health_check")
 local _M = {}
 
 local mt = { __index = _M }
+
+local unmodifiable_headers = {
+    ["authorization"] = true,
+    ["content-length"] = true,
+    ["transfer-encoding"] = true,
+    ["connection"] = true,
+    ["upgrade"] = true,
+}
+
 
 -- define local refresh function variable
 local refresh_jwt_token
@@ -128,7 +138,7 @@ local function _request_uri(self, method, uri, opts, timeout, ignore_auth)
 
     if self.extra_headers and type(self.extra_headers) == "table" then
         for key, value in pairs(self.extra_headers) do
-            if key ~= "Authorization" then
+            if not unmodifiable_headers[str_lower(key)] then
                 headers[key] = value
             end
         end
@@ -618,7 +628,7 @@ local function request_chunk(self, method, path, opts, timeout)
 
     if self.extra_headers and type(self.extra_headers) == "table" then
         for key, value in pairs(self.extra_headers) do
-            if key ~= "Authorization" then
+            if not unmodifiable_headers[str_lower(key)] then
                 headers[key] = value
             end
         end
