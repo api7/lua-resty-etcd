@@ -1,19 +1,18 @@
-package = "lua-resty-etcd-master"
-version = "0.1-0"
+package = "lua-resty-etcd"
+version = "1.5.4-0"
 source = {
-   url = "git://github.com/iresty/lua-resty-etcd",
-   branch = "master",
+   url = "git://github.com/api7/lua-resty-etcd",
+   tag = "v1.5.4"
 }
 
 description = {
    summary = "Nonblocking Lua etcd driver library for OpenResty",
-   homepage = "https://github.com/iresty/lua-resty-etcd",
-   license = "Apache License 2.0",
-   maintainer = "Yuansheng Wang <membphis@gmail.com>"
+   homepage = "https://github.com/api7/lua-resty-etcd",
+   license = "Apache License 2.0"
 }
 
 dependencies = {
-   "api7-lua-resty-http = 0.1.0",
+   "api7-lua-resty-http = 0.2.0",
    "lua-typeof = 0.1"
 }
 
@@ -29,3 +28,4 @@ build = {
     ["resty.etcd.health_check"] = "lib/resty/etcd/health_check.lua",
    }
 }
+

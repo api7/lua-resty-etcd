@@ -41,6 +41,8 @@ Method
     to suit [etcd v3 api gateway](https://github.com/etcd-io/etcd/blob/master/Documentation/dev-guide/api_grpc_gateway.md#notes).
     it will autofill by fetching etcd version if this option empty.
   - `ssl_verify`: boolean - whether to verify the etcd certificate when originating TLS connection with etcd (if you want to communicate to etcd with TLS connection, use `https` scheme in your `http_host`), default is `true`.
+  - `ssl_cert_path`： string - path to the client certificate
+  - `ssl_key_path`： string - path to the client key
   - `serializer`: string - serializer type, default `json`, also support `raw` to keep origin string value.
   - `extra_headers`: table - adding custom headers for etcd requests.
 
@@ -60,7 +62,7 @@ Please refer to the **etcd API documentaion** at - https://github.com/coreos/etc
 
 * `key`: string value.
 * `opts`: optional options.
-    * `timeout`: (int) request timeout seconds. set 0 to disable timeout.
+    * `timeout`: (int) request timeout seconds. Set to 0 would use `lua_socket_connect_timeout` as timeout.
     * `revision`: (int) revision is the point-in-time of the key-value store to use for the range. If revision is less than or equal to zero, the range is over the newest key-value store. If the revision has been compacted, ErrCompacted is returned as a response.
 
 To get the value for key.
@@ -78,7 +80,7 @@ local res, err = cli:get('/path/to/key')
 * `key`: string value.
 * `val`: the value which can be encoded via JSON.
 * `opts`: optional options.
-    * `timeout`: (int) request timeout seconds. set 0 to disable timeout.
+    * `timeout`: (int) request timeout seconds. Set to 0 would use `lua_socket_connect_timeout` as timeout.
     * `lease`: (int) the lease ID to associate with the key in the key-value store.
     * `prev_kv`: (bool) If prev_kv is set, etcd gets the previous key-value pair before changing it. The previous key-value pair will be returned in the put response.
     * `ignore_value`: (bool) If ignore_value is set, etcd updates the key using its current value. Returns an error if the key does not exist. 
@@ -99,7 +101,7 @@ local res, err = cli:set('/path/to/key', 'val', 10)
 * `key`: string value.
 * `val`: the value which can be encoded via JSON.
 * `opts`: optional options.
-    * `timeout`: (int) request timeout seconds. set 0 to disable timeout.
+    * `timeout`: (int) request timeout seconds. Set to 0 would use `lua_socket_connect_timeout` as timeout.
 
 To set a key-value pair if that key does not exist.
 
@@ -116,7 +118,7 @@ local res, err = cli:setnx('/path/to/key', 'val', 10)
 * `key`: string value.
 * `val`: the value which can be encoded via JSON.
 * `opts`: optional options.
-    * `timeout`: (int) request timeout seconds. set 0 to disable timeout.
+    * `timeout`: (int) request timeout seconds. Set to 0 would use `lua_socket_connect_timeout` as timeout.
 
 To set a key-value pair when that key exists.
 
@@ -132,7 +134,7 @@ local res, err = cli:setx('/path/to/key', 'val', 10)
 
 * `key`: string value.
 * `opts`: optional options.
-    * `timeout`: (int) request timeout seconds. set 0 to disable timeout.
+    * `timeout`: (int) request timeout seconds. Set to 0 would use `lua_socket_connect_timeout` as timeout.
     * `prev_kv`: (bool) If prev_kv is set, etcd gets the previous key-value pairs before deleting it. The previous key-value pairs will be returned in the delete response.
 
 To delete a key-value pair.
@@ -150,7 +152,7 @@ local res, err = cli:delete('/path/to/key')
 
 * `key`: string value.
 * `opts`: optional options.
-    * `timeout`: (int) request timeout seconds. set 0 to disable timeout.
+    * `timeout`: (int) request timeout seconds. Set to 0 would use `lua_socket_connect_timeout` as timeout.
     * `start_revision`: (int) start_revision is an optional revision to watch from (inclusive). No start_revision is "now".
     * `progress_notify`: (bool) progress_notify is set so that the etcd server will periodically send a WatchResponse with no events to the new watcher if there are no recent events. 
     * `filters`: (slice of (enum FilterType {NOPUT = 0;NODELETE = 1;})) filters filter the events at server side before it sends back to the watcher.  
@@ -188,7 +190,7 @@ res = cli:watchcancel(http_cli)
 
 * `key`: string value.
 * `opts`: optional options.
-    * `timeout`: (int) request timeout seconds. set 0 to disable timeout.
+    * `timeout`: (int) request timeout seconds. Set to 0 would use `lua_socket_connect_timeout` as timeout.
     * `revision`: (int) revision is the point-in-time of the key-value store to use for the range. If revision is less than or equal to zero, the range is over the newest key-value store. If the revision has been compacted, ErrCompacted is returned as a response.
     * `limit`: (int) limit is a limit on the number of keys returned for the request. When limit is set to 0, it is treated as no limit. 
     * `sort_order`: (int [SortNone:0, SortAscend:1, SortDescend:2]) sort_order is the order for returned sorted results.  
@@ -212,7 +214,7 @@ local res, err = cli:readdir('/path/to/dir')
 
 * `key`: string value.
 * `opts`: optional options.
-    * `timeout`: (int) request timeout seconds. set 0 to disable timeout.
+    * `timeout`: (int) request timeout seconds. Set to 0 would use `lua_socket_connect_timeout` as timeout.
     * `start_revision`: (int) start_revision is an optional revision to watch from (inclusive). No start_revision is "now".
     * `progress_notify`: (bool) progress_notify is set so that the etcd server will periodically send a WatchResponse with no events to the new watcher if there are no recent events. 
     * `filters`: (slice of [enum FilterType {NOPUT = 0;NODELETE = 1;}]) filters filter the events at server side before it sends back to the watcher.  
@@ -236,7 +238,7 @@ local res, err = cli:watchdir('/path/to/dir')
 
 * `key`: string value.
 * `opts`: optional options.
-    * `timeout`: (int) request timeout seconds. set 0 to disable timeout.
+    * `timeout`: (int) request timeout seconds. Set to 0 would use `lua_socket_connect_timeout` as timeout.
     * `prev_kv`: (bool) If prev_kv is set, etcd gets the previous key-value pairs before deleting it. The previous key-value pairs will be returned in the delete response.
 
 To remove the directory.
@@ -256,7 +258,7 @@ local res, err = cli:rmdir('/path/to/dir')
 * `success`: array of [table](https://github.com/etcd-io/etcd/blob/master/Documentation/dev-guide/api_reference_v3.md#message-requestop-etcdserveretcdserverpbrpcproto).
 * `failure`: array of [table](https://github.com/etcd-io/etcd/blob/master/Documentation/dev-guide/api_reference_v3.md#message-requestop-etcdserveretcdserverpbrpcproto).
 * `opts`: optional options.
-    * `timeout`: (int) request timeout seconds. set 0 to disable timeout.
+    * `timeout`: (int) request timeout seconds. Set to 0 would use `lua_socket_connect_timeout` as timeout.
 
 Transaction.
 

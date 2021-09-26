@@ -77,6 +77,7 @@ function _M.init(opts)
         conf.shm_name = opts.shm_name
         conf.fail_timeout = opts.fail_timeout or 10    -- 10 sec
         conf.max_fails = opts.max_fails or 1
+        conf.retry = opts.retry or false
         _M.conf = conf
         return _M, nil
     end

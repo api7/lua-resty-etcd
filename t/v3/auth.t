@@ -64,7 +64,7 @@ __DATA__
                 password = 'abc123',
                 timeout = 3,
                 http_host = {
-                    "http://127.0.0.1:12379", 
+                    "http://127.0.0.1:12379",
                 },
             })
             check_res(etcd, err)
@@ -97,13 +97,13 @@ ok
 --- grep_error_log eval
 qr/uri: .+, timeout: \d+/
 --- grep_error_log_out
-uri: http://127.0.0.1:12379/v3/kv/put, timeout: 3
-uri: http://127.0.0.1:12379/v3/auth/authenticate, timeout: 3
-uri: http://127.0.0.1:12379/v3/kv/put, timeout: 3
-uri: http://127.0.0.1:12379/v3/kv/put, timeout: 3
-uri: http://127.0.0.1:12379/v3/kv/deleterange, timeout: 3
-uri: http://127.0.0.1:12379/v3/kv/deleterange, timeout: 3
-uri: http://127.0.0.1:12379/v3/kv/deleterange, timeout: 3
+uri: /kv/put, timeout: 3
+uri: /auth/authenticate, timeout: 3
+uri: /kv/put, timeout: 3
+uri: /kv/put, timeout: 3
+uri: /kv/deleterange, timeout: 3
+uri: /kv/deleterange, timeout: 3
+uri: /kv/deleterange, timeout: 3
 
 
 
@@ -118,7 +118,7 @@ uri: http://127.0.0.1:12379/v3/kv/deleterange, timeout: 3
                 password = '123',
                 timeout = 3,
                 http_host = {
-                    "http://127.0.0.1:12379", 
+                    "http://127.0.0.1:12379",
                 },
             })
             check_res(etcd, err)
@@ -146,10 +146,10 @@ ok
 --- grep_error_log eval
 qr/(uri: .+, timeout: \d+|v3 refresh jwt last err: [^,]+|authenticate refresh token fail)/
 --- grep_error_log_out
-uri: http://127.0.0.1:12379/v3/kv/put, timeout: 3
-uri: http://127.0.0.1:12379/v3/auth/authenticate, timeout: 3
-uri: http://127.0.0.1:12379/v3/kv/put, timeout: 3
-uri: http://127.0.0.1:12379/v3/kv/put, timeout: 3
+uri: /kv/put, timeout: 3
+uri: /auth/authenticate, timeout: 3
+uri: /kv/put, timeout: 3
+uri: /kv/put, timeout: 3
 authenticate refresh token fail
 v3 refresh jwt last err: authenticate refresh token fail
 authenticate refresh token fail
@@ -202,10 +202,10 @@ ok
 --- grep_error_log eval
 qr/(uri: .+, timeout: \d+|v3 refresh jwt last err: [^,]+|connection refused)/
 --- grep_error_log_out
-uri: http://127.0.0.1:1997/v3/kv/put, timeout: 3
-uri: http://127.0.0.1:1997/v3/auth/authenticate, timeout: 3
-uri: http://127.0.0.1:1997/v3/kv/put, timeout: 3
-uri: http://127.0.0.1:1997/v3/kv/put, timeout: 3
+uri: /kv/put, timeout: 3
+uri: /auth/authenticate, timeout: 3
+uri: /kv/put, timeout: 3
+uri: /kv/put, timeout: 3
 connection refused
 v3 refresh jwt last err: connection refused
 connection refused
