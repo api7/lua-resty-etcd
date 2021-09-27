@@ -211,3 +211,93 @@ v3 refresh jwt last err: connection refused
 connection refused
 v3 refresh jwt last err: connection refused
 connection refused
+
+
+
+=== TEST 4: Authorization header will not be overridden when etcd auth is enabled(request uri)
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local etcd, err = require "resty.etcd" .new({
+                protocol = "v3",
+                user = 'root',
+                password = 'abc123',
+                timeout = 3,
+                http_host = {
+                    "http://127.0.0.1:12379",
+                },
+                extra_headers = {
+                    Authorization = "bar",
+                },
+            })
+            check_res(etcd, err)
+            local res, err = etcd:set("/test", { a='abc'})
+            check_res(res, err)
+            ngx.say('ok')
+        }
+    }
+--- request
+GET /t
+--- no_error_log
+[error]
+--- response_body
+ok
+
+
+
+=== TEST 5: Authorization header will not be overridden when etcd auth is enabled(request chunk)
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local etcd, err = require "resty.etcd" .new({
+                protocol = "v3",
+                user = 'root',
+                password = 'abc123',
+                timeout = 3,
+                http_host = {
+                    "http://127.0.0.1:12379",
+                },
+                extra_headers = {
+                    Authorization = "bar",
+                },
+            })
+            local res, err = etcd:set("/test", "abc")
+            check_res(res, err)
+
+            ngx.timer.at(0.1, function ()
+                etcd:set("/test", "bcd3")
+            end)
+
+            local cur_time = ngx.now()
+            local body_chunk_fun, err = etcd:watch("/test", {timeout = 0.5})
+            if not body_chunk_fun then
+                ngx.say("failed to watch: ", err)
+            end
+
+            local idx = 0
+            while true do
+                local chunk, err = body_chunk_fun()
+
+                if not chunk then
+                    if err then
+                        ngx.say(err)
+                    end
+                    break
+                end
+
+                idx = idx + 1
+                ngx.say(idx, ": ", require("cjson").encode(chunk.result))
+            end
+        }
+    }
+--- request
+GET /t
+--- no_error_log
+[error]
+--- response_body_like eval
+qr/1:.*"created":true.*
+2:.*"value":"bcd3".*
+timeout/
+--- timeout: 5

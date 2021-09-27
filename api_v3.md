@@ -44,6 +44,7 @@ Method
   - `ssl_cert_path`： string - path to the client certificate
   - `ssl_key_path`： string - path to the client key
   - `serializer`: string - serializer type, default `json`, also support `raw` to keep origin string value.
+  - `extra_headers`: table - adding custom headers for etcd requests.
 
 The client method returns either a `etcd` object or an `error string`.
 
