@@ -88,6 +88,7 @@ local function http_request_uri(self, http_cli, method, uri, body, headers, keep
         ssl_verify = self.ssl_verify,
         ssl_cert_path = self.ssl_cert_path,
         ssl_key_path = self.ssl_key_path,
+        ssl_server_name = self.sni,
     })
 
     if err then
@@ -208,6 +209,7 @@ function _M.new(opts)
     end
     local serializer = opts.serializer
     local extra_headers = opts.extra_headers
+    local sni        = opts.sni
 
     if not typeof.uint(timeout) then
         return nil, 'opts.timeout must be unsigned integer'
@@ -286,6 +288,7 @@ function _M.new(opts)
             ssl_cert_path = opts.ssl_cert_path,
             ssl_key_path = opts.ssl_key_path,
             extra_headers = extra_headers,
+            sni        = sni,
         },
         mt)
 end
@@ -676,6 +679,7 @@ local function request_chunk(self, method, path, opts, timeout)
         body    = body,
         query   = query,
         headers = headers,
+        ssl_server_name = self.sni,
     })
     utils.log_info("http request method: ", method, " path: ", path,
              " body: ", body, " query: ", query)
