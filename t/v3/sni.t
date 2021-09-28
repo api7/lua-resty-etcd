@@ -121,7 +121,7 @@ certificate host mismatch
 --- config
     location /t {
         content_by_lua_block {
-            local etcd, err = new_etcd(true, nil, nil, "127.0.0.1")
+            local etcd, err = new_etcd(true, nil, nil, "admin.apisix.dev")
             local res, err = etcd:set("/test", { a='abc'})
             if err then
                 ngx.say(err)
