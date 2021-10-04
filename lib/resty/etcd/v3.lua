@@ -23,7 +23,6 @@ local encode_json   = cjson.encode
 local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
 local semaphore     = require("ngx.semaphore")
-local INIT_COUNT_RESIZE = 2e8
 local health_check  = require("resty.etcd.health_check")
 
 local _M = {}
@@ -45,24 +44,20 @@ local refresh_jwt_token
 
 local function choose_endpoint(self)
     local endpoints = self.endpoints
-    local endpoints_len = #endpoints
 
-    if health_check.conf ~= nil then
-        for _, endpoint in ipairs(endpoints) do
+    for _, endpoint in ipairs(endpoints) do
+        if health_check.conf ~= nil then
             if health_check.get_target_status(endpoint.http_host) then
                 return endpoint
             end
+        else
+            if health_check.get_round_robin_target_status(endpoint.http_host) then
+                return endpoint
+            end
         end
-        return nil, "has no healthy etcd endpoint available"
     end
 
-    self.init_count = (self.init_count or -1) + 1
-    local pos = self.init_count % endpoints_len + 1
-    if self.init_count >= INIT_COUNT_RESIZE then
-        self.init_count = 0
-    end
-
-    return endpoints[pos]
+    return nil, "has no healthy etcd endpoint available"
 end
 
 
@@ -94,14 +89,17 @@ local function http_request_uri(self, http_cli, method, uri, body, headers, keep
     if err then
         if health_check.conf ~= nil then
             health_check.report_failure(endpoint.http_host)
-            err = endpoint.http_host .. ": " .. err
+        else
+            health_check.report_round_robin_target_failure(endpoint.http_host)
         end
-        return nil, err
+        return nil, endpoint.http_host .. ": " .. err
     end
 
     if res.status >= 500 then
         if health_check.conf ~= nil then
             health_check.report_failure(endpoint.http_host)
+        else
+            health_check.report_round_robin_target_failure(endpoint.http_host)
         end
         return nil, "invalid response code: " .. res.status
     end
@@ -156,23 +154,21 @@ local function _request_uri(self, method, uri, opts, timeout, ignore_auth)
     end
 
     local res
+    local max_retry = 0
     if health_check.conf == nil or not health_check.conf.retry then
+        max_retry = #self.endpoints + 1
+    else
+        max_retry = #self.endpoints * health_check.conf.max_fails + 1
+    end
+    for _ = 1, max_retry do
         res, err = http_request_uri(self, http_cli, method, uri, body, headers, keepalive)
         if err then
-            return nil, err
-        end
-    else
-        local max_retry = #self.endpoints * health_check.conf.max_fails + 1
-        for _ = 1, max_retry do
-            res, err = http_request_uri(self, http_cli, method, uri, body, headers, keepalive)
-            if err then
-                if err == "has no healthy etcd endpoint available" then
-                    return nil, err
-                end
-                utils.log_warn(err .. ". Retrying")
-            else
-                break
+            if err == "has no healthy etcd endpoint available" then
+                return nil, err
             end
+            utils.log_warn(err .. ". Retrying")
+        else
+            break
         end
     end
 
@@ -597,6 +593,8 @@ local function http_request_chunk(self, http_cli)
     if not ok then
         if health_check.conf ~= nil then
             health_check.report_failure(endpoint.http_host)
+        else
+            health_check.report_round_robin_target_failure(endpoint.http_host)
         end
         return nil, endpoint.http_host .. ": " .. err
     end
@@ -652,23 +650,21 @@ local function request_chunk(self, method, path, opts, timeout)
     end
 
     local endpoint
+    local max_retry = 0
     if health_check.conf == nil or not health_check.conf.retry then
+        max_retry = #self.endpoints + 1
+    else
+        max_retry = #self.endpoints * health_check.conf.max_fails + 1
+    end
+    for _ = 1, max_retry do
         endpoint, err = http_request_chunk(self, http_cli)
         if err then
-            return nil, err
-        end
-    else
-        local max_retry = #self.endpoints * health_check.conf.max_fails + 1
-        for _ = 1, max_retry do
-            endpoint, err = http_request_chunk(self, http_cli)
-            if err then
-                utils.log_warn(err .. ". Retrying")
-                if err == "has no healthy etcd endpoint available" then
-                    return nil, err
-                end
-            else
-                break
+            utils.log_warn(err .. ". Retrying")
+            if err == "has no healthy etcd endpoint available" then
+                return nil, err
             end
+        else
+            break
         end
     end
 
@@ -714,6 +710,8 @@ local function request_chunk(self, method, path, opts, timeout)
                 -- health_check retry should do nothing here
                 -- and let connection closed to create a new one
                 health_check.report_failure(endpoint.http_host)
+            else
+                health_check.report_round_robin_target_failure(endpoint.http_host)
             end
             return nil, endpoint.http_host .. ": " .. body.error.http_status
         end

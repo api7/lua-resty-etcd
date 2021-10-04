@@ -627,3 +627,69 @@ GET /t
 qr/update endpoint: http:\/\/127.0.0.1:1984 to unhealthy/
 --- response_body
 3
+
+
+
+=== TEST 15: (round robin) has no healthy etcd endpoint, directly return an error message
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local etcd, err = require "resty.etcd" .new({
+                protocol = "v3",
+                http_host = {
+                    "http://127.0.0.1:12379",
+                    "http://127.0.0.1:22379",
+                    "http://127.0.0.1:32379",
+                },
+                user = 'root',
+                password = 'abc123',
+            })
+
+            health_check.set_round_robin_failure_host("http://127.0.0.1:12379")
+            health_check.set_round_robin_failure_host("http://127.0.0.1:22379")
+            health_check.set_round_robin_failure_host("http://127.0.0.1:32379")
+
+            local res, err = etcd:set("/test/etcd/healthy", "hello")
+            ngx.say(err)
+        }
+    }
+--- request
+GET /t
+--- response_body
+has no healthy etcd endpoint available
+--- no_error_log
+[error]
+
+
+
+=== TEST 16: (round robin) cluster node is abnormal, and the data is inserted successfully
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local etcd, err = require "resty.etcd" .new({
+                protocol = "v3",
+                http_host = {
+                    "http://127.0.0.1:42379",
+                    "http://127.0.0.1:22379",
+                    "http://127.0.0.1:32379",
+                },
+                user = 'root',
+                password = 'abc123',
+            })
+
+            local res, err = etcd:set("/test/etcd/healthy", "hello")
+            if err then
+                ngx.say("SET FAIL")
+            else
+                ngx.say("SET OK")
+            end
+        }
+    }
+--- request
+GET /t
+--- response_body
+127.0.0.1:22379 SET OK
+--- error_log eval
+qr/update endpoint: http:\/\/127.0.0.1:42379 to unhealthy/

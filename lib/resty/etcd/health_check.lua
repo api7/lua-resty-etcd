@@ -1,8 +1,13 @@
 local ngx_shared    = ngx.shared
 local utils         = require("resty.etcd.utils")
+local type          = type
+local now           = os.time
 local conf
 
 local _M = {}
+
+local round_robin_unhealthy_target_hosts
+
 
 local function gen_unhealthy_key(etcd_host)
     return "unhealthy-" .. etcd_host
@@ -65,6 +70,37 @@ local function report_failure(etcd_host)
     end
 end
 _M.report_failure = report_failure
+
+
+local function report_round_robin_target_failure(etcd_host)
+    if type(round_robin_unhealthy_target_hosts) ~= "table" then
+        round_robin_unhealthy_target_hosts = {}
+    end
+    local unhealthy_key = gen_unhealthy_key(etcd_host)
+    round_robin_unhealthy_target_hosts[unhealthy_key] = now() + 30 -- fail expired time default: 30s
+    utils.log_warn("update endpoint: ", etcd_host, " to unhealthy")
+end
+_M.report_round_robin_target_failure = report_round_robin_target_failure
+
+
+local function get_round_robin_target_status(etcd_host)
+    if type(etcd_host) ~= "string" then
+        return false, "etcd host invalid"
+    end
+
+    if type(round_robin_unhealthy_target_hosts) ~= "table" then
+        round_robin_unhealthy_target_hosts = {}
+    end
+
+    local unhealthy_key = gen_unhealthy_key(etcd_host)
+    local target_fail_expired_time = round_robin_unhealthy_target_hosts[unhealthy_key]
+    if target_fail_expired_time and target_fail_expired_time >= now() then
+        return false, "endpoint: " .. etcd_host .. " is unhealthy"
+    else
+        return true
+    end
+end
+_M.get_round_robin_target_status = get_round_robin_target_status
 
 
 function _M.init(opts)
