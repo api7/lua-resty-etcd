@@ -665,7 +665,7 @@ has no healthy etcd endpoint available
 
 
 
-=== TEST 16: (round robin) cluster node is abnormal, and the data is inserted successfully
+=== TEST 16: (round robin) passive stop one endpoint and successfully insert data
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -692,6 +692,43 @@ has no healthy etcd endpoint available
 --- request
 GET /t
 --- response_body
-127.0.0.1:22379 SET OK
+SET OK
 --- error_log eval
 qr/update endpoint: http:\/\/127.0.0.1:42379 to unhealthy/
+
+
+
+=== TEST 17: (round robin) actively stop one endpoint and successfully insert data
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local health_check = require "resty.etcd.health_check"
+
+            local etcd, err = require "resty.etcd" .new({
+                protocol = "v3",
+                http_host = {
+                    "http://127.0.0.1:12379",
+                    "http://127.0.0.1:22379",
+                    "http://127.0.0.1:32379",
+                },
+                user = 'root',
+                password = 'abc123',
+            })
+
+            health_check.set_round_robin_failure_host("http://127.0.0.1:12379")
+
+            local res, err = etcd:set("/test/etcd/healthy", "hello")
+            if err then
+                ngx.say("SET FAIL")
+            else
+                ngx.say("SET OK")
+            end
+        }
+    }
+--- request
+GET /t
+--- response_body
+SET OK
+--- error_log eval
+qr/update endpoint: http:\/\/127.0.0.1:12379 to unhealthy/
