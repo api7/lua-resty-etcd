@@ -154,7 +154,7 @@ local function _request_uri(self, method, uri, opts, timeout, ignore_auth)
     end
 
     local res
-    local max_retry = 0
+    local max_retry
     if health_check.conf == nil or not health_check.conf.retry then
         max_retry = #self.endpoints + 1
     else
@@ -650,7 +650,7 @@ local function request_chunk(self, method, path, opts, timeout)
     end
 
     local endpoint
-    local max_retry = 0
+    local max_retry
     if health_check.conf == nil or not health_check.conf.retry then
         max_retry = #self.endpoints + 1
     else
