@@ -109,7 +109,9 @@ done
         }
     }
 --- response_body
-err: 20: unable to get local issuer certificate
+err: has no healthy etcd endpoint available
+--- error_log eval
+qr/unable to get local issuer certificate/
 
 
 
@@ -169,7 +171,7 @@ timeout/
             ngx.say("done")
         }
     }
---- error_log
-bad certificate
 --- response_body
-err: handshake failed
+err: has no healthy etcd endpoint available
+--- error_log eval
+qr/handshake failed/
