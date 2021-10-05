@@ -157,7 +157,11 @@ failed to get ngx.shared dict: error_shm_name
             })
 
             local res, err = etcd:set("/trigger_unhealthy", { a='abc'})
-            ngx.say(err)
+            if err then
+                ngx.say(err)
+            else
+                ngx.say("SET OK")
+            end
         }
     }
 --- request
@@ -165,7 +169,7 @@ GET /t
 --- error_log eval
 qr/update endpoint: http:\/\/127.0.0.1:42379 to unhealthy/
 --- response_body
-http://127.0.0.1:42379: connection refused
+SET OK
 
 
 
@@ -192,6 +196,8 @@ http://127.0.0.1:42379: connection refused
             local body_chunk_fun, err = etcd:watch("/trigger_unhealthy")
             if not body_chunk_fun then
                 ngx.say(err)
+            else
+                ngx.say("WATCH OK")
             end
         }
     }
@@ -200,7 +206,7 @@ GET /t
 --- error_log eval
 qr/update endpoint: http:\/\/127.0.0.1:42379 to unhealthy/
 --- response_body
-http://127.0.0.1:42379: connection refused
+WATCH OK
 
 
 
@@ -648,9 +654,9 @@ qr/update endpoint: http:\/\/127.0.0.1:1984 to unhealthy/
                 password = 'abc123',
             })
 
-            health_check.set_round_robin_failure_host("http://127.0.0.1:12379")
-            health_check.set_round_robin_failure_host("http://127.0.0.1:22379")
-            health_check.set_round_robin_failure_host("http://127.0.0.1:32379")
+            health_check.report_round_robin_target_failure("http://127.0.0.1:12379")
+            health_check.report_round_robin_target_failure("http://127.0.0.1:22379")
+            health_check.report_round_robin_target_failure("http://127.0.0.1:32379")
 
             local res, err = etcd:set("/test/etcd/healthy", "hello")
             ngx.say(err)
@@ -683,7 +689,7 @@ has no healthy etcd endpoint available
 
             local res, err = etcd:set("/test/etcd/healthy", "hello")
             if err then
-                ngx.say("SET FAIL")
+                ngx.say(err)
             else
                 ngx.say("SET OK")
             end
@@ -716,11 +722,11 @@ qr/update endpoint: http:\/\/127.0.0.1:42379 to unhealthy/
                 password = 'abc123',
             })
 
-            health_check.set_round_robin_failure_host("http://127.0.0.1:12379")
+            health_check.report_round_robin_target_failure("http://127.0.0.1:12379")
 
             local res, err = etcd:set("/test/etcd/healthy", "hello")
             if err then
-                ngx.say("SET FAIL")
+                ngx.say(err)
             else
                 ngx.say("SET OK")
             end
