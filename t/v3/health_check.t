@@ -635,7 +635,7 @@ qr/update endpoint: http:\/\/127.0.0.1:1984 to unhealthy/
 --- config
     location /t {
         content_by_lua_block {
-            local health_check = require "resty.etcd.health_check"
+            local health_check = require("resty.etcd.health_check")
 
             local etcd, err = require "resty.etcd" .new({
                 protocol = "v3",
@@ -703,7 +703,7 @@ qr/update endpoint: http:\/\/127.0.0.1:42379 to unhealthy/
 --- config
     location /t {
         content_by_lua_block {
-            local health_check = require "resty.etcd.health_check"
+            local health_check = require("resty.etcd.health_check")
 
             local etcd, err = require "resty.etcd" .new({
                 protocol = "v3",
