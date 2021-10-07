@@ -211,7 +211,7 @@ has no healthy etcd endpoint available
 uri: /kv/put, timeout: 3
 uri: /auth/authenticate, timeout: 3
 has no healthy etcd endpoint available
---- ONLY
+
 
 
 === TEST 4: Authorization header will not be overridden when etcd auth is enabled(request uri)
