@@ -108,8 +108,8 @@ done
             ngx.say("done")
         }
     }
---- response_body
-err: 20: unable to get local issuer certificate
+--- response_body_like
+unable to get local issuer certificate
 
 
 
@@ -171,5 +171,5 @@ timeout/
     }
 --- error_log
 bad certificate
---- response_body
-err: handshake failed
+--- response_body_like
+handshake failed
