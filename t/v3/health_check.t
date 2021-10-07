@@ -157,11 +157,7 @@ failed to get ngx.shared dict: error_shm_name
             })
 
             local res, err = etcd:set("/trigger_unhealthy", { a='abc'})
-            if err then
-                ngx.say(err)
-            else
-                ngx.say("SET OK")
-            end
+            ngx.say(err)
         }
     }
 --- request
@@ -169,7 +165,7 @@ GET /t
 --- error_log eval
 qr/update endpoint: http:\/\/127.0.0.1:42379 to unhealthy/
 --- response_body
-SET OK
+http://127.0.0.1:42379: connection refused
 
 
 
@@ -196,8 +192,6 @@ SET OK
             local body_chunk_fun, err = etcd:watch("/trigger_unhealthy")
             if not body_chunk_fun then
                 ngx.say(err)
-            else
-                ngx.say("WATCH OK")
             end
         }
     }
@@ -206,7 +200,7 @@ GET /t
 --- error_log eval
 qr/update endpoint: http:\/\/127.0.0.1:42379 to unhealthy/
 --- response_body
-WATCH OK
+http://127.0.0.1:42379: connection refused
 
 
 
@@ -641,7 +635,9 @@ qr/update endpoint: http:\/\/127.0.0.1:1984 to unhealthy/
 --- config
     location /t {
         content_by_lua_block {
-            local health_check = require("resty.etcd.health_check")
+            local health_check, err = require "resty.etcd.health_check" .init({
+                retry = true,
+            })
 
             local etcd, err = require "resty.etcd" .new({
                 protocol = "v3",
@@ -676,6 +672,10 @@ has no healthy etcd endpoint available
 --- config
     location /t {
         content_by_lua_block {
+            local health_check, err = require "resty.etcd.health_check" .init({
+                retry = true,
+            })
+
             local etcd, err = require "resty.etcd" .new({
                 protocol = "v3",
                 http_host = {
@@ -709,7 +709,9 @@ qr/update endpoint: http:\/\/127.0.0.1:42379 to unhealthy/
 --- config
     location /t {
         content_by_lua_block {
-            local health_check = require("resty.etcd.health_check")
+            local health_check, err = require "resty.etcd.health_check" .init({
+                retry = true,
+            })
 
             local etcd, err = require "resty.etcd" .new({
                 protocol = "v3",
