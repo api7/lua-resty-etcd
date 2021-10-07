@@ -77,7 +77,7 @@ local function report_round_robin_target_failure(etcd_host)
         round_robin_unhealthy_target_hosts = {}
     end
     local unhealthy_key = gen_unhealthy_key(etcd_host)
-    round_robin_unhealthy_target_hosts[unhealthy_key] = now() + 30 -- fail expired time default: 30s
+    round_robin_unhealthy_target_hosts[unhealthy_key] = now() + conf.fail_timeout
     utils.log_warn("update endpoint: ", etcd_host, " to unhealthy")
 end
 _M.report_round_robin_target_failure = report_round_robin_target_failure
@@ -107,10 +107,12 @@ function _M.init(opts)
     if conf == nil then
         conf = {}
         local shared_dict = ngx_shared[opts.shm_name]
-        if not shared_dict then
-            return nil, "failed to get ngx.shared dict: " .. opts.shm_name
+        if shared_dict then
+            conf.shm_name = opts.shm_name
+            utils.log_info("healthy check use ngx.shared dict: ", opts.shm_name)
+        else
+            utils.log_info("healthy check use round robin")
         end
-        conf.shm_name = opts.shm_name
         conf.fail_timeout = opts.fail_timeout or 10    -- 10 sec
         conf.max_fails = opts.max_fails or 1
         conf.retry = opts.retry or false

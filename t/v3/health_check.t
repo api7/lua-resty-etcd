@@ -646,8 +646,6 @@ qr/update endpoint: http:\/\/127.0.0.1:1984 to unhealthy/
                     "http://127.0.0.1:22379",
                     "http://127.0.0.1:32379",
                 },
-                user = 'root',
-                password = 'abc123',
             })
 
             health_check.report_round_robin_target_failure("http://127.0.0.1:12379")
@@ -683,8 +681,6 @@ has no healthy etcd endpoint available
                     "http://127.0.0.1:22379",
                     "http://127.0.0.1:32379",
                 },
-                user = 'root',
-                password = 'abc123',
             })
 
             local res, err = etcd:set("/test/etcd/healthy", "hello")
@@ -720,8 +716,6 @@ qr/update endpoint: http:\/\/127.0.0.1:42379 to unhealthy/
                     "http://127.0.0.1:22379",
                     "http://127.0.0.1:32379",
                 },
-                user = 'root',
-                password = 'abc123',
             })
 
             health_check.report_round_robin_target_failure("http://127.0.0.1:12379")
@@ -740,3 +734,36 @@ GET /t
 SET OK
 --- error_log eval
 qr/update endpoint: http:\/\/127.0.0.1:12379 to unhealthy/
+
+
+
+=== TEST 18: (round robin) default round robin health check insert data
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local etcd, err = require "resty.etcd" .new({
+                protocol = "v3",
+                http_host = {
+                    "http://127.0.0.1:42379",
+                    "http://127.0.0.1:22379",
+                    "http://127.0.0.1:32379",
+                },
+            })
+
+            local res
+            res, err = etcd:set("/test/etcd/unhealthy", "hello")
+            ngx.say(err)
+            res, err = etcd:set("/test/etcd/healthy", "hello")
+            if err == nil then
+                ngx.say("http://127.0.0.1:22379: OK")
+            end
+        }
+    }
+--- request
+GET /t
+--- response_body
+http://127.0.0.1:42379: connection refused
+http://127.0.0.1:22379: OK
+--- error_log eval
+qr/update endpoint: http:\/\/127.0.0.1:42379 to unhealthy/

@@ -46,7 +46,7 @@ local function choose_endpoint(self)
     local endpoints = self.endpoints
 
     for _, endpoint in ipairs(endpoints) do
-        if health_check.conf ~= nil then
+        if health_check.conf.shm_name ~= nil then
             if health_check.get_target_status(endpoint.http_host) then
                 return endpoint
             end
@@ -87,7 +87,7 @@ local function http_request_uri(self, http_cli, method, uri, body, headers, keep
     })
 
     if err then
-        if health_check.conf ~= nil then
+        if health_check.conf.shm_name ~= nil then
             health_check.report_failure(endpoint.http_host)
         else
             health_check.report_round_robin_target_failure(endpoint.http_host)
@@ -96,7 +96,7 @@ local function http_request_uri(self, http_cli, method, uri, body, headers, keep
     end
 
     if res.status >= 500 then
-        if health_check.conf ~= nil then
+        if health_check.conf.shm_name ~= nil then
             health_check.report_failure(endpoint.http_host)
         else
             health_check.report_round_robin_target_failure(endpoint.http_host)
@@ -154,7 +154,7 @@ local function _request_uri(self, method, uri, opts, timeout, ignore_auth)
     end
 
     local res
-    if type(health_check.conf) == "table" and health_check.conf.retry then
+    if health_check.conf.retry then
         local max_retry = #self.endpoints * health_check.conf.max_fails + 1
         for _ = 1, max_retry do
             res, err = http_request_uri(self, http_cli, method, uri, body, headers, keepalive)
@@ -265,6 +265,10 @@ function _M.new(opts)
     local sema, err = semaphore.new()
     if not sema then
         return nil, err
+    end
+
+    if health_check.conf == nil then
+        health_check.init({})
     end
 
     return setmetatable({
@@ -593,7 +597,7 @@ local function http_request_chunk(self, http_cli)
         ssl_key_path = self.ssl_key_path,
     })
     if not ok then
-        if health_check.conf ~= nil then
+        if health_check.conf.shm_name ~= nil then
             health_check.report_failure(endpoint.http_host)
         else
             health_check.report_round_robin_target_failure(endpoint.http_host)
@@ -652,7 +656,7 @@ local function request_chunk(self, method, path, opts, timeout)
     end
 
     local endpoint
-    if type(health_check.conf) == "table" and health_check.conf.retry then
+    if health_check.conf.retry then
         local max_retry = #self.endpoints * health_check.conf.max_fails + 1
         for _ = 1, max_retry do
             endpoint, err = http_request_chunk(self, http_cli)
@@ -710,7 +714,7 @@ local function request_chunk(self, method, path, opts, timeout)
         if not body then
             return nil, "failed to decode json body: " .. (err or " unkwon")
         elseif body.error and body.error.http_code >= 500 then
-            if health_check.conf ~= nil then
+            if health_check.conf.shm_name ~= nil then
                 -- health_check retry should do nothing here
                 -- and let connection closed to create a new one
                 health_check.report_failure(endpoint.http_host)
