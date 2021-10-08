@@ -140,13 +140,6 @@ done
     location /t {
         content_by_lua_block {
             local etcd, err = new_etcd(true, nil, nil, "127.0.0.1")
-            local res, err = etcd:set("/test", "abc")
-            check_res(res, err)
-
-            ngx.timer.at(0.1, function ()
-                etcd:set("/test", "bcd3")
-            end)
-
             local cur_time = ngx.now()
             local body_chunk_fun, err = etcd:watch("/test", {timeout = 0.5})
             if not body_chunk_fun then
@@ -158,7 +151,7 @@ done
         }
     }
 --- response_body
-err: certificate host mismatch
+failed to watch: https://127.0.0.1:12379: certificate host mismatch
 
 
 
@@ -167,13 +160,6 @@ err: certificate host mismatch
     location /t {
         content_by_lua_block {
             local etcd, err = new_etcd(true, nil, nil, "admin.apisix.dev")
-            local res, err = etcd:set("/test", "abc")
-            check_res(res, err)
-
-            ngx.timer.at(0.1, function ()
-                etcd:set("/test", "bcd3")
-            end)
-
             local cur_time = ngx.now()
             local body_chunk_fun, err = etcd:watch("/test", {timeout = 0.5})
             if not body_chunk_fun then
@@ -181,7 +167,6 @@ err: certificate host mismatch
             else
                 ngx.say("done")
             end
-
         }
     }
 --- response_body
