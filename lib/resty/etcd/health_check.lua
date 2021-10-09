@@ -103,9 +103,9 @@ _M.report_failure = report_failure
 
 
 function _M.init(opts)
-    if not conf then
+    opts = opts or {}
+    if not conf or opts.shm_name ~= conf.shm_name then
         conf = {}
-        opts = opts or {}
         if opts.shm_name and type(opts.shm_name) == "string" then
             local shared_dict = ngx_shared[opts.shm_name]
             if not shared_dict then

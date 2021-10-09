@@ -32,12 +32,14 @@ Get the current status of the target.
 
 | name         | Type    | Requirement | Default | Description                                                  |
 | ------------ | ------- | ----------- | ------- | ------------------------------------------------------------ |
-| shm_name     | string  | optional    |         | the declarative `lua_shared_dict` is used to store the health status of endpoints, if this option is not set, the health check will return to round-robin check mode. |
+| shm_name     | string  | optional    |         | the declarative `lua_shared_dict` is used to store the health status of endpoints, if this option is not set, the health check will return to [round-robin](#round-robin-based-health-check) check mode. |
 | fail_timeout | integer | optional    | 10s     | sets the time during which the specified number of unsuccessful attempts to communicate with the endpoint should happen to marker the endpoint unavailable, and also sets the period of time the endpoint will be marked unavailable. |
-| max_fails    | integer | optional    | 1       | sets the number of failed attempts that must occur during the `fail_timeout` period for the endpoint to be marked unavailable. |
+| max_fails    | integer | optional    | 1       | sets the number of failed attempts that must occur during the `fail_timeout` period for the endpoint to be marked unavailable. This configuration only takes effect in [policy](#policy-based-health-check) check mode |
 | retry        | bool    | optional    | false   | automatically retry another endpoint when operations failed. |
 
-lua example:
+## Example
+
+### Policy based health check
 
 ```lua
 local health_check, err = require("resty.etcd.health_check").init({
@@ -54,7 +56,22 @@ Health check mechanism would switch endpoint only when the previously choosed en
 
 The failure counter and health status of each etcd endpoint are shared across workers and by different etcd clients.
 
-Also note that the `fail_timeout`, `max_fails` and `retry` of the health check cannot be changed once it has been created.
+PS: the `fail_timeout`, `max_fails` and `retry` of the health check After initialization, they will only be reset when the health check mode is switched.
+
+### Round-robin based health check
+
+```lua
+local health_check, err = require("resty.etcd.health_check").init({
+    fail_timeout = 10,
+    retry = false,
+})
+```
+
+Round-robin health check. When a endpoint fails, the endpoint will be marked as unhealthy, and will not be connected to the endpoint within the time set by `fail_timeout` (select the next healthy endpoint to connect).
+
+Unhealthy nodes will be released to the selection pool of healthy endpoints after the `fail_timeout` time is exceeded.
+
+The status of etcd unhealthy endpoints is only valid in the current worker
 
 ##  Synopsis
 
