@@ -119,15 +119,16 @@ GET /t
 --- config
     location /t {
         content_by_lua_block {
-            require "resty.etcd.health_check" .init({
+            local health_check, err = require "resty.etcd.health_check" .init({
                 shm_name = "error_shm_name",
             })
+            ngx.say(err)
         }
     }
 --- request
 GET /t
---- error_log eval
-qr/healthy check use round robin/
+--- response_body
+failed to get ngx.shared dict: error_shm_name
 --- no_error_log
 [error]
 
