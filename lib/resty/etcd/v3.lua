@@ -254,7 +254,7 @@ function _M.new(opts)
     end
 
     if health_check.conf == nil then
-        health_check.init({})
+        health_check.init()
     end
 
     return setmetatable({

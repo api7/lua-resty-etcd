@@ -32,7 +32,7 @@ Get the current status of the target.
 
 | name         | Type    | Requirement | Default | Description                                                  |
 | ------------ | ------- | ----------- | ------- | ------------------------------------------------------------ |
-| shm_name     | string  | required    |         | the declarative `lua_shared_dict` is used to store the health status of endpoints. |
+| shm_name     | string  | optional    |         | the declarative `lua_shared_dict` is used to store the health status of endpoints, if this option is not set, the health check will return to round-robin check mode. |
 | fail_timeout | integer | optional    | 10s     | sets the time during which the specified number of unsuccessful attempts to communicate with the endpoint should happen to marker the endpoint unavailable, and also sets the period of time the endpoint will be marked unavailable. |
 | max_fails    | integer | optional    | 1       | sets the number of failed attempts that must occur during the `fail_timeout` period for the endpoint to be marked unavailable. |
 | retry        | bool    | optional    | false   | automatically retry another endpoint when operations failed. |
@@ -61,12 +61,14 @@ Also note that the `fail_timeout`, `max_fails` and `retry` of the health check c
 ```nginx
 http {
     # required declares a shared memory zone to store endpoints's health status
+    # if you use the round-robin method for health check, you don’t need to set this
     lua_shared_dict healthcheck_shm 1m;
 
     server {
         location = /healthcheck {
             content_by_lua_block {
                 # the health check feature is optional, and can be enabled with the following configuration.
+                # if you use the round-robin method for health check, you don’t need to set this
                 local health_check, err = require("resty.etcd.health_check").init({
                     shm_name = "healthcheck_shm",
                     fail_timeout = 10,

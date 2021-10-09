@@ -103,10 +103,14 @@ _M.report_failure = report_failure
 
 
 function _M.init(opts)
-    if conf == nil then
+    if not conf then
         conf = {}
-        local shared_dict = ngx_shared[opts.shm_name]
-        if shared_dict then
+        opts = opts or {}
+        if opts.shm_name and type(opts.shm_name) == "string" then
+            local shared_dict = ngx_shared[opts.shm_name]
+            if not shared_dict then
+                return nil, "failed to get ngx.shared dict: " .. opts.shm_name
+            end
             conf.shm_name = opts.shm_name
             utils.log_info("healthy check use ngx.shared dict: ", opts.shm_name)
         else
