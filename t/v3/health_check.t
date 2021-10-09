@@ -647,9 +647,9 @@ qr/update endpoint: http:\/\/127.0.0.1:1984 to unhealthy/
                 },
             })
 
-            health_check.report_round_robin_target_failure("http://127.0.0.1:12379")
-            health_check.report_round_robin_target_failure("http://127.0.0.1:22379")
-            health_check.report_round_robin_target_failure("http://127.0.0.1:32379")
+            health_check.report_failure("http://127.0.0.1:12379")
+            health_check.report_failure("http://127.0.0.1:22379")
+            health_check.report_failure("http://127.0.0.1:32379")
 
             local res, err = etcd:set("/test/etcd/healthy", "hello")
             ngx.say(err)
@@ -717,7 +717,7 @@ qr/update endpoint: http:\/\/127.0.0.1:42379 to unhealthy/
                 },
             })
 
-            health_check.report_round_robin_target_failure("http://127.0.0.1:12379")
+            health_check.report_failure("http://127.0.0.1:12379")
 
             local res, err = etcd:set("/test/etcd/healthy", "hello")
             if err then

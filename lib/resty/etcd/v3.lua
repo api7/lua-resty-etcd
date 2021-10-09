@@ -46,14 +46,8 @@ local function choose_endpoint(self)
     local endpoints = self.endpoints
 
     for _, endpoint in ipairs(endpoints) do
-        if health_check.conf.shm_name ~= nil then
-            if health_check.get_target_status(endpoint.http_host) then
-                return endpoint
-            end
-        else
-            if health_check.get_round_robin_target_status(endpoint.http_host) then
-                return endpoint
-            end
+        if health_check.get_target_status(endpoint.http_host) then
+            return endpoint
         end
     end
 
@@ -87,20 +81,12 @@ local function http_request_uri(self, http_cli, method, uri, body, headers, keep
     })
 
     if err then
-        if health_check.conf.shm_name ~= nil then
-            health_check.report_failure(endpoint.http_host)
-        else
-            health_check.report_round_robin_target_failure(endpoint.http_host)
-        end
+        health_check.report_failure(endpoint.http_host)
         return nil, endpoint.http_host .. ": " .. err
     end
 
     if res.status >= 500 then
-        if health_check.conf.shm_name ~= nil then
-            health_check.report_failure(endpoint.http_host)
-        else
-            health_check.report_round_robin_target_failure(endpoint.http_host)
-        end
+        health_check.report_failure(endpoint.http_host)
         return nil, "invalid response code: " .. res.status
     end
 
@@ -597,11 +583,7 @@ local function http_request_chunk(self, http_cli)
         ssl_key_path = self.ssl_key_path,
     })
     if not ok then
-        if health_check.conf.shm_name ~= nil then
-            health_check.report_failure(endpoint.http_host)
-        else
-            health_check.report_round_robin_target_failure(endpoint.http_host)
-        end
+        health_check.report_failure(endpoint.http_host)
         return nil, endpoint.http_host .. ": " .. err
     end
 
@@ -714,13 +696,9 @@ local function request_chunk(self, method, path, opts, timeout)
         if not body then
             return nil, "failed to decode json body: " .. (err or " unkwon")
         elseif body.error and body.error.http_code >= 500 then
-            if health_check.conf.shm_name ~= nil then
-                -- health_check retry should do nothing here
-                -- and let connection closed to create a new one
-                health_check.report_failure(endpoint.http_host)
-            else
-                health_check.report_round_robin_target_failure(endpoint.http_host)
-            end
+            -- health_check retry should do nothing here
+            -- and let connection closed to create a new one
+            health_check.report_failure(endpoint.http_host)
             return nil, endpoint.http_host .. ": " .. body.error.http_status
         end
 
