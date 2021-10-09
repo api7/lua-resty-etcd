@@ -593,6 +593,7 @@ local function http_request_chunk(self, http_cli)
         ssl_verify = self.ssl_verify,
         ssl_cert_path = self.ssl_cert_path,
         ssl_key_path = self.ssl_key_path,
+        ssl_server_name = self.sni,
     })
     if not ok then
         if health_check.conf ~= nil then
@@ -679,7 +680,6 @@ local function request_chunk(self, method, path, opts, timeout)
         body    = body,
         query   = query,
         headers = headers,
-        ssl_server_name = self.sni,
     })
     utils.log_info("http request method: ", method, " path: ", path,
              " body: ", body, " query: ", query)
