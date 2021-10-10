@@ -200,17 +200,17 @@ GET /t
 --- response_body
 ok
 --- grep_error_log eval
-qr/(uri: .+, timeout: \d+|v3 refresh jwt last err: [^,]+|connection refused)/
+qr/(uri: .+, timeout: \d+|has no healthy [^,]+)/
 --- grep_error_log_out
 uri: /kv/put, timeout: 3
 uri: /auth/authenticate, timeout: 3
+has no healthy etcd endpoint available
 uri: /kv/put, timeout: 3
+uri: /auth/authenticate, timeout: 3
+has no healthy etcd endpoint available
 uri: /kv/put, timeout: 3
-connection refused
-v3 refresh jwt last err: connection refused
-connection refused
-v3 refresh jwt last err: connection refused
-connection refused
+uri: /auth/authenticate, timeout: 3
+has no healthy etcd endpoint available
 
 
 

@@ -627,3 +627,143 @@ GET /t
 qr/update endpoint: http:\/\/127.0.0.1:1984 to unhealthy/
 --- response_body
 3
+
+
+
+=== TEST 15: (round robin) has no healthy etcd endpoint, directly return an error message
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local health_check, err = require "resty.etcd.health_check" .init({
+                retry = true,
+            })
+
+            local etcd, err = require "resty.etcd" .new({
+                protocol = "v3",
+                http_host = {
+                    "http://127.0.0.1:12379",
+                    "http://127.0.0.1:22379",
+                    "http://127.0.0.1:32379",
+                },
+            })
+
+            health_check.report_failure("http://127.0.0.1:12379")
+            health_check.report_failure("http://127.0.0.1:22379")
+            health_check.report_failure("http://127.0.0.1:32379")
+
+            local res, err = etcd:set("/test/etcd/healthy", "hello")
+            ngx.say(err)
+        }
+    }
+--- request
+GET /t
+--- response_body
+has no healthy etcd endpoint available
+--- no_error_log
+[error]
+
+
+
+=== TEST 16: (round robin) passive stop one endpoint and successfully insert data
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local health_check, err = require "resty.etcd.health_check" .init({
+                retry = true,
+            })
+
+            local etcd, err = require "resty.etcd" .new({
+                protocol = "v3",
+                http_host = {
+                    "http://127.0.0.1:42379",
+                    "http://127.0.0.1:22379",
+                    "http://127.0.0.1:32379",
+                },
+            })
+
+            local res, err = etcd:set("/test/etcd/healthy", "hello")
+            if err then
+                ngx.say(err)
+            else
+                ngx.say("SET OK")
+            end
+        }
+    }
+--- request
+GET /t
+--- response_body
+SET OK
+--- error_log eval
+qr/update endpoint: http:\/\/127.0.0.1:42379 to unhealthy/
+
+
+
+=== TEST 17: (round robin) actively stop one endpoint and successfully insert data
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local health_check, err = require "resty.etcd.health_check" .init({
+                retry = true,
+            })
+
+            local etcd, err = require "resty.etcd" .new({
+                protocol = "v3",
+                http_host = {
+                    "http://127.0.0.1:12379",
+                    "http://127.0.0.1:22379",
+                    "http://127.0.0.1:32379",
+                },
+            })
+
+            health_check.report_failure("http://127.0.0.1:12379")
+
+            local res, err = etcd:set("/test/etcd/healthy", "hello")
+            if err then
+                ngx.say(err)
+            else
+                ngx.say("SET OK")
+            end
+        }
+    }
+--- request
+GET /t
+--- response_body
+SET OK
+--- error_log eval
+qr/update endpoint: http:\/\/127.0.0.1:12379 to unhealthy/
+
+
+
+=== TEST 18: (round robin) default round robin health check insert data
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local etcd, err = require "resty.etcd" .new({
+                protocol = "v3",
+                http_host = {
+                    "http://127.0.0.1:42379",
+                    "http://127.0.0.1:22379",
+                    "http://127.0.0.1:32379",
+                },
+            })
+
+            local res
+            res, err = etcd:set("/test/etcd/unhealthy", "hello")
+            ngx.say(err)
+            res, err = etcd:set("/test/etcd/healthy", "hello")
+            if err == nil then
+                ngx.say("http://127.0.0.1:22379: OK")
+            end
+        }
+    }
+--- request
+GET /t
+--- response_body
+http://127.0.0.1:42379: connection refused
+http://127.0.0.1:22379: OK
+--- error_log eval
+qr/update endpoint: http:\/\/127.0.0.1:42379 to unhealthy/
