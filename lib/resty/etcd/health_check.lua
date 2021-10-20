@@ -102,6 +102,14 @@ end
 _M.report_failure = report_failure
 
 
+local function is_default_mode()
+    -- true: round-robin based health check (worker memory)
+    -- false: policy based health check (shared dict)
+    return not (conf and conf.shm_name)
+end
+_M.is_default_mode = is_default_mode
+
+
 function _M.init(opts)
     opts = opts or {}
     if not conf or opts.shm_name ~= conf.shm_name then

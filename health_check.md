@@ -28,6 +28,13 @@ Reports a health failure which will count against the number of occurrences requ
 
 Get the current status of the target.
 
+###  is_default_mode
+
+`syntax: status = health_check.is_default_mode()`
+
+Check whether the current health check is running in the default [round-robin]((#round-robin-based-health-check)) mode, `status` is `true` means running in polling mode, and `false` means running in [policy](#policy-based-health-check) mode.
+
+
 ## Config
 
 | name         | Type    | Requirement | Default | Description                                                  |
