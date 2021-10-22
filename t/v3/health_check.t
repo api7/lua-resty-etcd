@@ -785,26 +785,26 @@ qr/update endpoint: http:\/\/127.0.0.1:42379 to unhealthy/
             })
 
             local health_check = require("resty.etcd.health_check")
-            local status = health_check.is_default_mode()
-            if status then
-                ngx.say("Round-robin")
+            local mode = health_check.get_check_mode()
+            if mode then
+                ngx.say(mode)
             end
 
             health_check.init({
                 shm_name = "etcd_cluster_health_check",
             })
 
-            status = health_check.is_default_mode()
-            if not status then
-                ngx.say("Policy")
+            mode = health_check.get_check_mode()
+            if mode then
+                ngx.say(mode)
             end
         }
     }
 --- request
 GET /t
 --- response_body
-Round-robin
-Policy
+round-robin
+shared-dict
 --- grep_error_log eval
 qr/healthy check use \S+ \w+/
 --- grep_error_log_out

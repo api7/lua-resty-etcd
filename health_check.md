@@ -9,6 +9,7 @@ Implement a passive health check mechanism, that when the connection/read/write 
 * [init](#init)
 * [report_failure](#report_failure)
 * [get_target_status](#get_target_status)
+* [get_check_mode](#get_check_mode)
 
 ###  init
 
@@ -28,11 +29,11 @@ Reports a health failure which will count against the number of occurrences requ
 
 Get the current status of the target.
 
-###  is_default_mode
+###  get_check_mode
 
-`syntax: status = health_check.is_default_mode()`
+`syntax: mode = health_check.get_check_mode()`
 
-Check whether the current health check is running in the default [round-robin]((#round-robin-based-health-check)) mode, `status` is `true` means running in polling mode, and `false` means running in [policy](#policy-based-health-check) mode.
+Get the current health check running mode. When `mode` is `round-robin`, it means running in [Round robin](#round-robin-based-health-check) mode, and `shared-dict` means running in [Policy](#policy-based-health-check) mode operation.
 
 
 ## Config

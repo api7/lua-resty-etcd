@@ -102,12 +102,16 @@ end
 _M.report_failure = report_failure
 
 
-local function is_default_mode()
-    -- true: round-robin based health check (worker memory)
-    -- false: policy based health check (shared dict)
-    return not (conf and conf.shm_name)
+local function get_check_mode()
+    -- round-robin: nginx worker memory round-robin based health check
+    -- shared-dict: nginx shared memory policy based health check
+    if conf and conf.shm_name then
+        return "shared-dict"
+    else
+        return "round-robin"
+    end
 end
-_M.is_default_mode = is_default_mode
+_M.get_check_mode = get_check_mode
 
 
 function _M.init(opts)
