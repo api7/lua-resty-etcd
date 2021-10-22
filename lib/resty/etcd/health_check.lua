@@ -8,6 +8,8 @@ local HEALTH_CHECK_MODE_ROUND_ROBIN = "round-robin"
 local HEALTH_CHECK_MODE_SHARED_DICT = "shared-dict"
 
 local _M = {}
+_M.ROUND_ROBIN_MODE = HEALTH_CHECK_MODE_ROUND_ROBIN
+_M.SHARED_DICT_MODE = HEALTH_CHECK_MODE_SHARED_DICT
 
 local round_robin_unhealthy_target_hosts
 

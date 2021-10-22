@@ -35,6 +35,8 @@ Get the current status of the target.
 
 Get the current health check running mode. When `mode` is `round-robin`, it means running in [Round robin](#round-robin-based-health-check) mode, and `shared-dict` means running in [Policy](#policy-based-health-check) mode operation.
 
+When using this method to get the health check running mode, you can use `health_check.ROUND_ROBIN_MODE` and `health_check.SHARED_DICT_MODE` to judge and compare.
+
 
 ## Config
 
