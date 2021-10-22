@@ -767,3 +767,46 @@ http://127.0.0.1:42379: connection refused
 http://127.0.0.1:22379: OK
 --- error_log eval
 qr/update endpoint: http:\/\/127.0.0.1:42379 to unhealthy/
+
+
+
+=== TEST 19: test health check running mode
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local etcd, err = require "resty.etcd" .new({
+                protocol = "v3",
+                http_host = {
+                    "http://127.0.0.1:12379",
+                    "http://127.0.0.1:22379",
+                    "http://127.0.0.1:32379",
+                },
+            })
+
+            local health_check = require("resty.etcd.health_check")
+            local mode = health_check.get_check_mode()
+            if mode == health_check.ROUND_ROBIN_MODE then
+                ngx.say("passed")
+            end
+
+            health_check.init({
+                shm_name = "etcd_cluster_health_check",
+            })
+
+            mode = health_check.get_check_mode()
+            if mode == health_check.SHARED_DICT_MODE then
+                ngx.say("passed")
+            end
+        }
+    }
+--- request
+GET /t
+--- response_body
+passed
+passed
+--- grep_error_log eval
+qr/healthy check use \S+ \w+/
+--- grep_error_log_out
+healthy check use round robin
+healthy check use ngx.shared dict

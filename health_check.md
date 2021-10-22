@@ -9,6 +9,7 @@ Implement a passive health check mechanism, that when the connection/read/write 
 * [init](#init)
 * [report_failure](#report_failure)
 * [get_target_status](#get_target_status)
+* [get_check_mode](#get_check_mode)
 
 ###  init
 
@@ -27,6 +28,15 @@ Reports a health failure which will count against the number of occurrences requ
 `syntax: healthy, err = health_check.get_target_status(etcd_host)`
 
 Get the current status of the target.
+
+###  get_check_mode
+
+`syntax: mode = health_check.get_check_mode()`
+
+Get the current health check running mode. When `mode` is `round-robin`, it means running in [Round robin](#round-robin-based-health-check) mode, and `shared-dict` means running in [Policy](#policy-based-health-check) mode operation.
+
+When using this method to get the health check running mode, you can use `health_check.ROUND_ROBIN_MODE` and `health_check.SHARED_DICT_MODE` to judge and compare.
+
 
 ## Config
 

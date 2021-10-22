@@ -4,7 +4,12 @@ local type          = type
 local now           = os.time
 local conf
 
+local HEALTH_CHECK_MODE_ROUND_ROBIN = "round-robin"
+local HEALTH_CHECK_MODE_SHARED_DICT = "shared-dict"
+
 local _M = {}
+_M.ROUND_ROBIN_MODE = HEALTH_CHECK_MODE_ROUND_ROBIN
+_M.SHARED_DICT_MODE = HEALTH_CHECK_MODE_SHARED_DICT
 
 local round_robin_unhealthy_target_hosts
 
@@ -100,6 +105,18 @@ local function report_failure(etcd_host)
     end
 end
 _M.report_failure = report_failure
+
+
+local function get_check_mode()
+    -- round-robin: nginx worker memory round-robin based health check
+    -- shared-dict: nginx shared memory policy based health check
+    if conf and conf.shm_name then
+        return HEALTH_CHECK_MODE_SHARED_DICT
+    else
+        return HEALTH_CHECK_MODE_ROUND_ROBIN
+    end
+end
+_M.get_check_mode = get_check_mode
 
 
 function _M.init(opts)
