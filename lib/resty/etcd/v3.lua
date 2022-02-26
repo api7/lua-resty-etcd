@@ -689,26 +689,37 @@ local function request_chunk(self, method, path, opts, timeout)
 
 
     local function read_watch()
-        body = ""
+        body = nil
 
         while(1) do
-            local chunk, err = res.body_reader()
+            local chunk, error = res.body_reader()
+            if error then
+                return nil, error
+            end
             if not chunk then
-                return nil, err
+                break
             end
 
-            body = body .. chunk
+            if not body then
+                body = chunk
+            else
+                body = body .. chunk
+            end
 
             if not utils.is_empty_str(chunk) and sub_str(chunk, -1) == "\n" then
                 break
             end
 
         end
+--- ONLY
 
+				if not body then
+						return nil, nil
+				end
 
-        local chunks, err = split(body, [[\n]], "jo")
-        if err then
-            return nil, "failed to split chunks: " .. err
+        local chunks, error = split(body, [[\n]], "jo")
+        if error then
+            return nil, "failed to split chunks: " .. error
         end
 
         local all_events = {}
