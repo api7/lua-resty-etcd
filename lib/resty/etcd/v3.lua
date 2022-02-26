@@ -711,11 +711,10 @@ local function request_chunk(self, method, path, opts, timeout)
             end
 
         end
---- ONLY
 
-				if not body then
-						return nil, nil
-				end
+        if not body then
+          return nil, nil
+        end
 
         local chunks, error = split(body, [[\n]], "jo")
         if error then
