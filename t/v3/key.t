@@ -284,6 +284,7 @@ timeout/
 --- timeout: 5
 
 
+
 === TEST 6: watchdir(key=="")
 --- http_config eval: $::HttpConfig
 --- config
