@@ -15,12 +15,6 @@ jobs:
         include:
           - version: 2.2.5
             conf: Procfile-single
-          - version: 3.1.0
-            conf: Procfile-single
-          - version: 3.2.0
-            conf: Procfile-single
-          - version: 3.3.0
-            conf: Procfile-single-enable-v2
           - version: 3.4.0
             conf: Procfile-single-enable-v2
           - version: 3.5.0

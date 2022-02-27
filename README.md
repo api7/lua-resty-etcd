@@ -11,6 +11,7 @@ Table of Contents
 * [Install](#install)
 * [API v2](api_v2.md)
 * [API v3](api_v3.md)
+  * **NOTE**: Requires ETCD version >= v3.4.0 
 
 ## Install
 
