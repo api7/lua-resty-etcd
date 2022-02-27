@@ -17,6 +17,7 @@ local pairs         = pairs
 local re_match      = ngx.re.match
 local type          = type
 local tab_insert    = table.insert
+local tab_concat    = table.concat
 local str_lower     = string.lower
 local tab_clone     = require("table.clone")
 local decode_json   = cjson.decode
@@ -703,10 +704,10 @@ local function request_chunk(self, method, path, opts, timeout)
             if not body then
                 body = chunk
             else
-                body = body .. chunk
+                body = tab_concat({body, chunk})
             end
 
-            if not utils.is_empty_str(chunk) and sub_str(chunk, -1) == "\n" then
+            if not utils.is_empty_str(chunk) and str_byte(chunk, -1) == str_byte("\n") then
                 break
             end
 
