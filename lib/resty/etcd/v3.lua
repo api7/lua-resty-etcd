@@ -726,7 +726,7 @@ local function request_chunk(self, method, path, opts, timeout)
         for _, chunk in ipairs(chunks) do
             body, err = decode_json(chunk)
             if not body then
-                return nil, "failed to decode json body: " .. (err or " unkwon")
+                return nil, "failed to decode json body: " .. (err or " unknown")
             elseif body.error and body.error.http_code >= 500 then
                 -- health_check retry should do nothing here
                 -- and let connection closed to create a new one
