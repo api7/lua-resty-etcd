@@ -690,7 +690,7 @@ local function request_chunk(self, method, path, opts, timeout)
 
 
     local function read_watch()
-        body = nil
+        body = ""
 
         while(1) do
             local chunk, error = res.body_reader()
@@ -704,7 +704,7 @@ local function request_chunk(self, method, path, opts, timeout)
             if not body then
                 body = chunk
             else
-                body = tab_concat({body, chunk})
+                body = body .. chunk
             end
 
             if not utils.is_empty_str(chunk) and str_byte(chunk, -1) == str_byte("\n") then
