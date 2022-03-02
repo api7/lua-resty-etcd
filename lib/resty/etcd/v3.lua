@@ -689,7 +689,7 @@ local function request_chunk(self, method, path, opts, timeout)
 
 
     local function read_watch()
-        body = ""
+        body = nil
 
         while(1) do
             local chunk, error = res.body_reader()
