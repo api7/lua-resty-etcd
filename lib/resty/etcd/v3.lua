@@ -703,9 +703,9 @@ local function request_chunk(self, method, path, opts, timeout)
             if not body then
                 body = chunk
             else
-                -- this branch will only be executed in rare cases,
-                -- for example, a single event json is larger than the proxy_buffer_size of nginx which proxies etcd,
-                -- so It would be ok to use a string concat directly without worry about the performance.
+                -- this branch will only be executed in rare cases, for example, a single event json
+                -- is larger than the proxy_buffer_size of nginx which proxies etcd, so it would be
+                -- ok to use a string concat directly without worry about the performance.
                 body = body .. chunk
             end
 
