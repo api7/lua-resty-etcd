@@ -17,7 +17,6 @@ local pairs         = pairs
 local re_match      = ngx.re.match
 local type          = type
 local tab_insert    = table.insert
-local tab_concat    = table.concat
 local str_lower     = string.lower
 local tab_clone     = require("table.clone")
 local decode_json   = cjson.decode
