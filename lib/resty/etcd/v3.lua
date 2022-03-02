@@ -692,9 +692,9 @@ local function request_chunk(self, method, path, opts, timeout)
         body = nil
 
         while(1) do
-            local chunk, error = res.body_reader()
-            if error then
-                return nil, error
+            local chunk, read_err = res.body_reader()
+            if read_err then
+                return nil, read_err
             end
             if not chunk then
                 break
@@ -719,9 +719,9 @@ local function request_chunk(self, method, path, opts, timeout)
           return nil, nil
         end
 
-        local chunks, error = split(body, [[\n]], "jo")
-        if error then
-            return nil, "failed to split chunks: " .. error
+        local chunks, split_err = split(body, [[\n]], "jo")
+        if split_err then
+            return nil, "failed to split chunks: " .. split_err
         end
 
         local all_events = {}
