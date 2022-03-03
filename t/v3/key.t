@@ -512,3 +512,151 @@ passed
 request chunk headers: {"foo":"bar"}
 --- no_error_log
 [error]
+
+
+
+=== TEST 13: watch response which http chunk contains partial etcd event response
+--- http_config eval: $::HttpConfig
+--- config
+    location /version {
+        content_by_lua_block {
+            ngx.say('{"etcdserver":"3.4.0","etcdcluster":"3.4.0"}')
+        }
+    }
+
+    location /v3/watch {
+        content_by_lua_block {
+            -- payload get from tcpdump while running TEST 3 and split the event response into two chunks
+
+            ngx.say('{"result":{"header":{"cluster_id":"14841639068965178418","member_id":"10276657743932975437","revision":"271","raft_term":"7"},"created":true}}')
+            ngx.flush()
+            ngx.sleep(0.1)
+
+            -- partial event without trailing new line
+            ngx.print('{"result":{"header":{"cluster_id":"14841639068965178418","member_id":"10276657743932975437",')
+            ngx.flush()
+            ngx.print('"revision":"272","raft_term":"7"},"events"')
+            ngx.flush()
+
+            -- key = /test, value = bcd3
+            ngx.say(':[{"kv":{"key":"L3Rlc3Q=","create_revision":"156","mod_revision":"272","version":"44","value":"ImJjZDMi"}}]}}')
+            ngx.flush()
+
+            -- ensure client timeout
+            ngx.sleep(1)
+        }
+    }
+
+    location /t {
+        content_by_lua_block {
+            local etcd, err = require("resty.etcd").new({
+              protocol = "v3",
+              http_host = {
+                "http://127.0.0.1:" .. ngx.var.server_port,
+              },
+            })
+            check_res(etcd, err)
+
+            local cur_time = ngx.now()
+            local body_chunk_fun, err = etcd:watch("/test", {timeout = 0.5})
+            if not body_chunk_fun then
+                ngx.say("failed to watch: ", err)
+            end
+
+            local idx = 0
+            while true do
+                local chunk, err = body_chunk_fun()
+
+                if not chunk then
+                    if err then
+                        ngx.say(err)
+                    end
+                    break
+                end
+
+                idx = idx + 1
+                ngx.say(idx, ": ", require("cjson").encode(chunk.result))
+            end
+        }
+    }
+--- request
+GET /t
+--- no_error_log
+[error]
+--- response_body_like eval
+qr/1:.*"created":true.*
+2:.*"value":"bcd3".*
+timeout/
+--- timeout: 5
+
+
+
+=== TEST 14: watch response which one http chunk contains multiple events chunk
+--- http_config eval: $::HttpConfig
+--- config
+    location /version {
+        content_by_lua_block {
+            ngx.say('{"etcdserver":"3.4.0","etcdcluster":"3.4.0"}')
+        }
+    }
+
+    location /v3/watch {
+        content_by_lua_block {
+            -- payload get from tcpdump while running TEST 5 and merge two event response into one http chunk
+
+            ngx.say('{"result":{"header":{"cluster_id":"14841639068965178418","member_id":"10276657743932975437","revision":"290","raft_term":"8"},"created":true}}')
+            ngx.flush()
+            ngx.sleep(0.1)
+
+            -- one http chunk contains multiple event response, note the new line at the end of first event response
+            -- key1 = /wdir/, value1 = bcd4
+            -- key2 = /wdir/a, value2 = bcd4a
+            ngx.say('{"result":{"header":{"cluster_id":"14841639068965178418","member_id":"10276657743932975437","revision":"292","raft_term":"8"},"events":[{"kv":{"key":"L3dkaXIv","create_revision":"31","mod_revision":"292","version":"22","value":"ImJjZDQi"}}]}}\n{"result":{"header":{"cluster_id":"14841639068965178418","member_id":"10276657743932975437","revision":"293","raft_term":"8"},"events":[{"kv":{"key":"L3dkaXIvYQ==","create_revision":"293","mod_revision":"293","version":"1","value":"ImJjZDRhIg=="}}]}}')
+            ngx.flush()
+
+            -- ensure client timeout
+            ngx.sleep(1)
+        }
+    }
+
+    location /t {
+        content_by_lua_block {
+            local etcd, err = require("resty.etcd").new({
+              protocol = "v3",
+              http_host = {
+                "http://127.0.0.1:" .. ngx.var.server_port,
+              },
+            })
+            check_res(etcd, err)
+
+            local cur_time = ngx.now()
+            local body_chunk_fun, err = etcd:watch("/", {timeout = 0.5})
+            if not body_chunk_fun then
+                ngx.say("failed to watch: ", err)
+            end
+
+            local idx = 0
+            while true do
+                local chunk, err = body_chunk_fun()
+
+                if not chunk then
+                    if err then
+                        ngx.say(err)
+                    end
+                    break
+                end
+
+                idx = idx + 1
+                ngx.say(idx, ": ", require("cjson").encode(chunk.result))
+            end
+        }
+    }
+--- request
+GET /t
+--- no_error_log
+[error]
+--- response_body_like eval
+qr/1:.*"created":true.*
+2:.*"value":"bcd4".*"value":"bcd4a".*
+timeout/
+--- timeout: 5
