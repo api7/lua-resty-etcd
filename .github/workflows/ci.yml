@@ -43,7 +43,13 @@ jobs:
           go-version: "1.15"
 
       - name: get dependencies
-        run: sudo apt install -y cpanminus build-essential libncurses5-dev libreadline-dev libssl-dev perl luarocks
+        run: sudo apt install -y cpanminus build-essential libncurses5-dev libreadline-dev libssl-dev perl
+
+      - name: Install Lua
+        uses: leafo/gh-actions-lua@v8
+
+      - name: Install Luarocks
+        uses: leafo/gh-actions-luarocks@v4
 
       - name: install
         run: |
@@ -54,9 +60,9 @@ jobs:
           chmod +x build-apisix-openresty.sh
           OR_PREFIX=$OPENRESTY_PREFIX ./build-apisix-openresty.sh latest
 
-          sudo luarocks make rockspec/lua-resty-etcd-master-0.1-0.rockspec
-          sudo luarocks install luacheck > build.log 2>&1 || (cat build.log && exit 1)
-          sudo luarocks install dkjson > build.log 2>&1 || (cat build.log && exit 1)
+          luarocks make rockspec/lua-resty-etcd-master-0.1-0.rockspec
+          luarocks install luacheck > build.log 2>&1 || (cat build.log && exit 1)
+          luarocks install dkjson > build.log 2>&1 || (cat build.log && exit 1)
           make utils
           wget https://github.com/etcd-io/etcd/releases/download/v$ETCD_VER/etcd-v$ETCD_VER-linux-amd64.tar.gz
           tar xf etcd-v$ETCD_VER-linux-amd64.tar.gz
