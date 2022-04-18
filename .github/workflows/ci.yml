@@ -45,6 +45,9 @@ jobs:
       - name: get dependencies
         run: sudo apt install -y cpanminus build-essential libncurses5-dev libreadline-dev libssl-dev perl
 
+      - name: Install Lua
+        uses: leafo/gh-actions-lua@v8
+
       - name: Install Luarocks
         uses: leafo/gh-actions-luarocks@v4
 
