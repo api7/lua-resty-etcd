@@ -43,7 +43,10 @@ jobs:
           go-version: "1.15"
 
       - name: get dependencies
-        run: sudo apt install -y cpanminus build-essential libncurses5-dev libreadline-dev libssl-dev perl luarocks
+        run: sudo apt install -y cpanminus build-essential libncurses5-dev libreadline-dev libssl-dev perl
+
+      - name: Install Luarocks
+        uses: leafo/gh-actions-luarocks@v4
 
       - name: install
         run: |
