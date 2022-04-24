@@ -709,7 +709,7 @@ local function request_chunk(self, method, path, opts, timeout)
                 body = body .. chunk
             end
 
-            if not utils.is_empty_str(chunk) and str_byte(chunk, -1) == str_byte("\n") then
+            if #chunk > 0 and str_byte(chunk, -1) == str_byte("\n") then
                 break
             end
 
