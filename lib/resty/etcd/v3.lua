@@ -432,60 +432,17 @@ local function get(self, key, attr)
         range_end = encode_base64(attr.range_end)
     end
 
-    local limit
-    if attr.limit then
-        limit = attr.limit and attr.limit or 0
-    end
-
-    local revision
-    if attr.revision then
-        revision = attr.revision and attr.revision or 0
-    end
-
-    local sort_order
-    if attr.sort_order then
-        sort_order = attr.sort_order and attr.sort_order or 0
-    end
-
-    local sort_target
-    if attr.sort_target then
-        sort_target = attr.sort_target and attr.sort_target or 0
-    end
-
-    local serializable
-    if attr.serializable then
-        serializable = attr.serializable and true or false
-    end
-
-    local keys_only
-    if attr.keys_only then
-        keys_only = attr.keys_only and true or false
-    end
-
-    local count_only
-    if attr.count_only then
-        count_only = attr.count_only and true or false
-    end
-
-    local min_mod_revision
-    if attr.min_mod_revision then
-        min_mod_revision = attr.min_mod_revision or 0
-    end
-
-    local max_mod_revision
-    if attr.max_mod_revision then
-        max_mod_revision = attr.max_mod_revision or 0
-    end
-
-    local min_create_revision
-    if attr.min_create_revision then
-        min_create_revision = attr.min_create_revision or 0
-    end
-
-    local max_create_revision
-    if attr.max_create_revision then
-        max_create_revision = attr.max_create_revision or 0
-    end
+    local limit = attr.limit or 0
+    local revision = attr.revision or 0
+    local sort_order = attr.sort_order or 0
+    local sort_target = attr.sort_target or 0
+    local serializable = attr.serializable or 0
+    local keys_only = attr.keys_only or 0
+    local count_only = attr.count_only or 0
+    local min_mod_revision = attr.min_mod_revision or 0
+    local max_mod_revision = attr.max_mod_revision or 0
+    local min_create_revision = attr.min_create_revision or 0
+    local max_create_revision = attr.max_create_revision or 0
 
     key = encode_base64(key)
 
