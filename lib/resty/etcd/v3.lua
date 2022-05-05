@@ -436,9 +436,9 @@ local function get(self, key, attr)
     local revision = attr.revision or 0
     local sort_order = attr.sort_order or 0
     local sort_target = attr.sort_target or 0
-    local serializable = attr.serializable or 0
-    local keys_only = attr.keys_only or 0
-    local count_only = attr.count_only or 0
+    local serializable = attr.serializable or false
+    local keys_only = attr.keys_only or false
+    local count_only = attr.count_only or false
     local min_mod_revision = attr.min_mod_revision or 0
     local max_mod_revision = attr.max_mod_revision or 0
     local min_create_revision = attr.min_create_revision or 0
