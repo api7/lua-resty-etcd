@@ -14,6 +14,7 @@ local str_byte      = string.byte
 local str_char      = string.char
 local ipairs        = ipairs
 local pairs         = pairs
+local unpack        = unpack
 local re_match      = ngx.re.match
 local type          = type
 local tab_insert    = table.insert
@@ -56,6 +57,60 @@ local function choose_endpoint(self)
 end
 
 
+local function request_uri_via_unix_socket(self, uri, params)
+    local parsed_uri, err = self:parse_uri(uri, false)
+    if not parsed_uri then
+        return nil, err
+    end
+
+    local path, query
+    params.scheme, params.host, params.port, path, query = unpack(parsed_uri)
+    if params.unix_socket_proxy then
+        if not params.headers then
+            params.headers = {}
+        end
+
+        params.headers["Host"] = params.host
+        params.host = params.unix_socket_proxy
+        params.port = nil
+    end
+
+    params.path = params.path or path
+    params.query = params.query or query
+    params.ssl_server_name = params.ssl_server_name or params.host
+
+    local res
+    res, err = self:connect(params)
+    if not res then
+        return nil, err
+    end
+
+    res, err = self:request(params)
+    if not res then
+        self:close()
+        return nil, err
+    end
+
+    local body
+    body, err = res:read_body()
+    if not body then
+        self:close()
+        return nil, err
+    end
+
+    res.body = body
+
+    if params.keepalive == false then
+        self:close()
+
+    else
+        self:set_keepalive(params.keepalive_timeout, params.keepalive_pool)
+    end
+
+    return res, nil
+end
+
+
 local function http_request_uri(self, http_cli, method, uri, body, headers, keepalive)
     local endpoint, err = choose_endpoint(self)
     if not endpoint then
@@ -70,7 +125,7 @@ local function http_request_uri(self, http_cli, method, uri, body, headers, keep
     end
 
     local res
-    res, err = http_cli:request_uri(full_uri, {
+    res, err = request_uri_via_unix_socket(http_cli, full_uri, {
         method = method,
         body = body,
         headers = headers,
@@ -79,6 +134,7 @@ local function http_request_uri(self, http_cli, method, uri, body, headers, keep
         ssl_cert_path = self.ssl_cert_path,
         ssl_key_path = self.ssl_key_path,
         ssl_server_name = self.sni,
+        unix_socket_proxy = self.unix_socket_proxy,
     })
 
     if err then
@@ -199,6 +255,7 @@ function _M.new(opts)
     local serializer = opts.serializer
     local extra_headers = opts.extra_headers
     local sni        = opts.sni
+    local unix_socket_proxy = opts.unix_socket_proxy
 
     if not typeof.uint(timeout) then
         return nil, 'opts.timeout must be unsigned integer'
@@ -228,6 +285,10 @@ function _M.new(opts)
         return nil, 'opts.password must be string or ignore'
     end
 
+    if unix_socket_proxy and not typeof.string(unix_socket_proxy) then
+        return nil, 'opts.unix_socket_proxy must be string or ignore'
+    end
+
     local endpoints = {}
     local http_hosts
     if type(http_host) == 'string' then -- signle node
@@ -243,12 +304,25 @@ function _M.new(opts)
             return nil, "invalid http host: " .. host .. ", err: " .. (err or "not matched")
         end
 
+        local addr
+        if unix_socket_proxy then
+            addr = unix_socket_proxy
+        else
+            addr = m[2] or "127.0.0.1"
+        end
+
+        local port
+        if not unix_socket_proxy then
+            port = m[3] or "2379"
+        end
+
         tab_insert(endpoints, {
             full_prefix = host .. utils.normalize(api_prefix),
             http_host   = host,
             scheme      = m[1],
             host        = m[2] or "127.0.0.1",
-            port        = m[3] or "2379",
+            address     = addr,
+            port        = port,
             api_prefix  = api_prefix,
         })
     end
@@ -282,6 +356,7 @@ function _M.new(opts)
             ssl_key_path = opts.ssl_key_path,
             extra_headers = extra_headers,
             sni        = sni,
+            unix_socket_proxy = unix_socket_proxy,
         },
         mt)
 end
@@ -581,7 +656,7 @@ local function http_request_chunk(self, http_cli)
     local ok
     ok, err = http_cli:connect({
         scheme = endpoint.scheme,
-        host = endpoint.host,
+        host = endpoint.address,
         port = endpoint.port,
         ssl_verify = self.ssl_verify,
         ssl_cert_path = self.ssl_cert_path,
@@ -666,6 +741,10 @@ local function request_chunk(self, method, path, opts, timeout)
 
     if err then
         return nil, err
+    end
+
+    if self.unix_socket_proxy then
+        headers["Host"] = endpoint.host
     end
 
     local res
