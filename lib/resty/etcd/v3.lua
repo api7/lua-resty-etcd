@@ -1187,19 +1187,6 @@ function _M.version(self)
     return _request_uri(self, "GET", "/version", nil, self.timeout)
 end
 
--- /stats
-function _M.stats_leader(self)
-    return _request_uri(self, "GET", "/v2/stats/leader", nil, self.timeout)
-end
-
-function _M.stats_self(self)
-    return _request_uri(self, "GET", "/v2/stats/self", nil, self.timeout)
-end
-
-function _M.stats_store(self)
-    return _request_uri(self, "GET", "/v2/stats/store", nil, self.timeout)
-end
-
 
 do
     local attr = {}

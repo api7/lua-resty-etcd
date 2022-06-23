@@ -5,6 +5,7 @@ local require = require
 local pcall   = pcall
 local decode_json = require("cjson.safe").decode
 local http = require("resty.http")
+local ipairs = ipairs
 local prefix_v3 = {
     ["3.5."] = "/v3",
     ["3.4."] = "/v3",
@@ -15,7 +16,8 @@ local prefix_v3 = {
 local _M = {version = 0.9}
 
 
-local function version(self, uri, timeout)
+local function fetch_version(host, timeout, ssl_verify)
+    local uri = host .. "/version"
     local http_cli, err = http.new()
     if err then
         return nil, err
@@ -33,7 +35,7 @@ local function version(self, uri, timeout)
     res, err = http_cli:request_uri(uri, {
         method = 'GET',
         headers = headers,
-        ssl_verify = self.ssl_verify,
+        ssl_verify = ssl_verify,
     })
 
     if err then
@@ -53,18 +55,32 @@ local function version(self, uri, timeout)
     end
 
     res.body = decode_json(res.body)
-    return res
+    return res.body
 end
 
-
 local function etcd_version(opts)
-    local uri = opts.http_host .. "/version"
-    local ver, err = version(opts, uri, opts.timeout)
-    if not ver then
+    if typeof.string(opts.http_host) then
+        return fetch_version(opts.http_host, opts.timeout, opts.ssl_verify)
+    end
+
+    if typeof.table(opts.http_host) and #opts.http_host == 1 then
+        return fetch_version(opts.http_host[1], opts.timeout, opts.ssl_verify)
+    end
+
+
+    if typeof.table(opts.http_host) and #opts.http_host > 1 then
+        local err
+        for _, host in ipairs(opts.http_host) do
+            local ver
+            ver, err = fetch_version(host, opts.timeout, opts.ssl_verify)
+            if ver then
+                return ver
+            end
+        end
         return nil, err
     end
 
-    return ver.body
+    return nil, "invalid etcd host format"
 end
 
 local function require_serializer(serializer_name)
