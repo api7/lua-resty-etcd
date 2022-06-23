@@ -67,7 +67,6 @@ local function etcd_version(opts)
         return fetch_version(opts.http_host[1], opts.timeout, opts.ssl_verify)
     end
 
-
     if typeof.table(opts.http_host) and #opts.http_host > 1 then
         local err
         for _, host in ipairs(opts.http_host) do
