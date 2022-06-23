@@ -102,7 +102,6 @@ function _M.new(opts)
             return nil, err
         end
         local sub_ver = ver.etcdserver:sub(1, 4)
-        ngx.log(ngx.WARN, "sub_ver : ", require("inspect")(sub_ver))
         opts.api_prefix = prefix_v3[sub_ver] or "/v3beta"
     end
 
