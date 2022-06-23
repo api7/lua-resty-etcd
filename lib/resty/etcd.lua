@@ -1,9 +1,10 @@
-local etcdv2  = require("resty.etcd.v2")
 local etcdv3  = require("resty.etcd.v3")
 local utils   = require("resty.etcd.utils")
 local typeof  = require("typeof")
 local require = require
 local pcall   = pcall
+local decode_json = require("cjson.safe").decode
+local http = require("resty.http")
 local prefix_v3 = {
     ["3.5."] = "/v3",
     ["3.4."] = "/v3",
@@ -14,14 +15,51 @@ local prefix_v3 = {
 local _M = {version = 0.9}
 
 
-local function etcd_version(opts)
-    local etcd_obj, err = etcdv2.new(opts)
-    if not etcd_obj then
+local function version(self, uri, timeout)
+    local http_cli, err = http.new()
+    if err then
         return nil, err
     end
 
-    local ver
-    ver, err = etcd_obj:version()
+    if timeout then
+        http_cli:set_timeout(timeout * 1000)
+    end
+
+    local headers = {
+        ['Content-Type'] = "application/x-www-form-urlencoded",
+    }
+
+    local res
+    res, err = http_cli:request_uri(uri, {
+        method = 'GET',
+        headers = headers,
+        ssl_verify = self.ssl_verify,
+    })
+
+    if err then
+        return nil, err
+    end
+
+    if res.status >= 500 then
+        return nil, "invalid response code: " .. res.status
+    end
+
+    if res.status == 401 then
+        return nil, "insufficient credentials code: " .. res.status
+    end
+
+    if not typeof.string(res.body) then
+        return res
+    end
+
+    res.body = decode_json(res.body)
+    return res
+end
+
+
+local function etcd_version(opts)
+    local uri = opts.http_host .. "/version"
+    local ver, err = version(opts, uri, opts.timeout)
     if not ver then
         return nil, err
     end
@@ -46,30 +84,29 @@ function _M.new(opts)
         return nil, 'opts must be table'
     end
 
+    local protocol = opts and opts.protocol or "v3"
+    if protocol ~= "v3" then
+        return nil, 'only support etcd v3 api'
+    end
+
     opts.timeout = opts.timeout or 5    -- 5 sec
     opts.http_host = opts.http_host or "http://127.0.0.1:2379"
     opts.ttl  = opts.ttl or -1
 
-    local protocol = opts and opts.protocol or "v2"
     local serializer_name = typeof.string(opts.serializer) and opts.serializer
     opts.serializer = require_serializer(serializer_name)
 
-    if protocol == "v3" then
-        -- if opts special the api_prefix,no need to check version
-        if not opts.api_prefix or not utils.has_value(prefix_v3, opts.api_prefix) then
-            local ver, err = etcd_version(opts)
-            if not ver then
-                return nil, err
-            end
-            local sub_ver = ver.etcdserver:sub(1, 4)
-            opts.api_prefix = prefix_v3[sub_ver] or "/v3beta"
+    if not opts.api_prefix or not utils.has_value(prefix_v3, opts.api_prefix) then
+        local ver, err = etcd_version(opts)
+        if not ver then
+            return nil, err
         end
-        return etcdv3.new(opts)
+        local sub_ver = ver.etcdserver:sub(1, 4)
+        ngx.log(ngx.WARN, "sub_ver : ", require("inspect")(sub_ver))
+        opts.api_prefix = prefix_v3[sub_ver] or "/v3beta"
     end
 
-    opts.api_prefix = "/v2"
-
-    return etcdv2.new(opts)
+    return etcdv3.new(opts)
 end
 
 
