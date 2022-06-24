@@ -6,10 +6,12 @@ local conf
 
 local HEALTH_CHECK_MODE_ROUND_ROBIN = "round-robin"
 local HEALTH_CHECK_MODE_SHARED_DICT = "shared-dict"
+local HEALTH_CHECK_MODE_DISABLED = "disabled"
 
 local _M = {}
 _M.ROUND_ROBIN_MODE = HEALTH_CHECK_MODE_ROUND_ROBIN
 _M.SHARED_DICT_MODE = HEALTH_CHECK_MODE_SHARED_DICT
+_M.DISABLED_MODE = HEALTH_CHECK_MODE_DISABLED
 
 local round_robin_unhealthy_target_hosts
 
@@ -21,6 +23,10 @@ end
 local function get_target_status(etcd_host)
     if not conf then
         return nil, "etcd health check uninitialized"
+    end
+
+    if conf.disabled then
+        return true
     end
 
     if type(etcd_host) ~= "string" then
@@ -75,6 +81,10 @@ local function report_failure(etcd_host)
         return nil, "etcd health check uninitialized"
     end
 
+    if conf.disabled then
+        return
+    end
+
     if type(etcd_host) ~= "string" then
         return nil, "etcd host invalid"
     end
@@ -110,13 +120,27 @@ _M.report_failure = report_failure
 local function get_check_mode()
     -- round-robin: nginx worker memory round-robin based health check
     -- shared-dict: nginx shared memory policy based health check
-    if conf and conf.shm_name then
-        return HEALTH_CHECK_MODE_SHARED_DICT
-    else
-        return HEALTH_CHECK_MODE_ROUND_ROBIN
+    if conf then
+        if conf.disabled then
+            return HEALTH_CHECK_MODE_DISABLED
+        elseif conf.shm_name then
+            return HEALTH_CHECK_MODE_SHARED_DICT
+        end
     end
+
+    return HEALTH_CHECK_MODE_ROUND_ROBIN
 end
 _M.get_check_mode = get_check_mode
+
+
+function _M.disable()
+    if not conf then
+        conf = {}
+    end
+
+    conf.disabled = true
+    _M.conf = conf
+end
 
 
 function _M.init(opts)
