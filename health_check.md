@@ -33,10 +33,15 @@ Get the current status of the target.
 
 `syntax: mode = health_check.get_check_mode()`
 
-Get the current health check running mode. When `mode` is `round-robin`, it means running in [Round robin](#round-robin-based-health-check) mode, and `shared-dict` means running in [Policy](#policy-based-health-check) mode operation.
+Get the current health check running mode. When `mode` is `round-robin`, it means running in [Round robin](#round-robin-based-health-check) mode, and `shared-dict` means running in [Policy](#policy-based-health-check) mode operation, `disabled` means the health check is disabled.
 
-When using this method to get the health check running mode, you can use `health_check.ROUND_ROBIN_MODE` and `health_check.SHARED_DICT_MODE` to judge and compare.
+When using this method to get the health check running mode, you can use `health_check.ROUND_ROBIN_MODE` and `health_check.SHARED_DICT_MODE`, `health_check.DISABLED_MODE` to judge and compare.
 
+### disable
+
+`syntax: mode = health_check.disable()`
+
+Disable health check.
 
 ## Config
 

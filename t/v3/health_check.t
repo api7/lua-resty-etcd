@@ -810,3 +810,82 @@ qr/healthy check use \S+ \w+/
 --- grep_error_log_out
 healthy check use round robin
 healthy check use ngx.shared dict
+
+
+
+=== TEST 20: disable health check
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local health_check = require("resty.etcd.health_check")
+            health_check.disable()
+            local etcd, err = require "resty.etcd" .new({
+                protocol = "v3",
+                http_host = {
+                    "http://127.0.0.1:42379",
+                    "http://127.0.0.1:22379",
+                    "http://127.0.0.1:32379",
+                },
+            })
+
+            local res
+            res, err = etcd:set("/test/etcd/unhealthy", "hello")
+            ngx.say(err)
+            res, err = etcd:set("/test/etcd/healthy", "hello")
+            if err == nil then
+                ngx.say("http://127.0.0.1:22379: OK")
+            else
+                ngx.say(err)
+            end
+        }
+    }
+--- request
+GET /t
+--- response_body
+http://127.0.0.1:42379: connection refused
+http://127.0.0.1:42379: connection refused
+--- no_error_log eval
+qr/update endpoint: http:\/\/127.0.0.1:42379 to unhealthy/
+
+
+
+=== TEST 21: health check disabled mode
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local etcd, err = require "resty.etcd" .new({
+                protocol = "v3",
+                http_host = {
+                    "http://127.0.0.1:12379",
+                    "http://127.0.0.1:22379",
+                    "http://127.0.0.1:32379",
+                },
+            })
+
+            local health_check = require("resty.etcd.health_check")
+            local mode = health_check.get_check_mode()
+
+            health_check.init({
+                shm_name = "etcd_cluster_health_check",
+            })
+
+            mode = health_check.get_check_mode()
+            if mode == health_check.SHARED_DICT_MODE then
+                ngx.say("passed")
+            end
+
+            health_check.disable()
+
+            mode = health_check.get_check_mode()
+            if mode == health_check.DISABLED_MODE then
+                ngx.say("passed")
+            end
+        }
+    }
+--- request
+GET /t
+--- response_body
+passed
+passed
