@@ -56,7 +56,7 @@ __DATA__
             local etcd, err = require "resty.etcd" .new({
                 protocol = "v3",
                 http_host = {
-                    "https://127.0.0.1:12379", 
+                    "https://127.0.0.1:12379",
                     "https://127.0.0.1:22379",
                     "https://127.0.0.1:32379",
                 },
@@ -86,7 +86,7 @@ done
             local etcd, err = require "resty.etcd" .new({
                 protocol = "v3",
                 http_host = {
-                    "https://127.0.0.1:12379", 
+                    "https://127.0.0.1:12379",
                     "https://127.0.0.1:22379",
                     "https://127.0.0.1:32379",
                 },
@@ -102,8 +102,8 @@ done
 GET /t
 --- no_error_log
 [error]
---- response_body
-err: 18: self signed certificate
+--- response_body eval
+qr/18: self signed certificate/
 
 
 

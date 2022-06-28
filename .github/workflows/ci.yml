@@ -13,12 +13,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - version: 2.2.5
-            conf: Procfile-single
           - version: 3.4.0
-            conf: Procfile-single-enable-v2
+            conf: Procfile-single
           - version: 3.5.0
-            conf: Procfile-single-enable-v2
+            conf: Procfile-single
           - version: 3.4.0
             conf: Procfile-single-enable-tls
           - version: 3.4.0
@@ -27,7 +25,6 @@ jobs:
     runs-on: "ubuntu-20.04"
     env:
       OPENRESTY_PREFIX: "/usr/local/openresty"
-      AUTH_ENDPOINT_V2: http://127.0.0.1:12379
       AUTH_ENDPOINT_V3: "127.0.0.1:12379"
       AUTH_USER: root
       AUTH_PWD: abc123
@@ -75,16 +72,13 @@ jobs:
         run: |
           if [[ "$GOREMAN_CONF" == "Procfile-single-enable-tls" ]]; then
             export ETCD_ENABLE_TLS=TRUE
-            export AUTH_ENDPOINT_V2=https://127.0.0.1:12379
             export ETCDCTL_EXTRA_OPTS="--insecure-transport=false --insecure-skip-tls-verify=true"
           fi
           export PATH=$OPENRESTY_PREFIX/nginx/sbin:$OPENRESTY_PREFIX/luajit/bin:$PWD/etcd-v$ETCD_VER-linux-amd64:$PATH
           etcd --version
           goreman -f ./t/$GOREMAN_CONF start > goreman.log 2>&1 &
           sleep 5
-          chmod +x ./t/v2/add-auth.sh
           chmod +x ./t/v3/add-auth.sh
-          [[ $ETCD_ENABLE_TLS != TRUE ]] && ./t/v2/add-auth.sh || true
           [[ $ETCD_ENABLE_TLS != TRUE ]] && ./t/v3/add-auth.sh || true
           cat goreman.log
           ps -ef | grep etcd

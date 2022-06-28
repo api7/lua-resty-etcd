@@ -118,7 +118,7 @@ local function http_request_uri(self, http_cli, method, uri, body, headers, keep
     end
 
     local full_uri
-    if utils.starts_with(uri, "/version") or utils.starts_with(uri, "/v2") then
+    if utils.starts_with(uri, "/version") then
         full_uri = endpoint.http_host .. uri
     else
         full_uri = endpoint.full_prefix .. uri
@@ -1185,19 +1185,6 @@ end
 -- /version
 function _M.version(self)
     return _request_uri(self, "GET", "/version", nil, self.timeout)
-end
-
--- /stats
-function _M.stats_leader(self)
-    return _request_uri(self, "GET", "/v2/stats/leader", nil, self.timeout)
-end
-
-function _M.stats_self(self)
-    return _request_uri(self, "GET", "/v2/stats/self", nil, self.timeout)
-end
-
-function _M.stats_store(self)
-    return _request_uri(self, "GET", "/v2/stats/store", nil, self.timeout)
 end
 
 
