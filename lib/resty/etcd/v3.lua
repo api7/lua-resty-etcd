@@ -716,10 +716,12 @@ local function request_chunk(self, method, path, opts, timeout)
              " body: ", body, " query: ", query)
 
     if not res then
+        http_cli:close()
         return nil, err
     end
 
     if res.status >= 300 then
+        http_cli:close()
         return nil, "failed to watch data, response code: " .. res.status
     end
 
@@ -730,6 +732,7 @@ local function request_chunk(self, method, path, opts, timeout)
         while(1) do
             local chunk, read_err = res.body_reader()
             if read_err then
+                http_cli:close()
                 return nil, read_err
             end
             if not chunk then
@@ -757,6 +760,7 @@ local function request_chunk(self, method, path, opts, timeout)
 
         local chunks, split_err = split(body, [[\n]], "jo")
         if split_err then
+            http_cli:close()
             return nil, "failed to split chunks: " .. split_err
         end
 
@@ -764,11 +768,13 @@ local function request_chunk(self, method, path, opts, timeout)
         for _, chunk in ipairs(chunks) do
             body, err = decode_json(chunk)
             if not body then
+                http_cli:close()
                 return nil, "failed to decode json body: " .. (err or " unknown")
             elseif body.error and body.error.http_code >= 500 then
                 -- health_check retry should do nothing here
                 -- and let connection closed to create a new one
                 health_check.report_failure(endpoint.http_host)
+                http_cli:close()
                 return nil, endpoint.http_host .. ": " .. body.error.http_status
             end
 
