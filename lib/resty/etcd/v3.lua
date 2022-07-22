@@ -61,7 +61,7 @@ end
 
 
 local function choose_endpoint(self)
-    for i = 1, #self.endpoints do
+    for _, _ in ipairs(self.endpoints) do
         local endpoint = ring_balancer(self)
         if health_check.get_target_status(endpoint.http_host) then
             utils.log_info("choose endpoint: ", endpoint.http_host)
@@ -904,7 +904,7 @@ local function watch(self, key, attr)
         need_cancel = need_cancel,
     }
 
-    local callback_fun, http_cli
+    local callback_fun, http_cli, err
     callback_fun, err, http_cli = request_chunk(self, 'POST', '/watch',
                                                 opts, attr.timeout or self.timeout)
     if not callback_fun then
