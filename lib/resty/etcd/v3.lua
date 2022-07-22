@@ -27,6 +27,8 @@ local decode_base64 = ngx.decode_base64
 local semaphore     = require("ngx.semaphore")
 local health_check  = require("resty.etcd.health_check")
 
+local INIT_COUNT_RESIZE = 2e8
+
 local _M = {}
 
 local mt = { __index = _M }
@@ -44,11 +46,25 @@ local unmodifiable_headers = {
 local refresh_jwt_token
 
 
-local function choose_endpoint(self)
+local function ring_balancer(self)
     local endpoints = self.endpoints
+    local endpoints_len = #endpoints
 
-    for _, endpoint in ipairs(endpoints) do
+    self.init_count = (self.init_count or -1) + 1
+    local pos = self.init_count % endpoints_len + 1
+    if self.init_count >= INIT_COUNT_RESIZE then
+        self.init_count = 0
+    end
+
+    return endpoints[pos]
+end
+
+
+local function choose_endpoint(self)
+    for i = 1, #self.endpoints do
+        local endpoint = ring_balancer(self)
         if health_check.get_target_status(endpoint.http_host) then
+            utils.log_info("choose endpoint: ", endpoint.http_host)
             return endpoint
         end
     end
@@ -887,11 +903,6 @@ local function watch(self, key, attr)
         },
         need_cancel = need_cancel,
     }
-
-    local endpoint, err = choose_endpoint(self)
-    if not endpoint then
-        return nil, err
-    end
 
     local callback_fun, http_cli
     callback_fun, err, http_cli = request_chunk(self, 'POST', '/watch',

@@ -226,8 +226,13 @@ http://127.0.0.1:42379: connection refused
                 password = 'abc123',
             })
 
-            etcd:set("/fault_count", { a='abc'})
-            etcd:set("/fault_count", { a='abc'})
+            -- make sure to select http://127.0.0.1:42379 twice
+            for i = 1, 4 do
+                etcd:set("/fault_count", { a='abc'})
+            end
+
+            -- here have actually been 5 reads and writes to etcd, including one to /auth/authenticate
+
             local fails, err = ngx.shared["etcd_cluster_health_check"]:get("http://127.0.0.1:42379")
             if err then
                 ngx.say(err)
@@ -303,17 +308,18 @@ false
                 password = 'abc123',
             })
 
-            local res, err = etcd:set("/fail_timeout", "http://127.0.0.1:42379")  -- trigger http://127.0.0.1:42379 to unhealthy
+            local res, err
 
-            res, err = etcd:set("/fail_timeout", "http://127.0.0.1:22379") -- choose http://127.0.0.1:22379 to set value
-            res, err = etcd:get("/fail_timeout")
-            assert(res.body.kvs[1].value == "http://127.0.0.1:22379")
+            -- make sure to select http://127.0.0.1:42379 once and trigger it to unhealthy
+            for i = 1, 3 do
+                 res, err = etcd:set("/fail_timeout", "value")
+            end
 
-            ngx.sleep(2)
-
-            res, err = etcd:set("/fail_timeout", "http://127.0.0.1:42379") -- choose http://127.0.0.1:42379 to set value
-            res, err = etcd:get("/fail_timeout")
-            assert(res.body.kvs[1].value == "http://127.0.0.1:22379")
+            -- ensure that unhealthy http://127.0.0.1:42379 are no longer selected
+            for i = 1, 3 do
+                 res, err = etcd:get("/fail_timeout")
+                 assert(res.body.kvs[1].value == "value")
+            end
 
             ngx.say("done")
         }
@@ -323,6 +329,8 @@ GET /t
 --- timeout: 5
 --- response_body
 done
+--- error_log
+update endpoint: http://127.0.0.1:42379 to unhealthy
 --- no_error_log
 [error]
 
@@ -495,10 +503,18 @@ qr/update endpoint: http:\/\/localhost:1984 to unhealthy/
                 password = 'abc123',
             })
 
-            local res, err = etcd:set("/trigger_unhealthy", "abc")
+            local res, err
+            for i = 1, 3 do
+                res, err = etcd:set("/trigger_unhealthy", "abc")
+            end
             check_res(res, err)
             local res, err = etcd:get("/trigger_unhealthy")
             check_res(res, err, "abc")
+
+            -- There are 5 times read and write operations to etcd have occurred here
+            -- 3 set, 1 get, 1 auth
+            -- actual 8 times choose endpoint, retry every time 42379 is selected
+            -- 42379 marked as unhealthy after 3 seleced
         }
     }
 --- request
@@ -537,7 +553,9 @@ checked val as expect: abc
             check_res(body_chunk_fun, err)
 
             ngx.timer.at(0.1, function ()
-                etcd:set("/trigger_unhealthy", "abc")
+                for i = 1, 3 do
+                    etcd:set("/trigger_unhealthy", "abc")
+                end
             end)
 
             local idx = 0
@@ -563,6 +581,8 @@ qr/update endpoint: http:\/\/127.0.0.1:42379 to unhealthy/
 --- response_body_like eval
 qr/1:.*"created":true.*
 2:.*"value":"abc".*
+3:.*"value":"abc".*
+4:.*"value":"abc".*
 timeout/
 --- timeout: 5
 
@@ -844,7 +864,7 @@ healthy check use ngx.shared dict
 GET /t
 --- response_body
 http://127.0.0.1:42379: connection refused
-http://127.0.0.1:42379: connection refused
+http://127.0.0.1:22379: OK
 --- no_error_log eval
 qr/update endpoint: http:\/\/127.0.0.1:42379 to unhealthy/
 
@@ -889,3 +909,38 @@ GET /t
 --- response_body
 passed
 passed
+
+
+
+=== TEST 22: ring balancer
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local health_check = require("resty.etcd.health_check")
+            health_check.disable()
+            local etcd, err = require "resty.etcd" .new({
+                protocol = "v3",
+                http_host = {
+                    "http://127.0.0.1:12379",
+                    "http://127.0.0.1:22379",
+                    "http://127.0.0.1:32379",
+                },
+            })
+
+            local res
+            for i = 1, 3 do
+                res, err = etcd:set("/ring_balancer", "abc")
+            end
+
+            ngx.say("done")
+        }
+    }
+--- request
+GET /t
+--- response_body
+done
+--- error_log
+choose_endpoint(): choose endpoint: http://127.0.0.1:12379
+choose_endpoint(): choose endpoint: http://127.0.0.1:22379
+choose_endpoint(): choose endpoint: http://127.0.0.1:32379
