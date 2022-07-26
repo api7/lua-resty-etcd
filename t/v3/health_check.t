@@ -154,6 +154,7 @@ failed to get ngx.shared dict: error_shm_name
                 },
                 user = 'root',
                 password = 'abc123',
+                init_count = -1,
             })
 
             local res, err = etcd:set("/trigger_unhealthy", { a='abc'})
@@ -187,6 +188,7 @@ http://127.0.0.1:42379: connection refused
                     "http://127.0.0.1:22379",
                     "http://127.0.0.1:32379",
                 },
+                init_count = -1,
             })
 
             local body_chunk_fun, err = etcd:watch("/trigger_unhealthy")
@@ -224,6 +226,7 @@ http://127.0.0.1:42379: connection refused
                 },
                 user = 'root',
                 password = 'abc123',
+                init_count = -1,
             })
 
             -- make sure to select http://127.0.0.1:42379 twice
@@ -269,6 +272,7 @@ GET /t
                 },
                 user = 'root',
                 password = 'abc123',
+                init_count = -1,
             })
 
             etcd:set("/get_target_status", { a='abc'})
@@ -306,6 +310,7 @@ false
                 },
                 user = 'root',
                 password = 'abc123',
+                init_count = -1,
             })
 
             local res, err
@@ -395,6 +400,7 @@ has no healthy etcd endpoint available
                 },
                 user = 'root',
                 password = 'abc123',
+                init_count = -1,
             })
 
             local etcd2, err = require "resty.etcd" .new({
@@ -406,6 +412,7 @@ has no healthy etcd endpoint available
                 },
                 user = 'root',
                 password = 'abc123',
+                init_count = -1,
             })
 
             assert(tostring(etcd1) ~= tostring(etcd2))
@@ -501,6 +508,7 @@ qr/update endpoint: http:\/\/localhost:1984 to unhealthy/
                 },
                 user = 'root',
                 password = 'abc123',
+                init_count = -1,
             })
 
             local res, err
@@ -547,6 +555,7 @@ checked val as expect: abc
                 },
                 user = 'root',
                 password = 'abc123',
+                init_count = -1,
             })
 
             local body_chunk_fun, err = etcd:watch("/trigger_unhealthy", {timeout = 0.5})
@@ -701,6 +710,7 @@ has no healthy etcd endpoint available
                     "http://127.0.0.1:22379",
                     "http://127.0.0.1:32379",
                 },
+                init_count = -1,
             })
 
             local res, err = etcd:set("/test/etcd/healthy", "hello")
@@ -769,6 +779,7 @@ qr/update endpoint: http:\/\/127.0.0.1:12379 to unhealthy/
                     "http://127.0.0.1:22379",
                     "http://127.0.0.1:32379",
                 },
+                init_count = -1,
             })
 
             local res
@@ -847,6 +858,7 @@ healthy check use ngx.shared dict
                     "http://127.0.0.1:22379",
                     "http://127.0.0.1:32379",
                 },
+                init_count = -1,
             })
 
             local res
@@ -912,7 +924,7 @@ passed
 
 
 
-=== TEST 22: ring balancer
+=== TEST 22: ring balancer with specific init_count
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -926,6 +938,7 @@ passed
                     "http://127.0.0.1:22379",
                     "http://127.0.0.1:32379",
                 },
+                init_count = 101,
             })
 
             local res
@@ -933,13 +946,13 @@ passed
                 res, err = etcd:set("/ring_balancer", "abc")
             end
 
-            ngx.say("done")
+            ngx.say(etcd.init_count)
         }
     }
 --- request
 GET /t
 --- response_body
-done
+104
 --- error_log
 choose_endpoint(): choose endpoint: http://127.0.0.1:12379
 choose_endpoint(): choose endpoint: http://127.0.0.1:22379

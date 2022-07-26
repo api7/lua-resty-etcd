@@ -27,6 +27,8 @@ local decode_base64 = ngx.decode_base64
 local semaphore     = require("ngx.semaphore")
 local health_check  = require("resty.etcd.health_check")
 
+math.randomseed(now() * 1000 + ngx.worker.pid())
+
 local INIT_COUNT_RESIZE = 2e8
 
 local _M = {}
@@ -272,6 +274,7 @@ function _M.new(opts)
     local extra_headers = opts.extra_headers
     local sni        = opts.sni
     local unix_socket_proxy = opts.unix_socket_proxy
+    local init_count = opts.init_count
 
     if not typeof.uint(timeout) then
         return nil, 'opts.timeout must be unsigned integer'
@@ -303,6 +306,10 @@ function _M.new(opts)
 
     if unix_socket_proxy and not typeof.string(unix_socket_proxy) then
         return nil, 'opts.unix_socket_proxy must be string or ignore'
+    end
+
+    if not typeof.number(init_count) then
+        init_count = random(100)
     end
 
     local endpoints = {}
@@ -373,6 +380,7 @@ function _M.new(opts)
             extra_headers = extra_headers,
             sni        = sni,
             unix_socket_proxy = unix_socket_proxy,
+            init_count = init_count,
         },
         mt)
 end
