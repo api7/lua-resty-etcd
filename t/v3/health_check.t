@@ -943,7 +943,7 @@ passed
 
             local res
             for i = 1, 3 do
-                res, err = etcd:set("/ring_balancer", "abc")
+                res, _ = etcd:set("/ring_balancer", "abc")
             end
 
             ngx.say(etcd.init_count)
