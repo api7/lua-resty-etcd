@@ -27,6 +27,10 @@ local decode_base64 = ngx.decode_base64
 local semaphore     = require("ngx.semaphore")
 local health_check  = require("resty.etcd.health_check")
 
+math.randomseed(now() * 1000 + ngx.worker.pid())
+
+local INIT_COUNT_RESIZE = 2e8
+
 local _M = {}
 
 local mt = { __index = _M }
@@ -44,11 +48,25 @@ local unmodifiable_headers = {
 local refresh_jwt_token
 
 
-local function choose_endpoint(self)
+local function ring_balancer(self)
     local endpoints = self.endpoints
+    local endpoints_len = #endpoints
 
-    for _, endpoint in ipairs(endpoints) do
+    self.init_count = self.init_count + 1
+    local pos = self.init_count % endpoints_len + 1
+    if self.init_count >= INIT_COUNT_RESIZE then
+        self.init_count = 0
+    end
+
+    return endpoints[pos]
+end
+
+
+local function choose_endpoint(self)
+    for _, _ in ipairs(self.endpoints) do
+        local endpoint = ring_balancer(self)
         if health_check.get_target_status(endpoint.http_host) then
+            utils.log_info("choose endpoint: ", endpoint.http_host)
             return endpoint
         end
     end
@@ -256,6 +274,7 @@ function _M.new(opts)
     local extra_headers = opts.extra_headers
     local sni        = opts.sni
     local unix_socket_proxy = opts.unix_socket_proxy
+    local init_count = opts.init_count
 
     if not typeof.uint(timeout) then
         return nil, 'opts.timeout must be unsigned integer'
@@ -287,6 +306,10 @@ function _M.new(opts)
 
     if unix_socket_proxy and not typeof.string(unix_socket_proxy) then
         return nil, 'opts.unix_socket_proxy must be string or ignore'
+    end
+
+    if not typeof.number(init_count) then
+        init_count = random(100)
     end
 
     local endpoints = {}
@@ -357,6 +380,7 @@ function _M.new(opts)
             extra_headers = extra_headers,
             sni        = sni,
             unix_socket_proxy = unix_socket_proxy,
+            init_count = init_count,
         },
         mt)
 end
@@ -888,12 +912,7 @@ local function watch(self, key, attr)
         need_cancel = need_cancel,
     }
 
-    local endpoint, err = choose_endpoint(self)
-    if not endpoint then
-        return nil, err
-    end
-
-    local callback_fun, http_cli
+    local callback_fun, http_cli, err
     callback_fun, err, http_cli = request_chunk(self, 'POST', '/watch',
                                                 opts, attr.timeout or self.timeout)
     if not callback_fun then
