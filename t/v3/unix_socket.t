@@ -126,3 +126,66 @@ value: bcd3
 closed
 ok
 --- timeout: 5
+
+
+
+=== TEST 2: request over unix socket, unix socket doesn't exist
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local etcd, err = require("resty.etcd").new({protocol = "v3", http_host = "http://127.0.0.1:2379",
+                unix_socket_proxy = "unix:$TEST_NGINX_HTML_DIR/bad.sock"})
+            check_res(etcd, err)
+
+            local res, err = etcd:set("/test", "abc")
+            check_res(res, err)
+
+            ngx.timer.at(0.1, function ()
+                etcd:set("/test", "bcd3")
+            end)
+
+            ngx.timer.at(0.2, function ()
+                etcd:set("/test", "bcd4")
+            end)
+
+            local cur_time = ngx.now()
+            local body_chunk_fun, err, http_cli = etcd:watch("/test", {timeout = 0.5, need_cancel = true})
+
+            if type(http_cli) ~= "table" then
+                ngx.say("need_cancel failed")
+            end
+
+            if not body_chunk_fun then
+                ngx.say("failed to watch: ", err)
+            end
+
+            local chunk, err = body_chunk_fun()
+            ngx.say("created: ", chunk.result.created)
+            local chunk, err = body_chunk_fun()
+            ngx.say("value: ", chunk.result.events[1].kv.value)
+
+            local res, err = etcd:watchcancel(http_cli)
+            if not res then
+                ngx.say("failed to cancel: ", err)
+            end
+
+            local chunk, err = body_chunk_fun()
+            ngx.say(err)
+
+            ngx.say("ok")
+        }
+    }
+--- request
+GET /t
+--- no_error_log
+[error]
+--- grep_error_log eval
+qr/hit with host 127.0.0.1/
+--- grep_error_log_out
+--- response_body
+created: true
+value: bcd3
+closed
+ok
+--- timeout: 5

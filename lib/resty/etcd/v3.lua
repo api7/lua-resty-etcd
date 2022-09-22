@@ -26,6 +26,7 @@ local encode_base64 = ngx.encode_base64
 local decode_base64 = ngx.decode_base64
 local semaphore     = require("ngx.semaphore")
 local health_check  = require("resty.etcd.health_check")
+local pl_path       = require("pl.path")
 
 math.randomseed(now() * 1000 + ngx.worker.pid())
 
@@ -83,7 +84,14 @@ local function request_uri_via_unix_socket(self, uri, params)
 
     local path, query
     params.scheme, params.host, params.port, path, query = unpack(parsed_uri)
+
+    local use_unix_socket = false
     if params.unix_socket_proxy then
+        local sock_path = params.unix_socket_proxy:sub(#"unix:" + 1)
+        use_unix_socket = pl_path.exists(sock_path)
+    end
+
+    if use_unix_socket then
         if not params.headers then
             params.headers = {}
         end
@@ -342,6 +350,7 @@ function _M.new(opts)
         tab_insert(endpoints, {
             full_prefix = host .. utils.normalize(api_prefix),
             http_host   = host,
+            parsed_uri  = m,
             scheme      = m[1],
             host        = m[2] or "127.0.0.1",
             address     = addr,
@@ -632,6 +641,14 @@ local function http_request_chunk(self, http_cli)
     local endpoint, err = choose_endpoint(self)
     if not endpoint then
         return nil, err
+    end
+
+    if not endpoint.port then
+        local sock_path = endpoint.address:sub(#"unix:" + 1)
+        if not pl_path.exists(sock_path) then
+            endpoint.address = endpoint.parsed_uri[2]
+            endpoint.port = endpoint.parsed_uri[3]
+        end
     end
 
     local ok
