@@ -9,7 +9,7 @@ if ($etcd_version =~ /^etcd Version: 2/ || $etcd_version =~ /^etcd Version: 3.1.
     plan(skip_all => "etcd is too old, skip v3 protocol");
 } else {
     my $enable_tls = $ENV{ETCD_ENABLE_TLS};
-    if ($enable_tls eq "TRUE") {
+    if (defined($enable_tls) && $enable_tls eq "TRUE") {
         plan(skip_all => "skip test cases with auth when TLS is enabled");
     } else {
         plan 'no_plan';
