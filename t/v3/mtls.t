@@ -5,7 +5,7 @@ no_long_string();
 repeat_each(1);
 
 my $enable_tls = $ENV{ETCD_ENABLE_MTLS};
-if ($enable_tls eq "TRUE") {
+if (defined($enable_tls) && $enable_tls eq "TRUE") {
     plan 'no_plan';
 } else {
     plan(skip_all => "etcd is not capable for mTLS connection");
