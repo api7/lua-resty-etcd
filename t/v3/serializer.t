@@ -212,3 +212,59 @@ checked val as expect: 111
 checked val as expect: "foo"
 checked val as expect: {"a":1}
 checked val as expect: 
+
+=== TEST 5: resty.etcd.v3 serializer
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local cjson = require("cjson.safe")
+
+            local etcd, err = require("resty.etcd.v3").new({
+                timeout = 5,
+                http_host = "http://127.0.0.1:2379",
+                ttl = -1,
+                api_prefix = "/v3",
+                serializer = "raw"
+            })
+            check_res(etcd, err)
+
+            local res
+            res, err = etcd:rmdir("/dir")
+            check_res(res, err, nil, 200)
+
+            res, err = etcd:set("/dir/v3/a", '"foo"')
+            check_res(res, err)
+
+            res, err = etcd:get("/dir/v3/a")
+            check_res(res, err, '"foo"')
+
+            local s = cjson.encode({a = 1})
+            res, err = etcd:setx("/dir/v3/a", s)
+            check_res(res, err, nil, 200)
+
+            res, err = etcd:get("/dir/v3/a")
+            check_res(res, err, s, 200)
+
+            res, err = etcd:setnx("/dir/v3/not_exist", "")
+            check_res(res, err, nil, 200)
+
+            res, err = etcd:get("/dir/v3/not_exist")
+            check_res(res, err, "", 200)
+
+            res, err = etcd:rmdir("/dir")
+            check_res(res, err, nil, 200)
+
+            res, err = etcd:set("/dir/v3/b", 111)
+            check_res(res, err)
+        }
+    }
+--- request
+GET /t
+--- no_error_log
+[error]
+--- response_body
+checked val as expect: "foo"
+checked val as expect: {"a":1}
+checked val as expect: 
+err: unsupported type for number

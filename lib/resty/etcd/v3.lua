@@ -1,4 +1,5 @@
 -- https://github.com/ledgetech/lua-resty-http
+local require       = require
 local split         = require("ngx.re").split
 local typeof        = require("typeof")
 local cjson         = require("cjson.safe")
@@ -27,6 +28,7 @@ local decode_base64 = ngx.decode_base64
 local semaphore     = require("ngx.semaphore")
 local health_check  = require("resty.etcd.health_check")
 local pl_path       = require("pl.path")
+local pcall         = pcall
 
 math.randomseed(now() * 1000 + ngx.worker.pid())
 
@@ -265,6 +267,17 @@ local function serialize_and_encode_base64(serialize_fn, data)
     return encode_base64(data)
 end
 
+local function require_serializer(serializer_name)
+    if serializer_name then
+        local ok, module = pcall(require, "resty.etcd.serializers." .. serializer_name)
+        if ok then
+            return module
+        end
+    end
+
+    return require("resty.etcd.serializers.json")
+end
+
 
 function _M.new(opts)
     local timeout    = opts.timeout
@@ -278,7 +291,7 @@ function _M.new(opts)
     if ssl_verify == nil then
         ssl_verify = true
     end
-    local serializer = opts.serializer
+    local serializer = require_serializer(opts.serializer)
     local extra_headers = opts.extra_headers
     local sni        = opts.sni
     local unix_socket_proxy = opts.unix_socket_proxy
