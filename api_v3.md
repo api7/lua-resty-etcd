@@ -38,7 +38,7 @@ Method
   - `timeout`: int
     default request timeout seconds.
   - `api_prefix`: string
-    to suit [etcd v3 api gateway](https://github.com/etcd-io/etcd/blob/master/Documentation/dev-guide/api_grpc_gateway.md#notes).
+    to suit [etcd v3 api gateway](https://etcd.io/docs/v3.5/dev-guide/api_grpc_gateway/#notes).
     it will autofill by fetching etcd version if this option empty.
   - `ssl_verify`: boolean - whether to verify the etcd certificate when originating TLS connection with etcd (if you want to communicate to etcd with TLS connection, use `https` scheme in your `http_host`), default is `true`.
   - `ssl_cert_path`： string - path to the client certificate
