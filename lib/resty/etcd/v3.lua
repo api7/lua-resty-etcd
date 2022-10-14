@@ -1334,10 +1334,14 @@ end
 end -- do
 
 
-for meth, func in pairs(_M) do
-    if type(func) == "function" then
-        _http_M[meth] = func
-        _grpc_M[meth] = func
+local implemented_grpc_methods = {
+    get = true,
+    set = true,
+}
+for k, v in pairs(_M) do
+    _http_M[k] = v
+    if implemented_grpc_methods[k] then
+        _grpc_M[k] = v
     end
 end
 
