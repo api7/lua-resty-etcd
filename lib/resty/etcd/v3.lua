@@ -34,9 +34,10 @@ math.randomseed(now() * 1000 + ngx.worker.pid())
 local INIT_COUNT_RESIZE = 2e8
 
 local _M = {}
+local _http_M = {}
 local _grpc_M = {}
 
-local mt = { __index = _M }
+local http_mt = { __index = _http_M }
 local grpc_mt = { __index = _grpc_M }
 
 local unmodifiable_headers = {
@@ -400,6 +401,7 @@ function _M.new(opts)
             return nil, err
         end
 
+        cli.use_grpc = true
         cli.call_opts = {}
 
         local endpoint, err = choose_endpoint(cli)
@@ -424,8 +426,9 @@ function _M.new(opts)
         return nil, err
     end
 
+    cli.use_grpc = false
     cli.sema = sema
-    return setmetatable(cli, mt)
+    return setmetatable(cli, http_mt)
 end
 
 
@@ -1011,11 +1014,9 @@ function _grpc_M.grpc_call(self, meth, attr, key, val, opts)
 end
 
 
-local get
-local set
 do
     local attr = {}
-function get(use_grpc, self, key, opts)
+function _M.get(self, key, opts)
     if not typeof.string(key) then
         return nil, 'key must be string'
     end
@@ -1025,7 +1026,7 @@ function get(use_grpc, self, key, opts)
     clear_tab(attr)
     attr.revision = opts and opts.revision
 
-    if use_grpc then
+    if self.use_grpc then
         return self:grpc_call("Range", attr, key, nil, opts)
     end
 
@@ -1098,7 +1099,7 @@ end -- do
 
 do
     local attr = {}
-function set(use_grpc, self, key, val, opts)
+function _M.set(self, key, val, opts)
     clear_tab(attr)
 
     key = utils.get_real_key(self.key_prefix, key)
@@ -1108,7 +1109,7 @@ function set(use_grpc, self, key, val, opts)
     attr.ignore_value = opts and opts.ignore_value
     attr.ignore_lease = opts and opts.ignore_lease
 
-    if use_grpc then
+    if self.use_grpc then
         return self:grpc_call("Put", attr, key, val, opts)
     end
 
@@ -1333,15 +1334,10 @@ end
 end -- do
 
 
-for meth, func in pairs({
-    get = get,
-    set = set,
-}) do
-    _M[meth] = function (...)
-        return func(false, ...)
-    end
-    _grpc_M[meth] = function (...)
-        return func(true, ...)
+for meth, func in pairs(_M) do
+    if type(func) == "function" then
+        _http_M[meth] = func
+        _grpc_M[meth] = func
     end
 end
 
