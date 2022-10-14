@@ -27,14 +27,17 @@ local decode_base64 = ngx.decode_base64
 local semaphore     = require("ngx.semaphore")
 local health_check  = require("resty.etcd.health_check")
 local pl_path       = require("pl.path")
-
+local grpc_proto    = require("resty.etcd.proto")
+local _, grpc       = pcall(require, "resty.grpc")
 math.randomseed(now() * 1000 + ngx.worker.pid())
 
 local INIT_COUNT_RESIZE = 2e8
 
 local _M = {}
+local _grpc_M = {}
 
 local mt = { __index = _M }
+local grpc_mt = { __index = _grpc_M }
 
 local unmodifiable_headers = {
     ["authorization"] = true,
@@ -359,39 +362,70 @@ function _M.new(opts)
         })
     end
 
+    if health_check.conf == nil then
+        health_check.init()
+    end
+
+    local cli = {
+        last_auth_time = now(), -- save last Authentication time
+        last_refresh_jwt_err = nil,
+        jwt_token  = nil,       -- last Authentication token
+        is_auth    = not not (user and password),
+        user       = user,
+        password   = password,
+        timeout    = timeout,
+        ttl        = ttl,
+        is_cluster = #endpoints > 1,
+        endpoints  = endpoints,
+        key_prefix = key_prefix,
+        ssl_verify = ssl_verify,
+        serializer = serializer,
+
+        ssl_cert_path = opts.ssl_cert_path,
+        ssl_key_path = opts.ssl_key_path,
+        extra_headers = extra_headers,
+        sni        = sni,
+        unix_socket_proxy = unix_socket_proxy,
+        init_count = init_count,
+    }
+
+    if opts.use_grpc then
+        if type(grpc) ~= "table" then
+            -- The gRPC module is not available. In this case, the "grpc" is the error message
+            return nil, grpc
+        end
+
+        local ok, err = grpc.load(grpc_proto, grpc.PROTO_TYPE_STR)
+        if not ok then
+            return nil, err
+        end
+
+        cli.call_opts = {}
+
+        local endpoint, err = choose_endpoint(cli)
+        if not endpoint then
+            return nil, err
+        end
+
+        -- TODO: implement proxing via unix socket once we have support sync conf via gRPC
+        -- TODO: we don't support IPv6 yet, should the user pass `[host]:port` so we don't need
+        -- to adapt it?
+        local conn, err = grpc.connect(endpoint.address .. ":" .. endpoint.port)
+        if not conn then
+            return nil, err
+        end
+        cli.conn = conn
+
+        return setmetatable(cli, grpc_mt)
+    end
+
     local sema, err = semaphore.new()
     if not sema then
         return nil, err
     end
 
-    if health_check.conf == nil then
-        health_check.init()
-    end
-
-    return setmetatable({
-            last_auth_time = now(), -- save last Authentication time
-            last_refresh_jwt_err = nil,
-            sema       = sema,
-            jwt_token  = nil,       -- last Authentication token
-            is_auth    = not not (user and password),
-            user       = user,
-            password   = password,
-            timeout    = timeout,
-            ttl        = ttl,
-            is_cluster = #endpoints > 1,
-            endpoints  = endpoints,
-            key_prefix = key_prefix,
-            ssl_verify = ssl_verify,
-            serializer = serializer,
-
-            ssl_cert_path = opts.ssl_cert_path,
-            ssl_key_path = opts.ssl_key_path,
-            extra_headers = extra_headers,
-            sni        = sni,
-            unix_socket_proxy = unix_socket_proxy,
-            init_count = init_count,
-        },
-        mt)
+    cli.sema = sema
+    return setmetatable(cli, mt)
 end
 
 
@@ -463,7 +497,7 @@ end
 
 
 
-local function set(self, key, val, attr)
+local function http_set(self, key, val, attr)
     -- verify key
     local _, err = utils.verify_key(key)
     if err then
@@ -525,7 +559,7 @@ local function set(self, key, val, attr)
     return res
 end
 
-local function get(self, key, attr)
+local function http_get(self, key, attr)
 
     -- verify key
     local _, err = utils.verify_key(key)
@@ -941,9 +975,47 @@ local function watch(self, key, attr)
     return callback_fun
 end
 
+local function convert_grpc_to_http_res(res)
+    if res == nil then
+        return nil
+    end
+
+    -- We leak the structure of http response in too many places, so here we need to convert
+    -- it to http response
+    local r = {
+        status = 200,
+        headers = {},
+        body = res,
+    }
+    return r
+end
+
+
+function _grpc_M.grpc_call(self, meth, attr, key, val, opts)
+    if type(val) ~= "string" then
+        local err
+        val, err = encode_json(val)
+        if not val then
+            return nil, err
+        end
+        -- gRPC doesn't need `serializer`
+    end
+
+    local conn = self.conn
+    attr.key = key
+    attr.value = val
+    self.call_opts.timeout = opts and opts.timeout
+    local res, err = conn:call("etcdserverpb.KV", meth, attr, self.call_opts)
+    clear_tab(self.call_opts)
+    return convert_grpc_to_http_res(res), err
+end
+
+
+local get
+local set
 do
     local attr = {}
-function _M.get(self, key, opts)
+function get(use_grpc, self, key, opts)
     if not typeof.string(key) then
         return nil, 'key must be string'
     end
@@ -951,10 +1023,14 @@ function _M.get(self, key, opts)
     key = utils.get_real_key(self.key_prefix, key)
 
     clear_tab(attr)
-    attr.timeout = opts and opts.timeout
     attr.revision = opts and opts.revision
 
-    return get(self, key, attr)
+    if use_grpc then
+        return self:grpc_call("Range", attr, key, nil, opts)
+    end
+
+    attr.timeout = opts and opts.timeout
+    return http_get(self, key, attr)
 end
 
 function _M.watch(self, key, opts)
@@ -996,7 +1072,7 @@ function _M.readdir(self, key, opts)
     attr.keys_only    = opts and opts.keys_only
     attr.count_only   = opts and opts.count_only
 
-    return get(self, key, attr)
+    return http_get(self, key, attr)
 end
 
 function _M.watchdir(self, key, opts)
@@ -1022,19 +1098,22 @@ end -- do
 
 do
     local attr = {}
-function _M.set(self, key, val, opts)
-
+function set(use_grpc, self, key, val, opts)
     clear_tab(attr)
 
     key = utils.get_real_key(self.key_prefix, key)
 
-    attr.timeout = opts and opts.timeout
     attr.lease   = opts and opts.lease
     attr.prev_kv = opts and opts.prev_kv
     attr.ignore_value = opts and opts.ignore_value
     attr.ignore_lease = opts and opts.ignore_lease
 
-    return set(self, key, val, attr)
+    if use_grpc then
+        return self:grpc_call("Put", attr, key, val, opts)
+    end
+
+    attr.timeout = opts and opts.timeout
+    return http_set(self, key, val, attr)
 end
 
     -- set key-val if key does not exists (atomic create)
@@ -1252,6 +1331,19 @@ function _M.rmdir(self, key, opts)
 end
 
 end -- do
+
+
+for meth, func in pairs({
+    get = get,
+    set = set,
+}) do
+    _M[meth] = function (...)
+        return func(false, ...)
+    end
+    _grpc_M[meth] = function (...)
+        return func(true, ...)
+    end
+end
 
 
 return _M
