@@ -56,9 +56,9 @@ jobs:
           git clone https://github.com/openresty/test-nginx.git test-nginx
           cd test-nginx && (sudo cpanm --notest . > build.log 2>&1 || (cat build.log && exit 1)) && cd ..
 
-          wget https://raw.githubusercontent.com/api7/apisix-build-tools/v2.2.1/build-apisix-openresty.sh
-          chmod +x build-apisix-openresty.sh
-          OR_PREFIX=$OPENRESTY_PREFIX ./build-apisix-openresty.sh latest
+          wget https://raw.githubusercontent.com/api7/apisix-build-tools/master/build-apisix-base.sh
+          chmod +x build-apisix-base.sh
+          OR_PREFIX=$OPENRESTY_PREFIX ./build-apisix-base.sh latest
 
           luarocks make rockspec/lua-resty-etcd-master-0.1-0.rockspec
           luarocks install luacheck > build.log 2>&1 || (cat build.log && exit 1)
