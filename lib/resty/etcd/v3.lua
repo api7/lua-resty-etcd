@@ -625,7 +625,7 @@ local function http_get(self, key, attr)
     return res, err
 end
 
-local function delete(self, key, attr)
+local function http_delete(self, key, attr)
     attr = attr and attr or {}
 
     local range_end
@@ -1066,13 +1066,17 @@ function _M.readdir(self, key, opts)
 
     attr.range_end = get_range_end(key)
     attr.revision = opts and opts.revision
-    attr.timeout  = opts and opts.timeout
     attr.limit        = opts and opts.limit
     attr.sort_order   = opts and opts.sort_order
     attr.sort_target  = opts and opts.sort_target
     attr.keys_only    = opts and opts.keys_only
     attr.count_only   = opts and opts.count_only
 
+    if self.use_grpc then
+        return self:grpc_call("Range", attr, key, nil, opts)
+    end
+
+    attr.timeout  = opts and opts.timeout
     return http_get(self, key, attr)
 end
 
@@ -1313,10 +1317,15 @@ function _M.delete(self, key, opts)
 
     key = utils.get_real_key(self.key_prefix, key)
 
-    attr.timeout = opts and opts.timeout
     attr.prev_kv = opts and opts.prev_kv
 
-    return delete(self, key, attr)
+    if self.use_grpc then
+        attr.range_end = opts and opts.range_end
+        return self:grpc_call("DeleteRange", attr, key, nil, opts)
+    end
+
+    attr.timeout = opts and opts.timeout
+    return http_delete(self, key, attr)
 end
 
 function _M.rmdir(self, key, opts)
@@ -1328,7 +1337,7 @@ function _M.rmdir(self, key, opts)
     attr.timeout   = opts and opts.timeout
     attr.prev_kv   = opts and opts.prev_kv
 
-    return delete(self, key, attr)
+    return http_delete(self, key, attr)
 end
 
 end -- do
@@ -1337,6 +1346,8 @@ end -- do
 local implemented_grpc_methods = {
     get = true,
     set = true,
+    delete = true,
+    readdir = true,
 }
 for k, v in pairs(_M) do
     _http_M[k] = v

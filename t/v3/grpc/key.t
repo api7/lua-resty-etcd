@@ -41,15 +41,16 @@ our $HttpConfig = <<'_EOC_';
 
             if val then
                 if data and data.body.kvs==nil then
-                    ngx.exit(404)
+                    ngx.exit(400)
                 end
-                if data and data.body.kvs and val ~= data.body.kvs[1].value then
+                if data and data.body.kvs and #data.body.kvs ~= 0 and
+                  ((#val == 0) or (val ~= data.body.kvs[1].value)) then
                     ngx.say("failed to check value")
                     ngx.log(ngx.ERR, "failed to check value, got: ", data.body.kvs[1].value,
                             ", expect: ", val)
                     ngx.exit(200)
                 else
-                    ngx.say("checked val as expect: ", val)
+                    ngx.say("checked val as expect: ", #val == 0 and "[]" or val)
                 end
             end
 
@@ -89,3 +90,66 @@ __DATA__
 checked val as expect: abc
 checked val as expect: failed to call: rpc error: code = InvalidArgument desc = etcdserver: key is not provided
 checked val as expect: failed to call: rpc error: code = InvalidArgument desc = etcdserver: key is not provided
+
+
+
+=== TEST 2: readdir(key)
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local tab_nkeys     = require "table.nkeys"
+            local etcd, err = require "resty.etcd" .new({protocol = "v3", use_grpc = true})
+            check_res(etcd, err)
+
+            local res, err = etcd:set("/dir", "abc")
+            check_res(res, err)
+
+            local res, err = etcd:set("/dir/a", "abca")
+            check_res(res, err)
+
+            local data, err = etcd:readdir("/dir")
+            if tab_nkeys(data.body.kvs) == 2 then
+                ngx.say("ok")
+                ngx.exit(200)
+            else
+                ngx.say("failed")
+            end
+
+        }
+    }
+--- response_body
+ok
+
+
+
+=== TEST 3: set/del/get
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local etcd, err = require "resty.etcd" .new({protocol = "v3", use_grpc = true})
+            check_res(etcd, err)
+
+            local res, err = etcd:set("/test", "abc", {prev_kv = true})
+            check_res(res, err)
+
+            local data, err = etcd:get("/test")
+            check_res(data, err, "abc")
+
+            local data, err = etcd:delete("/test")
+            assert(data.body.deleted == 1)
+
+            local data, err = etcd:get("/test")
+            check_res(data, nil, {})
+
+            local data, err = etcd:delete("/test")
+            assert(data.body.deleted == 0)
+            local data, err = etcd:get("/test")
+            check_res(data, nil, {})
+        }
+    }
+--- response_body
+checked val as expect: abc
+checked val as expect: []
+checked val as expect: []
