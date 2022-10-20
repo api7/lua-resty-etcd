@@ -17,6 +17,12 @@ service KV {
   // A delete request increments the revision of the key-value store
   // and generates a delete event in the event history for every deleted key.
   rpc DeleteRange(DeleteRangeRequest) returns (DeleteRangeResponse) {}
+
+  // Txn processes multiple requests in a single transaction.
+  // A txn request increments the revision of the key-value store
+  // and generates events with the same revision for every completed request.
+  // It is not allowed to modify the same key several times within one txn.
+  rpc Txn(TxnRequest) returns (TxnResponse) {}
 }
 
 message ResponseHeader {
@@ -179,6 +185,88 @@ message DeleteRangeResponse {
   int64 deleted = 2;
   // if prev_kv is set in the request, the previous key-value pairs will be returned.
   repeated KeyValue prev_kvs = 3;
+}
+
+message RequestOp {
+  // request is a union of request types accepted by a transaction.
+  oneof request {
+    RangeRequest request_range = 1;
+    PutRequest request_put = 2;
+    DeleteRangeRequest request_delete_range = 3;
+    TxnRequest request_txn = 4;
+  }
+}
+
+message ResponseOp {
+  // response is a union of response types returned by a transaction.
+  oneof response {
+    RangeResponse response_range = 1;
+    PutResponse response_put = 2;
+    DeleteRangeResponse response_delete_range = 3;
+    TxnResponse response_txn = 4;
+  }
+}
+
+message Compare {
+  enum CompareResult {
+    EQUAL = 0;
+    GREATER = 1;
+    LESS = 2;
+    NOT_EQUAL = 3;
+  }
+  enum CompareTarget {
+    VERSION = 0;
+    CREATE = 1;
+    MOD = 2;
+    VALUE = 3;
+    LEASE = 4;
+  }
+  // result is logical comparison operation for this comparison.
+  CompareResult result = 1;
+  // target is the key-value field to inspect for the comparison.
+  CompareTarget target = 2;
+  // key is the subject key for the comparison operation.
+  bytes key = 3;
+  oneof target_union {
+    // version is the version of the given key
+    int64 version = 4;
+    // create_revision is the creation revision of the given key
+    int64 create_revision = 5;
+    // mod_revision is the last modified revision of the given key.
+    int64 mod_revision = 6;
+    // value is the value of the given key, in bytes.
+    bytes value = 7;
+    // lease is the lease id of the given key.
+    int64 lease = 8;
+    // leave room for more target_union field tags, jump to 64
+  }
+
+  // range_end compares the given target to all keys in the range [key, range_end).
+  // See RangeRequest for more details on key ranges.
+  bytes range_end = 64;
+  // TODO: fill out with most of the rest of RangeRequest fields when needed.
+}
+
+message TxnRequest {
+  // compare is a list of predicates representing a conjunction of terms.
+  // If the comparisons succeed, then the success requests will be processed in order,
+  // and the response will contain their respective responses in order.
+  // If the comparisons fail, then the failure requests will be processed in order,
+  // and the response will contain their respective responses in order.
+  repeated Compare compare = 1;
+  // success is a list of requests which will be applied when compare evaluates to true.
+  repeated RequestOp success = 2;
+  // failure is a list of requests which will be applied when compare evaluates to false.
+  repeated RequestOp failure = 3;
+}
+
+message TxnResponse {
+  ResponseHeader header = 1;
+  // succeeded is set to true if the compare evaluated to true or false otherwise.
+  bool succeeded = 2;
+  // responses is a list of responses corresponding to the results from applying
+  // success if succeeded is true or failure if succeeded is false.
+  repeated ResponseOp responses = 3;
 }
 
 message Event {

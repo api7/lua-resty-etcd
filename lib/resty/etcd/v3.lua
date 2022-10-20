@@ -661,13 +661,19 @@ local function txn(self, opts_arg, compare, success, failure)
         return nil, "success and failure couldn't be empty at the same time"
     end
 
+    local body = {
+        compare = compare,
+        success = success,
+        failure = failure,
+    }
+
+    if self.use_grpc then
+        return self:grpc_call("Txn", body, nil, nil, opts_arg)
+    end
+
     local timeout = opts_arg and opts_arg.timeout
     local opts = {
-        body = {
-            compare = compare,
-            success = success,
-            failure = failure,
-        },
+        body = body,
     }
 
     return _request_uri(self, "POST", "/kv/txn", opts, timeout or self.timeout)
@@ -1127,25 +1133,38 @@ end
     local failure = {}
 function _M.setnx(self, key, val, opts)
     clear_tab(compare)
+    clear_tab(success)
 
     key = utils.get_real_key(self.key_prefix, key)
 
-    compare[1] = {}
-    compare[1].target = "CREATE"
-    compare[1].key    = encode_base64(key)
-    compare[1].createRevision = 0
+    if self.use_grpc then
+        compare[1] = {}
+        compare[1].target = "CREATE"
+        compare[1].key = key
+        compare[1].create_revision = 0
 
-    clear_tab(success)
-    success[1] = {}
-    success[1].requestPut = {}
-    success[1].requestPut.key = encode_base64(key)
+        success[1] = {}
+        success[1].request_put = {}
+        success[1].request_put.key = key
 
-    local err
-    val, err = serialize_and_encode_base64(self.serializer.serialize, val)
-    if not val then
-        return nil, "failed to encode val: " .. err
+        success[1].request_put.value = val
+    else
+        compare[1] = {}
+        compare[1].target = "CREATE"
+        compare[1].key    = encode_base64(key)
+        compare[1].createRevision = 0
+
+        success[1] = {}
+        success[1].requestPut = {}
+        success[1].requestPut.key = encode_base64(key)
+
+        local err
+        val, err = serialize_and_encode_base64(self.serializer.serialize, val)
+        if not val then
+            return nil, "failed to encode val: " .. err
+        end
+        success[1].requestPut.value = val
     end
-    success[1].requestPut.value = val
 
     return txn(self, opts, compare, success, nil)
 end
@@ -1187,12 +1206,17 @@ function _M.txn(self, compare, success, failure, opts)
         for i, rule in ipairs(compare) do
             rule = tab_clone(rule)
 
-            rule.key = encode_base64(utils.get_real_key(self.key_prefix, rule.key))
+            if self.use_grpc then
+                rule.key = utils.get_real_key(self.key_prefix, rule.key)
+            else
+                rule.key = encode_base64(utils.get_real_key(self.key_prefix, rule.key))
 
-            if rule.value then
-                rule.value, err = serialize_and_encode_base64(self.serializer.serialize, rule.value)
-                if not rule.value then
-                    return nil, "failed to encode value: " .. err
+                if rule.value then
+                    rule.value, err =
+                        serialize_and_encode_base64(self.serializer.serialize, rule.value)
+                    if not rule.value then
+                        return nil, "failed to encode value: " .. err
+                    end
                 end
             end
 
@@ -1207,14 +1231,23 @@ function _M.txn(self, compare, success, failure, opts)
             rule = tab_clone(rule)
             if rule.requestPut then
                 local requestPut = tab_clone(rule.requestPut)
-                requestPut.key = encode_base64(utils.get_real_key(self.key_prefix, requestPut.key))
-                requestPut.value, err = serialize_and_encode_base64(self.serializer.serialize,
-                                        requestPut.value)
-                if not requestPut.value then
-                    return nil, "failed to encode value: " .. err
+                if self.use_grpc then
+                    requestPut.key = utils.get_real_key(self.key_prefix, requestPut.key)
+                else
+                    requestPut.key =
+                        encode_base64(utils.get_real_key(self.key_prefix, requestPut.key))
+                    requestPut.value, err = serialize_and_encode_base64(self.serializer.serialize,
+                                                                        requestPut.value)
+                    if not requestPut.value then
+                        return nil, "failed to encode value: " .. err
+                    end
                 end
 
-                rule.requestPut = requestPut
+                if self.use_grpc then
+                    rule.request_put = requestPut
+                else
+                    rule.requestPut = requestPut
+                end
             end
             new_rules[i] = rule
         end
@@ -1348,6 +1381,8 @@ local implemented_grpc_methods = {
     set = true,
     delete = true,
     readdir = true,
+    txn = true,
+    setnx = true,
 }
 for k, v in pairs(_M) do
     _http_M[k] = v
