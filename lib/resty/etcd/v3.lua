@@ -1007,9 +1007,13 @@ function _grpc_M.grpc_call(self, meth, attr, key, val, opts)
     local conn = self.conn
     attr.key = key
     attr.value = val
-    self.call_opts.timeout = opts and opts.timeout
-    local res, err = conn:call("etcdserverpb.KV", meth, attr, self.call_opts)
+
     clear_tab(self.call_opts)
+    if opts then
+        self.call_opts.timeout = opts.timeout and opts.timeout * 1000
+    end
+
+    local res, err = conn:call("etcdserverpb.KV", meth, attr, self.call_opts)
     return convert_grpc_to_http_res(res), err
 end
 
@@ -1306,6 +1310,29 @@ end
 
 -- /version
 function _M.version(self)
+    if self.use_grpc then
+        clear_tab(self.call_opts)
+        self.call_opts.timeout = self.timeout * 1000
+        local conn = self.conn
+        local stat, err = conn:call("etcdserverpb.Maintenance", "Status", {}, self.call_opts)
+        if not stat then
+            return nil, err
+        end
+
+        -- TODO: The gRPC alternative doesn't have cluster version field. To get it,
+        -- we need to dial each node in the cluster and get the min version, which is too
+        -- expensive in APISIX since we only use it as heartbeat. Therefore we decide to
+        -- omit the `etcdcluster` field for now.
+        -- Tracked in https://github.com/etcd-io/etcd/issues/14599
+        local res = {
+            etcdserver = stat.version,
+            storage = stat.storageVersion,
+            etcdcluster = stat.clusterVersion,
+        }
+        return convert_grpc_to_http_res(res)
+    end
+
+    -- {"etcdserver":"...","etcdcluster":"...","storage":"..."}
     return _request_uri(self, "GET", "/version", nil, self.timeout)
 end
 
@@ -1344,6 +1371,7 @@ end -- do
 
 
 local implemented_grpc_methods = {
+    version = true,
     get = true,
     set = true,
     delete = true,
