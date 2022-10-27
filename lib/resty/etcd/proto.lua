@@ -366,4 +366,42 @@ service Watch {
   rpc Watch(stream WatchRequest) returns (stream WatchResponse) {
   }
 }
+
+message StatusRequest {
+}
+
+message StatusResponse {
+  ResponseHeader header = 1;
+  // version is the cluster protocol version used by the responding member.
+  string version = 2;
+  // dbSize is the size of the backend database physically allocated, in bytes,
+  // of the responding member.
+  int64 dbSize = 3;
+  // leader is the member ID which the responding member believes is the current leader.
+  uint64 leader = 4;
+  // raftIndex is the current raft committed index of the responding member.
+  uint64 raftIndex = 5;
+  // raftTerm is the current raft term of the responding member.
+  uint64 raftTerm = 6;
+  // raftAppliedIndex is the current raft applied index of the responding member.
+  uint64 raftAppliedIndex = 7;
+  // errors contains alarm/health information and status.
+  repeated string errors = 8;
+  // dbSizeInUse is the size of the backend database logically in use, in bytes,
+  // of the responding member.
+  int64 dbSizeInUse = 9;
+  // isLearner indicates if the member is raft learner.
+  bool isLearner = 10;
+  // storageVersion is the version of the db file.
+  // It might be get updated with delay in relationship to the target cluster version.
+  string storageVersion = 11;
+  // clusterVersion is the minimum cluster protocol version used in the cluster.
+  string clusterVersion = 12;
+}
+
+service Maintenance {
+  // Status gets the status of the member.
+  rpc Status(StatusRequest) returns (StatusResponse) {}
+}
+
 ]]
