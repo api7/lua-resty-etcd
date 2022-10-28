@@ -404,4 +404,99 @@ service Maintenance {
   rpc Status(StatusRequest) returns (StatusResponse) {}
 }
 
+message LeaseGrantRequest {
+  // TTL is the advisory time-to-live in seconds. Expired lease will return -1.
+  int64 TTL = 1;
+  // ID is the requested ID for the lease. If ID is set to 0, the lessor chooses an ID.
+  int64 ID = 2;
+}
+
+message LeaseGrantResponse {
+  ResponseHeader header = 1;
+  // ID is the lease ID for the granted lease.
+  int64 ID = 2;
+  // TTL is the server chosen lease time-to-live in seconds.
+  int64 TTL = 3;
+  string error = 4;
+}
+
+message LeaseRevokeRequest {
+  // ID is the lease ID to revoke. When the ID is revoked, all associated keys will be deleted.
+  int64 ID = 1;
+}
+
+message LeaseRevokeResponse {
+  ResponseHeader header = 1;
+}
+
+message LeaseKeepAliveRequest {
+  // ID is the lease ID for the lease to keep alive.
+  int64 ID = 1;
+}
+
+message LeaseKeepAliveResponse {
+  ResponseHeader header = 1;
+  // ID is the lease ID from the keep alive request.
+  int64 ID = 2;
+  // TTL is the new time-to-live for the lease.
+  int64 TTL = 3;
+}
+
+message LeaseTimeToLiveRequest {
+  // ID is the lease ID for the lease.
+  int64 ID = 1;
+  // keys is true to query all the keys attached to this lease.
+  bool keys = 2;
+}
+
+message LeaseTimeToLiveResponse {
+  ResponseHeader header = 1;
+  // ID is the lease ID from the keep alive request.
+  int64 ID = 2;
+  // TTL is the remaining TTL in seconds for the lease;
+  // the lease will expire in under TTL+1 seconds.
+  int64 TTL = 3;
+  // GrantedTTL is the initial granted time in seconds upon lease creation/renewal.
+  int64 grantedTTL = 4;
+  // Keys is the list of keys attached to this lease.
+  repeated bytes keys = 5;
+}
+
+message LeaseLeasesRequest {
+  option (versionpb.etcd_version_msg) = "3.3";
+}
+
+message LeaseStatus {
+  option (versionpb.etcd_version_msg) = "3.3";
+
+  int64 ID = 1;
+  // TODO: int64 TTL = 2;
+}
+
+message LeaseLeasesResponse {
+  option (versionpb.etcd_version_msg) = "3.3";
+
+  ResponseHeader header = 1;
+  repeated LeaseStatus leases = 2;
+}
+
+service Lease {
+  // LeaseGrant creates a lease which expires if the server does not receive a keepAlive
+  // within a given time to live period. All keys attached to the lease will be expired and
+  // deleted if the lease expires. Each expired key generates a delete event in the event history.
+  rpc LeaseGrant(LeaseGrantRequest) returns (LeaseGrantResponse) {}
+
+  // LeaseRevoke revokes a lease. All keys attached to the lease will expire and be deleted.
+  rpc LeaseRevoke(LeaseRevokeRequest) returns (LeaseRevokeResponse) {}
+
+  // LeaseKeepAlive keeps the lease alive by streaming keep alive requests from the client
+  // to the server and streaming keep alive responses from the server to the client.
+  rpc LeaseKeepAlive(stream LeaseKeepAliveRequest) returns (stream LeaseKeepAliveResponse) {}
+
+  // LeaseTimeToLive retrieves lease information.
+  rpc LeaseTimeToLive(LeaseTimeToLiveRequest) returns (LeaseTimeToLiveResponse) {}
+
+  // LeaseLeases lists all existing leases.
+  rpc LeaseLeases(LeaseLeasesRequest) returns (LeaseLeasesResponse) {}
+}
 ]]
