@@ -141,15 +141,13 @@ ok
             assert(data.body.deleted == 1)
 
             local data, err = etcd:get("/test")
-            check_res(data, nil, {})
+            check_res(data, nil)
 
             local data, err = etcd:delete("/test")
             assert(data.body.deleted == 0)
             local data, err = etcd:get("/test")
-            check_res(data, nil, {})
+            check_res(data, nil)
         }
     }
 --- response_body
 checked val as expect: abc
-checked val as expect: []
-checked val as expect: []

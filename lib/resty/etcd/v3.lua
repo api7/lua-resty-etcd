@@ -668,7 +668,7 @@ local function txn(self, opts_arg, compare, success, failure)
     }
 
     if self.use_grpc then
-        return self:grpc_call("Txn", body, nil, nil, opts_arg)
+        return self:grpc_call("etcdserverpb.KV", "Txn", body, nil, nil, opts_arg)
     end
 
     local timeout = opts_arg and opts_arg.timeout
@@ -989,6 +989,11 @@ local function convert_grpc_to_http_res(res)
         return nil
     end
 
+    if res.kvs and #res.kvs == 0 then
+        -- gRPC returns empty kvs while HTTP returns nil
+        res.kvs = nil
+    end
+
     -- We leak the structure of http response in too many places, so here we need to convert
     -- it to http response
     local r = {
@@ -1000,7 +1005,7 @@ local function convert_grpc_to_http_res(res)
 end
 
 
-function _grpc_M.grpc_call(self, meth, attr, key, val, opts)
+function _grpc_M.grpc_call(self, serv, meth, attr, key, val, opts)
     if type(val) ~= "string" then
         local err
         val, err = encode_json(val)
@@ -1014,12 +1019,15 @@ function _grpc_M.grpc_call(self, meth, attr, key, val, opts)
     attr.key = key
     attr.value = val
 
-    clear_tab(self.call_opts)
     if opts then
         self.call_opts.timeout = opts.timeout and opts.timeout * 1000
     end
+    if not self.call_opts.timeout then
+        self.call_opts.timeout = self.timeout * 1000
+    end
+    self.call_opts.int64_encoding = grpc.INT64_AS_STRING
 
-    local res, err = conn:call("etcdserverpb.KV", meth, attr, self.call_opts)
+    local res, err = conn:call(serv, meth, attr, self.call_opts)
     return convert_grpc_to_http_res(res), err
 end
 
@@ -1037,7 +1045,7 @@ function _M.get(self, key, opts)
     attr.revision = opts and opts.revision
 
     if self.use_grpc then
-        return self:grpc_call("Range", attr, key, nil, opts)
+        return self:grpc_call("etcdserverpb.KV", "Range", attr, key, nil, opts)
     end
 
     attr.timeout = opts and opts.timeout
@@ -1083,7 +1091,7 @@ function _M.readdir(self, key, opts)
     attr.count_only   = opts and opts.count_only
 
     if self.use_grpc then
-        return self:grpc_call("Range", attr, key, nil, opts)
+        return self:grpc_call("etcdserverpb.KV", "Range", attr, key, nil, opts)
     end
 
     attr.timeout  = opts and opts.timeout
@@ -1124,7 +1132,7 @@ function _M.set(self, key, val, opts)
     attr.ignore_lease = opts and opts.ignore_lease
 
     if self.use_grpc then
-        return self:grpc_call("Put", attr, key, val, opts)
+        return self:grpc_call("etcdserverpb.KV", "Put", attr, key, val, opts)
     end
 
     attr.timeout = opts and opts.timeout
@@ -1271,11 +1279,17 @@ function _M.grant(self, ttl, id)
     end
 
     id = id or 0
+    local attr = {
+        TTL = ttl,
+        ID = id,
+    }
+
+    if self.use_grpc then
+        return self:grpc_call("etcdserverpb.Lease", "LeaseGrant", attr)
+    end
+
     local opts = {
-        body = {
-            TTL = ttl,
-            ID = id
-        },
+        body = attr,
     }
 
     return _request_uri(self, "POST", "/lease/grant", opts)
@@ -1286,10 +1300,16 @@ function _M.revoke(self, id)
         return nil, "lease revoke command needs ID argument"
     end
 
+    local attr = {
+        ID = id,
+    }
+
+    if self.use_grpc then
+        return self:grpc_call("etcdserverpb.Lease", "LeaseRevoke", attr)
+    end
+
     local opts = {
-        body = {
-            ID = id
-        },
+        body = attr,
     }
 
     return _request_uri(self, "POST", "/kv/lease/revoke", opts)
@@ -1300,10 +1320,16 @@ function _M.keepalive(self, id)
         return nil, "lease keepalive command needs ID argument"
     end
 
+    local attr = {
+        ID = id,
+    }
+
+    if self.use_grpc then
+        return self:grpc_call("etcdserverpb.Lease", "LeaseKeepAlive", attr)
+    end
+
     local opts = {
-        body = {
-            ID = id
-        },
+        body = attr,
     }
 
     return _request_uri(self, "POST", "/lease/keepalive", opts)
@@ -1315,11 +1341,17 @@ function _M.timetolive(self, id, keys)
     end
 
     keys = keys or false
+    local attr = {
+        ID = id,
+        keys = keys
+    }
+
+    if self.use_grpc then
+        return self:grpc_call("etcdserverpb.Lease", "LeaseTimeToLive", attr)
+    end
+
     local opts = {
-        body = {
-            ID = id,
-            keys = keys
-        },
+        body = attr,
     }
 
     local res, err
@@ -1337,6 +1369,9 @@ function _M.timetolive(self, id, keys)
 end
 
 function _M.leases(self)
+    if self.use_grpc then
+        return self:grpc_call("etcdserverpb.Lease", "LeaseLeases", {})
+    end
     return _request_uri(self, "POST", "/lease/leases")
 end
 
@@ -1344,10 +1379,7 @@ end
 -- /version
 function _M.version(self)
     if self.use_grpc then
-        clear_tab(self.call_opts)
-        self.call_opts.timeout = self.timeout * 1000
-        local conn = self.conn
-        local stat, err = conn:call("etcdserverpb.Maintenance", "Status", {}, self.call_opts)
+        local stat, err = self:grpc_call("etcdserverpb.Maintenance", "Status", {})
         if not stat then
             return nil, err
         end
@@ -1357,12 +1389,13 @@ function _M.version(self)
         -- expensive in APISIX since we only use it as heartbeat. Therefore we decide to
         -- omit the `etcdcluster` field for now.
         -- Tracked in https://github.com/etcd-io/etcd/issues/14599
-        local res = {
-            etcdserver = stat.version,
-            storage = stat.storageVersion,
-            etcdcluster = stat.clusterVersion,
+        local new_stat = {
+            etcdserver = stat.body.version,
+            storage = stat.body.storageVersion,
+            etcdcluster = stat.body.clusterVersion,
         }
-        return convert_grpc_to_http_res(res)
+        stat.body = new_stat
+        return stat
     end
 
     -- {"etcdserver":"...","etcdcluster":"...","storage":"..."}
@@ -1381,7 +1414,7 @@ function _M.delete(self, key, opts)
 
     if self.use_grpc then
         attr.range_end = opts and opts.range_end
-        return self:grpc_call("DeleteRange", attr, key, nil, opts)
+        return self:grpc_call("etcdserverpb.KV", "DeleteRange", attr, key, nil, opts)
     end
 
     attr.timeout = opts and opts.timeout
@@ -1404,6 +1437,11 @@ end -- do
 
 
 local implemented_grpc_methods = {
+    grant = true,
+    revoke = true,
+    keepalive = true,
+    timetolive = true,
+    leases = true,
     version = true,
     get = true,
     set = true,
