@@ -1,4 +1,5 @@
 -- https://github.com/ledgetech/lua-resty-http
+local require       = require
 local split         = require("ngx.re").split
 local typeof        = require("typeof")
 local cjson         = require("cjson.safe")
@@ -14,6 +15,7 @@ local str_byte      = string.byte
 local str_char      = string.char
 local ipairs        = ipairs
 local pairs         = pairs
+local pcall         = pcall
 local unpack        = unpack
 local re_match      = ngx.re.match
 local type          = type
@@ -28,7 +30,6 @@ local semaphore     = require("ngx.semaphore")
 local health_check  = require("resty.etcd.health_check")
 local pl_path       = require("pl.path")
 local grpc_proto    = require("resty.etcd.proto")
-local _, grpc       = pcall(require, "resty.grpc")
 math.randomseed(now() * 1000 + ngx.worker.pid())
 
 local INIT_COUNT_RESIZE = 2e8
@@ -391,6 +392,7 @@ function _M.new(opts)
     }
 
     if opts.use_grpc then
+        local _, grpc = pcall(require, "resty.grpc")
         if type(grpc) ~= "table" then
             -- The gRPC module is not available. In this case, the "grpc" is the error message
             return nil, grpc
@@ -402,6 +404,7 @@ function _M.new(opts)
         end
 
         cli.use_grpc = true
+        cli.grpc = grpc
         cli.call_opts = {}
 
         local endpoint, err = choose_endpoint(cli)
@@ -1025,7 +1028,7 @@ function _grpc_M.grpc_call(self, serv, meth, attr, key, val, opts)
     if not self.call_opts.timeout then
         self.call_opts.timeout = self.timeout * 1000
     end
-    self.call_opts.int64_encoding = grpc.INT64_AS_STRING
+    self.call_opts.int64_encoding = self.grpc.INT64_AS_STRING
 
     local res, err = conn:call(serv, meth, attr, self.call_opts)
     return convert_grpc_to_http_res(res), err
