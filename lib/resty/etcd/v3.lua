@@ -261,6 +261,16 @@ local function _request_uri(self, method, uri, opts, timeout, ignore_auth)
 end
 
 
+local function serialize_grpc_value(serialize_fn, val)
+    local err
+    val, err = serialize_fn(val)
+    if not val then
+        return nil, err
+    end
+    return val
+end
+
+
 local function serialize_and_encode_base64(serialize_fn, data)
     local err
     data, err = serialize_fn(data)
@@ -987,20 +997,34 @@ local function watch(self, key, attr)
     return callback_fun
 end
 
-local function convert_grpc_to_http_res(res)
+function _grpc_M.convert_grpc_to_http_res(self, res)
     if res == nil then
         return nil
     end
 
-    if res.kvs and #res.kvs == 0 then
-        -- gRPC returns empty kvs while HTTP returns nil
-        res.kvs = nil
+    local status = 200
+
+    if res.kvs then
+        if #res.kvs == 0 then
+            -- gRPC returns empty kvs while HTTP returns nil
+            res.kvs = nil
+        else
+            for _, kv in ipairs(res.kvs) do
+                kv.value = self.serializer.deserialize(kv.value)
+            end
+        end
+
+    elseif res.deleted then
+        -- so fast APISIX only allow to delete a resource
+        if res.deleted == 0 then
+            status = 404
+        end
     end
 
     -- We leak the structure of http response in too many places, so here we need to convert
     -- it to http response
     local r = {
-        status = 200,
+        status = status,
         headers = {},
         body = res,
     }
@@ -1009,18 +1033,9 @@ end
 
 
 function _grpc_M.grpc_call(self, serv, meth, attr, key, val, opts)
-    if type(val) ~= "string" then
-        local err
-        val, err = encode_json(val)
-        if not val then
-            return nil, err
-        end
-        -- gRPC doesn't need `serializer`
-    end
-
     local conn = self.conn
     attr.key = key
-    attr.value = val
+    attr.value = serialize_grpc_value(self.serializer.serialize, val)
 
     if opts then
         self.call_opts.timeout = opts.timeout and opts.timeout * 1000
@@ -1031,7 +1046,7 @@ function _grpc_M.grpc_call(self, serv, meth, attr, key, val, opts)
     self.call_opts.int64_encoding = self.grpc.INT64_AS_STRING
 
     local res, err = conn:call(serv, meth, attr, self.call_opts)
-    return convert_grpc_to_http_res(res), err
+    return self:convert_grpc_to_http_res(res), err
 end
 
 
@@ -1223,6 +1238,13 @@ function _M.txn(self, compare, success, failure, opts)
 
             if self.use_grpc then
                 rule.key = utils.get_real_key(self.key_prefix, rule.key)
+                if rule.value then
+                    rule.value, err = serialize_grpc_value(self.serializer.serialize,
+                                                           rule.value)
+                    if not rule.value then
+                        return nil, "failed to encode value: " .. err
+                    end
+                end
             else
                 rule.key = encode_base64(utils.get_real_key(self.key_prefix, rule.key))
 
@@ -1246,16 +1268,20 @@ function _M.txn(self, compare, success, failure, opts)
             rule = tab_clone(rule)
             if rule.requestPut then
                 local requestPut = tab_clone(rule.requestPut)
+                local err
                 if self.use_grpc then
                     requestPut.key = utils.get_real_key(self.key_prefix, requestPut.key)
+                    requestPut.value, err = serialize_grpc_value(self.serializer.serialize,
+                                                                 requestPut.value)
                 else
                     requestPut.key =
                         encode_base64(utils.get_real_key(self.key_prefix, requestPut.key))
                     requestPut.value, err = serialize_and_encode_base64(self.serializer.serialize,
                                                                         requestPut.value)
-                    if not requestPut.value then
-                        return nil, "failed to encode value: " .. err
-                    end
+                end
+
+                if not requestPut.value then
+                    return nil, "failed to encode value: " .. err
                 end
 
                 if self.use_grpc then

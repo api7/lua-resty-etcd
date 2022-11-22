@@ -145,6 +145,7 @@ ok
 
             local data, err = etcd:delete("/test")
             assert(data.body.deleted == 0)
+            assert(data.status == 404)
             local data, err = etcd:get("/test")
             check_res(data, nil)
         }
