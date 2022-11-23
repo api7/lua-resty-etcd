@@ -1190,6 +1190,11 @@ function _M.setnx(self, key, val, opts)
         success[1].request_put = {}
         success[1].request_put.key = key
 
+        local err
+        val, err = serialize_grpc_value(self.serializer.serialize, val)
+        if not val then
+            return nil, "failed to encode val: " .. err
+        end
         success[1].request_put.value = val
     else
         compare[1] = {}
