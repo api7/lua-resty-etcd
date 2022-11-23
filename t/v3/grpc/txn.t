@@ -129,7 +129,7 @@ checked val as expect: abc
 --- config
     location /t {
         content_by_lua_block {
-            local etcd, err = require "resty.etcd" .new({protocol = "v3"})
+            local etcd, err = require "resty.etcd" .new({protocol = "v3", use_grpc = true})
             check_res(etcd, err)
 
             local res, err = etcd:delete("/setnx")
@@ -182,7 +182,7 @@ checked val as expect: aaa
                 end
             end
 
-            local etcd, err = require "resty.etcd" .new({protocol = "v3", use_grpc = false})
+            local etcd, err = require "resty.etcd" .new({protocol = "v3", use_grpc = true})
             check_res(etcd, err)
 
             local res, err = etcd:set("/test", {k = "abc"})
