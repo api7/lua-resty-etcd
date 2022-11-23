@@ -98,4 +98,4 @@ jobs:
             etcd --version
             goreman -f ./t/$GOREMAN_CONF start > goreman.log 2>&1 &
             sleep 5
-            prove -I../test-nginx/lib t/v3/mtls.t
+            prove -I../test-nginx/lib t/v3/mtls.t t/v3/grpc/mtls.t
