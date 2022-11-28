@@ -133,7 +133,7 @@ checked val as expect: abc
             check_res(etcd, err)
 
             local res, err = etcd:delete("/setnx")
-            check_res(res, err, nil, 200)
+            check_res(res, err)
 
             local res, err = etcd:setnx("/setnx", "aaa")
             check_res(res, err, nil, 200)
