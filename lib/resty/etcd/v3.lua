@@ -1048,7 +1048,9 @@ end
 function _grpc_M.grpc_call(self, serv, meth, attr, key, val, opts)
     local conn = self.conn
     attr.key = key
-    attr.value = serialize_grpc_value(self.serializer.serialize, val)
+    if val then
+        attr.value = serialize_grpc_value(self.serializer.serialize, val)
+    end
 
     if opts then
         self.call_opts.timeout = opts.timeout and opts.timeout * 1000
@@ -1304,6 +1306,7 @@ function _M.txn(self, compare, success, failure, opts)
 
                 if self.use_grpc then
                     rule.request_put = requestPut
+                    rule.requestPut = nil
                 else
                     rule.requestPut = requestPut
                 end
