@@ -25,6 +25,13 @@ add_block_preprocessor(sub {
     if ((!defined $block->error_log) && (!defined $block->no_error_log)) {
         $block->set_value("no_error_log", "[error]");
     }
+
+    my $http_config = <<'_EOC_';
+        lua_package_path 'lib/?.lua;/usr/local/share/lua/5.3/?.lua;/usr/share/lua/5.1/?.lua;;';
+_EOC_
+    if (!$block->http_config) {
+        $block->set_value("http_config", $http_config);
+    }
 });
 
 run_tests();
@@ -47,3 +54,16 @@ init_by_lua_block {
         }
     }
 --- response_body
+
+
+
+=== TEST 2: close conn
+--- config
+    location /t {
+        content_by_lua_block {
+            local etcd = require "resty.etcd" .new({protocol = "v3", use_grpc = true})
+            assert(etcd.conn ~= nil)
+            etcd:close()
+            assert(etcd.conn == nil)
+        }
+    }

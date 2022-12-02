@@ -458,6 +458,12 @@ function _M.new(opts)
 end
 
 
+function _grpc_M.close(self)
+    self.conn:close()
+    self.conn = nil
+end
+
+
 local function wake_up_everyone(self)
     local count = -self.sema:count()
     if count > 0 then
