@@ -934,17 +934,15 @@ local function get_range_end(key)
 end
 
 
-local function watch(self, key, attr)
+local function create_watch_request(key, attr)
     -- verify key
     if #key == 0 then
         key = str_char(0)
     end
 
-    key = encode_base64(key)
-
     local range_end
     if attr.range_end then
-        range_end = encode_base64(attr.range_end)
+        range_end = attr.range_end
     end
 
     local prev_kv
@@ -977,23 +975,91 @@ local function watch(self, key, attr)
         filters = attr.filters and attr.filters or 0
     end
 
+    local create_request = {
+        key             = key,
+        range_end       = range_end,
+        prev_kv         = prev_kv,
+        start_revision  = start_revision,
+        watch_id        = watch_id,
+        progress_notify = progress_notify,
+        fragment        = fragment,
+        filters         = filters,
+    }
+
+    return create_request
+end
+
+
+function _grpc_M.create_grpc_watch_stream(self, key, attr, opts)
+    key = utils.get_real_key(self.key_prefix, key)
+    attr.range_end = get_range_end(key)
+
+    local req = {
+        create_request = create_watch_request(key, attr),
+    }
+
+    local conn = self.conn
+    if opts then
+        self.call_opts.timeout = opts.timeout and opts.timeout * 1000
+    end
+    if not self.call_opts.timeout then
+        self.call_opts.timeout = self.timeout * 1000
+    end
+
+    local st, err = conn:new_server_stream("etcdserverpb.Watch", "Watch", req, self.call_opts)
+    if not st then
+        return nil, err
+    end
+
+    local res, err = st:recv()
+    if not res then
+        return nil, err
+    end
+
+    return st
+end
+
+
+function _grpc_M.read_grpc_watch_stream(self, watching_stream)
+    local res, err = watching_stream:recv()
+    if not res then
+        return nil, err
+    end
+
+    if res.events then
+        for _, event in ipairs(res.events) do
+            if event.kv.value then   -- DELETE not have value
+                event.kv.value = self.serializer.deserialize(event.kv.value)
+            end
+            if event.prev_kv then
+                event.prev_kv.value = self.serializer.deserialize(event.prev_kv.value)
+            end
+        end
+    end
+
+    local wrapped_res = {
+        result = res,
+    }
+    return wrapped_res
+end
+
+
+local function watch(self, key, attr)
     local need_cancel
     if attr.need_cancel then
         need_cancel = attr.need_cancel and true or false
     end
 
+    local create_request = create_watch_request(key, attr)
+    create_request.key = encode_base64(key)
+
+    if attr.range_end then
+        create_request.range_end = encode_base64(attr.range_end)
+    end
+
     local opts = {
         body = {
-            create_request = {
-                key             = key,
-                range_end       = range_end,
-                prev_kv         = prev_kv,
-                start_revision  = start_revision,
-                watch_id        = watch_id,
-                progress_notify = progress_notify,
-                fragment        = fragment,
-                filters         = filters,
-            }
+            create_request = create_request,
         },
         need_cancel = need_cancel,
     }
@@ -1009,6 +1075,7 @@ local function watch(self, key, attr)
     end
     return callback_fun
 end
+
 
 function _grpc_M.convert_grpc_to_http_res(self, res)
     if res == nil then

@@ -152,3 +152,50 @@ ok
     }
 --- response_body
 checked val as expect: abc
+
+
+
+=== TEST 4: watch dir
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local etcd, err = require("resty.etcd").new({protocol = "v3", use_grpc = true})
+            check_res(etcd, err)
+
+            local res, err = etcd:set("/test/1", "abc")
+            check_res(res, err)
+
+            local opts = {}
+            opts.timeout = 0.5
+
+            local st, err = etcd:create_grpc_watch_stream("/test/", {}, opts)
+            if not st then
+                ngx.log(ngx.ERR, "create watch stream failed: ", err)
+                return
+            end
+
+            ngx.timer.at(0.1, function ()
+                etcd:set("/test/1", "bcd3")
+            end)
+
+            local idx = 0
+            while true do
+                local chunk, err = etcd:read_grpc_watch_stream(st)
+
+                if not chunk then
+                    if err then
+                        ngx.say(err)
+                    end
+                    break
+                end
+
+                idx = idx + 1
+                ngx.say(idx, ": ", require("cjson").encode(chunk.result))
+            end
+        }
+    }
+--- response_body_like eval
+qr/1:.*"value":"bcd3".*
+.*context deadline exceeded/
+--- timeout: 5
