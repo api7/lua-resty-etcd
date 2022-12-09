@@ -382,6 +382,7 @@ function _M.new(opts)
         last_auth_time = now(), -- save last Authentication time
         last_refresh_jwt_err = nil,
         jwt_token  = nil,       -- last Authentication token
+        grpc_token = nil,       -- token used in gRPC
         is_auth    = not not (user and password),
         user       = user,
         password   = password,
@@ -444,7 +445,19 @@ function _M.new(opts)
         end
         cli.conn = conn
 
-        return setmetatable(cli, grpc_mt)
+        cli = setmetatable(cli, grpc_mt)
+
+        if cli.user then
+            local auth_req = {name = cli.user, password = cli.password}
+            local res, err = cli:grpc_call("etcdserverpb.Auth", "Authenticate", auth_req)
+            if not res then
+                return nil, err
+            end
+
+            cli.grpc_token = res.body.token
+        end
+
+        return cli
     end
 
     local sema, err = semaphore.new()
@@ -996,6 +1009,22 @@ local function create_watch_request(key, attr)
 end
 
 
+local get_grpc_metadata
+do
+    local metadata = {
+        {"token", ""}
+    }
+    function get_grpc_metadata(self)
+        if self.grpc_token then
+            metadata[1][2] = self.grpc_token
+            return metadata
+        end
+
+        return nil
+    end
+end
+
+
 function _grpc_M.create_grpc_watch_stream(self, key, attr, opts)
     key = utils.get_real_key(self.key_prefix, key)
     attr.range_end = get_range_end(key)
@@ -1011,6 +1040,8 @@ function _grpc_M.create_grpc_watch_stream(self, key, attr, opts)
     if not self.call_opts.timeout then
         self.call_opts.timeout = self.timeout * 1000
     end
+
+    self.call_opts.metadata = get_grpc_metadata(self)
 
     local st, err = conn:new_server_stream("etcdserverpb.Watch", "Watch", req, self.call_opts)
     if not st then
@@ -1132,6 +1163,7 @@ function _grpc_M.grpc_call(self, serv, meth, attr, key, val, opts)
         self.call_opts.timeout = self.timeout * 1000
     end
     self.call_opts.int64_encoding = self.grpc.INT64_AS_STRING
+    self.call_opts.metadata = get_grpc_metadata(self)
 
     local res, err = conn:call(serv, meth, attr, self.call_opts)
     return self:convert_grpc_to_http_res(res), err

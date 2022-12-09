@@ -499,4 +499,21 @@ service Lease {
   // LeaseLeases lists all existing leases.
   rpc LeaseLeases(LeaseLeasesRequest) returns (LeaseLeasesResponse) {}
 }
+
+message AuthenticateRequest {
+  string name = 1;
+  string password = 2;
+}
+
+message AuthenticateResponse {
+  ResponseHeader header = 1;
+  // token is an authorized token that can be used in succeeding RPCs
+  string token = 2;
+}
+
+service Auth {
+  // Authenticate processes an authenticate request.
+  rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse) {}
+}
+
 ]]
