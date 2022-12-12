@@ -436,10 +436,12 @@ function _M.new(opts)
         connect_opts.client_key = cli.ssl_key_path
         connect_opts.trusted_ca = opts.trusted_ca
 
-        -- TODO: implement proxing via unix socket once we have support sync conf via gRPC
-        -- TODO: we don't support IPv6 yet, should the user pass `[host]:port` so we don't need
-        -- to adapt it?
-        local conn, err = grpc.connect(endpoint.address .. ":" .. endpoint.port, connect_opts)
+        local conn, err
+        if unix_socket_proxy then
+            conn, err = grpc.connect(unix_socket_proxy, connect_opts)
+        else
+            conn, err = grpc.connect(endpoint.address .. ":" .. endpoint.port, connect_opts)
+        end
         if not conn then
             return nil, err
         end
