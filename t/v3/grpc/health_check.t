@@ -449,3 +449,40 @@ checked val as expect: abc
 --- error_log
 choose endpoint: http://127.0.0.1:12379
 choose endpoint: http://127.0.0.1:22379
+
+
+
+=== TEST 12: watch timeout should not be considered as unhealthy
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local health_check, err = require "resty.etcd.health_check" .init({
+                shm_name = "etcd_cluster_health_check",
+                fail_timeout = 10,
+                max_fails = 1,
+            })
+
+            local etcd, err = require "resty.etcd" .new({
+                protocol = "v3",
+                http_host = {
+                    "http://127.0.0.1:22379",
+                },
+                use_grpc = true,
+                init_count = -1,
+            })
+
+            local body_chunk_fun, err = etcd:create_grpc_watch_stream("/trigger_unhealthy", {}, {timeout = 1})
+            if not body_chunk_fun then
+                ngx.say(err)
+                return
+            end
+
+            local _, err = etcd:read_grpc_watch_stream(body_chunk_fun)
+            ngx.say(err)
+        }
+    }
+--- no_error_log eval
+qr/update endpoint: http:\/\/127.0.0.1:22379 to unhealthy/
+--- response_body_like eval
+qr/failed to recv: /

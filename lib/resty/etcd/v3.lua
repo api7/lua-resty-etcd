@@ -1086,7 +1086,6 @@ end
 function _grpc_M.read_grpc_watch_stream(self, watching_stream)
     local res, err = watching_stream:recv()
     if not res then
-        health_check.report_failure(self.conn.http_host)
         return nil, err
     end
 
