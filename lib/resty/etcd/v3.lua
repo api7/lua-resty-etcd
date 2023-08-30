@@ -165,6 +165,8 @@ local function http_request_uri(self, http_cli, method, uri, body, headers, keep
         ssl_verify = self.ssl_verify,
         ssl_cert_path = self.ssl_cert_path,
         ssl_key_path = self.ssl_key_path,
+        ssl_cert = self.ssl_cert,
+        ssl_key = self.ssl_key,
         ssl_server_name = self.sni,
         unix_socket_proxy = self.unix_socket_proxy,
     })
@@ -436,6 +438,8 @@ function _M.new(opts)
 
         ssl_cert_path = opts.ssl_cert_path,
         ssl_key_path = opts.ssl_key_path,
+        ssl_cert = opts.ssl_cert,
+        ssl_key = opts.ssl_key,
         trusted_ca = opts.trusted_ca,
         extra_headers = extra_headers,
         sni        = sni,
@@ -755,6 +759,8 @@ local function http_request_chunk(self, http_cli)
         ssl_verify = self.ssl_verify,
         ssl_cert_path = self.ssl_cert_path,
         ssl_key_path = self.ssl_key_path,
+        ssl_cert = self.ssl_cert,
+        ssl_key = self.ssl_key,
         ssl_server_name = self.sni,
     })
     if not ok then
