@@ -10,7 +10,7 @@ install:
 ### dev:          Create a development ENV
 .PHONY: dev
 dev:
-	luarocks install rockspec/lua-resty-etcd-master-0.1-0.rockspec --tree deps --only-deps
+	luarocks install rockspec/lua-resty-etcd-master-0.1-0.rockspec --only-deps --local
 
 ### help:         Show Makefile rules
 .PHONY: help
