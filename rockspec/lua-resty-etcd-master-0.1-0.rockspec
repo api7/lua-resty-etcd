@@ -13,7 +13,7 @@ description = {
 }
 
 dependencies = {
-   "api7-lua-resty-http = 0.1.0",
+   "api7-lua-resty-http = 0.2.2-0",
    "lua-protobuf = 0.4.1",
    "luafilesystem = 1.7.0-2",
    "penlight = 1.9.2-1",
