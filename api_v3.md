@@ -43,6 +43,8 @@ Method
   - `ssl_verify`: boolean - whether to verify the etcd certificate when originating TLS connection with etcd (if you want to communicate to etcd with TLS connection, use `https` scheme in your `http_host`), default is `true`.
   - `ssl_cert_path`： string - path to the client certificate
   - `ssl_key_path`： string - path to the client key
+  - `ssl_cert`: string - content of the client certificate
+  - `ssl_key`: string - content of the client key
   - `serializer`: string - serializer type, default `json`, also support `raw` to keep origin string value.
   - `extra_headers`: table - adding custom headers for etcd requests.
   - `sni`: string - adding custom SNI fot etcd TLS requests.
@@ -356,4 +358,3 @@ To retrieve lease information.
 To list all existing leases.
 
 [Back to TOP](#api-v3)
-
