@@ -56,7 +56,7 @@ jobs:
           git clone https://github.com/openresty/test-nginx.git test-nginx
           cd test-nginx && (sudo cpanm --notest . > build.log 2>&1 || (cat build.log && exit 1)) && cd ..
 
-          wget https://raw.githubusercontent.com/api7/apisix-build-tools/master/build-apisix-base.sh
+          wget https://raw.githubusercontent.com/api7/apisix-build-tools/refs/tags/apisix-base/1.21.4.2.2/build-apisix-base.sh
           chmod +x build-apisix-base.sh
           OR_PREFIX=$OPENRESTY_PREFIX ./build-apisix-base.sh latest
 
