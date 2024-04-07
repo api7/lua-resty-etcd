@@ -507,7 +507,7 @@ function refresh_jwt_token(self, timeout)
     end
 
     if self.requesting_token then
-        local wait_timeout = timeout and timeout or (self.timeout and self.timeout or 0)
+        local wait_timeout = timeout or self.timeout or 0
         self.sema:wait(wait_timeout)
         if self.jwt_token and now() - self.last_auth_time < 60 * 3 + random(0, 60) then
             return true, nil
