@@ -113,6 +113,97 @@ GET /t
 ok
 
 
+=== TEST 2-2: readdir(key) in batch
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local tab_nkeys     = require "table.nkeys"
+            local etcd, err = require "resty.etcd" .new({protocol = "v3"})
+            ngx.say('new')
+            check_res(etcd, err)
+
+            local res, err = etcd:set("/batch/dir", "abc")
+            ngx.say('set1')
+            check_res(res, err)
+
+            local res, err = etcd:set("/batch/dir/a", "abca")
+            ngx.say('set2')
+            check_res(res, err)
+
+            local res, err = etcd:set("/batch/dir/b", "abcb")
+            ngx.say('set3')
+            check_res(res, err)
+
+
+            local start_key = '/batch/dir'
+            local last_key = start_key
+            local range_end = etcd.rangeend(start_key)
+            local data = {}
+            local kvs = {}
+            local times = 0
+            while(1) do
+                times = times + 1
+                res, err = etcd:readdir(last_key, {
+                    timeout = 5000,
+                    range_end = range_end,
+                    revision = -1,
+                    limit = 1,
+                    sort_order = 'ASCEND',
+                    sort_target = 'KEY',
+                })
+                ngx.say('while')
+                check_res(res, err)
+                
+                table.insert(data, res.body)
+
+                local last_kv_key = res.body.kvs[#res.body.kvs].key
+                last_key = etcd.nextkey(last_kv_key)
+
+                if not res.body.more then
+                    break
+                end
+
+                if times > 4 then
+                    ngx.say("too many times")
+                    ngx.exit(500)
+                    return
+                end
+
+            end
+
+            for _, body in ipairs(data) do
+                for _, kv in ipairs(body.kvs) do
+                    table.insert(kvs, kv)
+                end
+            end
+
+            if tab_nkeys(kvs) == 3 and times == 3 then
+                ngx.say("ok")
+                ngx.exit(200)
+            else
+                ngx.say(string.format("failed len(kvs):%s, times:%s", tab_nkeys(kvs), times))
+                ngx.exit(500)
+            end
+
+        }
+    }
+--- request
+GET /t
+--- no_error_log
+[error]
+--- response_body
+new
+set1
+set2
+set3
+while
+while
+while
+ok
+--- timeout: 5
+
+
 
 === TEST 3: watch(key)
 --- http_config eval: $::HttpConfig

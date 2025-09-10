@@ -1,25 +1,28 @@
 API V3
 ======
 
-* [Methods](#methods)
-    * [new](#new)
-    * [get](#get)
-    * [set](#set)
-    * [setnx](#setnx)
-    * [setx](#setx)
-    * [delete](#delete)
-    * [watch](#watch)
-    * [watchcancel](#watchcancel)
-    * [readdir](#readdir)
-    * [watchdir](#watchdir)
-    * [rmdir](#rmdir)
-    * [txn](#txn)
-    * [version](#version)
-    * [grant](#grant)
-    * [revoke](#revoke)
-    * [keepalive](#keepalive)
-    * [timetolive](#timetolive)
-    * [leases](#leases)
+- [API V3](#api-v3)
+- [Method](#method)
+    - [new](#new)
+    - [get](#get)
+    - [set](#set)
+    - [setnx](#setnx)
+    - [setx](#setx)
+    - [delete](#delete)
+    - [watch](#watch)
+    - [watchcancel](#watchcancel)
+    - [readdir](#readdir)
+    - [watchdir](#watchdir)
+    - [rmdir](#rmdir)
+    - [txn](#txn)
+    - [version](#version)
+    - [grant](#grant)
+    - [revoke](#revoke)
+    - [keepalive](#keepalive)
+    - [timetolive](#timetolive)
+    - [leases](#leases)
+    - [nextkey](#nextkey)
+    - [rangeend](#rangeend)
 
 Method
 ======
@@ -358,3 +361,72 @@ To retrieve lease information.
 To list all existing leases.
 
 [Back to TOP](#api-v3)
+
+### nextkey
+
+`syntax: next_key = etcd.nextkey(key:string)`
+
+- `key`: etcd path to key
+
+return next path to key, only used when `sort_order='ASCEND' and sort_target='KEY'`.
+
+[Back to TOP](#api-v3)
+
+
+### rangeend
+
+`syntax: range_end = etcd.rangeend(key:string)`
+
+- `key`: etcd path to key
+
+return range end path to key.
+
+When using etcd's `cli:readdir`, if the value in this path is too large (by default: exceeding 4MB), you will encounter the following error: 
+
+```
+rpc error: code = ResourceExhausted desc = grpc: received message larger than max (8653851 vs. 4194304).
+```
+
+Therefore, we need to read this directory in batches. 
+
+The code example :
+
+``` lua
+local cli, _ = etcd.new([option:table])
+
+local res, err
+local start_key = '/path/to/dir'
+local last_key = start_key
+local range_end = cli.rangeend(start_key)
+local data = {}
+while(1) do
+    res, err = cli:readdir(last_key, {
+        timeout = 3000,
+        range_end = range_end,
+        revision = -1,
+        limit = 20, -- batch size 
+        sort_order = 'ASCEND',
+        sort_target = 'KEY',
+    })
+    -- error handle
+    if err or not res then
+        break
+    end
+    -- collect res.body
+    table.insert(data, res.body)
+    local last_kv_key = res.body.kvs[#res.body.kvs].key
+    last_key = cli.nextkey(last_key)
+    if not res.body.more then
+        break
+    end
+end
+
+for _, body in ipairs(data) do
+    -- handle data
+end
+```
+
+[Back to TOP](#api-v3)
+  
+
+

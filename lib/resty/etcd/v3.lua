@@ -952,7 +952,8 @@ local function request_chunk(self, method, path, opts, timeout)
     end
 end
 
-
+--- @param  key string
+--- @return string
 local function get_range_end(key)
     if #key == 0 then
         return str_char(0)
@@ -1319,7 +1320,7 @@ function _M.readdir(self, key, opts)
 
     key = utils.get_real_key(self.key_prefix, key)
 
-    attr.range_end = get_range_end(key)
+    attr.range_end = opts and opts.range_end or get_range_end(key)
     attr.revision = opts and opts.revision
     attr.limit        = opts and opts.limit
     attr.sort_order   = opts and opts.sort_order
@@ -1688,6 +1689,9 @@ function _M.rmdir(self, key, opts)
 end
 
 end -- do
+
+_M.rangeend = get_range_end
+_M.nextkey = utils.next_key
 
 
 local implemented_grpc_methods = {

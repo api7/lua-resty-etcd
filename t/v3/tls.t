@@ -103,7 +103,7 @@ GET /t
 --- no_error_log
 [error]
 --- response_body eval
-qr/18: self signed certificate/
+qr/self-signed certificate/
 
 
 

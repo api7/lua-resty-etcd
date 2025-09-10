@@ -88,6 +88,10 @@ __DATA__
             check_res(data, err, "ddd")
         }
     }
+--- request
+GET /t
+--- no_error_log
+[error]
 --- response_body
 checked val as expect: abc
 checked val as expect: ddd
@@ -118,6 +122,10 @@ checked val as expect: ddd
             check_res(data, err, "abc")
         }
     }
+--- request
+GET /t
+--- no_error_log
+[error]
 --- response_body
 checked val as expect: abc
 checked val as expect: abc
@@ -145,6 +153,10 @@ checked val as expect: abc
             check_res(data, err, "aaa", 200)
         }
     }
+--- request
+GET /t
+--- no_error_log
+[error]
 --- response_body
 checked val as expect: aaa
 
@@ -201,6 +213,10 @@ checked val as expect: aaa
             check_res(data, err, '{"k":"ddd"}')
         }
     }
+--- request
+GET /t
+--- no_error_log
+[error]
 --- response_body
 checked val as expect: {"k":"abc"}
 checked val as expect: {"k":"ddd"}

@@ -9,6 +9,8 @@ local select        = select
 local ipairs        = ipairs
 local pairs         = pairs
 local type          = type
+local str_char      = string.char
+
 
 
 if not http.tls_handshake then
@@ -124,5 +126,11 @@ local function is_empty_str(input_str)
     return (find(input_str or '', [=[^\s*$]=], "jo"))
 end
 _M.is_empty_str = is_empty_str
+
+--- @param  key string
+--- @return string
+_M.next_key = function(key)
+    return key .. str_char(0)
+end
 
 return _M

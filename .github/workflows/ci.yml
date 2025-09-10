@@ -22,7 +22,7 @@ jobs:
           - version: 3.4.0
             conf: Procfile-single-enable-mtls
 
-    runs-on: "ubuntu-20.04"
+    runs-on: "ubuntu-22.04"
     env:
       OPENRESTY_PREFIX: "/usr/local/openresty"
       AUTH_ENDPOINT_V3: "127.0.0.1:12379"
@@ -41,7 +41,7 @@ jobs:
           go-version: "1.17"
 
       - name: get dependencies
-        run: sudo apt install -y cpanminus build-essential libncurses5-dev libreadline-dev libssl-dev perl
+        run: sudo apt install -y cpanminus build-essential libncurses5-dev libreadline-dev libssl-dev perl libpcre3-dev libpcre3
 
       - name: Setup Lua
         uses: leafo/gh-actions-lua@v8.0.0
