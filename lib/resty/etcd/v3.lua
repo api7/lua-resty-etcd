@@ -1286,6 +1286,7 @@ function _M.get(self, key, opts)
     end
 
     attr.timeout = opts and opts.timeout
+    attr.range_end = opts and opts.range_end
     return http_get(self, key, attr)
 end
 
