@@ -939,7 +939,12 @@ local function request_chunk(self, method, path, opts, timeout)
             end
         end
 
-        if #all_events > 1 then
+        -- one read may carry several watch responses separated by "\n", and the
+        -- last one is not necessarily the one holding the events, e.g.
+        -- [response with events, progress notification]. `body` points at the
+        -- last decoded response, so the collected events must always be
+        -- attached to it, not only when more than one event was collected.
+        if #all_events > 0 and body.result then
             body.result.events = all_events
         end
         return body
