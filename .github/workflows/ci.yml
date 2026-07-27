@@ -37,8 +37,9 @@ jobs:
       - name: setup go
         uses: actions/setup-go@v5
         with:
-          # goreman's transitive deps (golang.org/x/sys) now import the
-          # stdlib "slices" package, which needs Go >= 1.21
+          # Keep this in sync with the goreman pin in the install step: it must
+          # be >= goreman's module `go` directive, otherwise the toolchain gets
+          # downloaded implicitly (see GOTOOLCHAIN=local note below).
           go-version: "1.22"
 
       - name: get dependencies
@@ -69,7 +70,12 @@ jobs:
           tar xf etcd-v$ETCD_VER-linux-amd64.tar.gz
           # run etcd local cluster, startup at localhost:2379, localhost:22379, and localhost:32379
           # see more https://github.com/etcd-io/etcd/blob/master/Documentation/dev-guide/local_cluster.md
-          go install github.com/mattn/goreman@latest
+          # Pin goreman to a fixed release for reproducible CI. v0.3.15 declares
+          # `go 1.19` and pulls golang.org/x/sys v0.6.0, both of which build with
+          # the pinned toolchain above. GOTOOLCHAIN=local forbids Go from
+          # silently downloading a newer toolchain (goreman >= v0.3.19 declares
+          # `go 1.25`, which would otherwise defeat the setup-go pin).
+          GOTOOLCHAIN=local go install github.com/mattn/goreman@v0.3.15
 
       - name: script
         if: matrix.conf != 'Procfile-single-enable-mtls'
