@@ -22,7 +22,7 @@ jobs:
           - version: 3.4.0
             conf: Procfile-single-enable-mtls
 
-    runs-on: "ubuntu-20.04"
+    runs-on: "ubuntu-22.04"
     env:
       OPENRESTY_PREFIX: "/usr/local/openresty"
       AUTH_ENDPOINT_V3: "127.0.0.1:12379"
