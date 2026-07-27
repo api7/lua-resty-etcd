@@ -67,6 +67,8 @@ __DATA__
             end
         }
     }
+--- request
+GET /t
 --- response_body
 revision: 9
 events: 1
