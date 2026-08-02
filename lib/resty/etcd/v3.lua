@@ -911,11 +911,25 @@ local function request_chunk(self, method, path, opts, timeout)
             body, err = decode_json(chunk)
             if not body then
                 return nil, "failed to decode json body: " .. (err or " unknown")
-            elseif body.error and body.error.http_code >= 500 then
-                -- health_check retry should do nothing here
-                -- and let connection closed to create a new one
-                health_check.report_failure(endpoint.http_host)
-                return nil, endpoint.http_host .. ": " .. body.error.http_status
+            elseif body.error then
+                -- A watch over a gRPC stream can report an error with no HTTP status,
+                -- e.g. {"error":{"grpc_code":14,"message":"...EOF"}} on a transport /
+                -- stream error. The previous `body.error.http_code >= 500` then compared
+                -- nil with a number ("attempt to compare nil with number"), crashing the
+                -- watch coroutine, skipping cancel_watch and leaking watchers on etcd.
+                -- Parse http_code defensively; treat a missing code (transport / stream
+                -- error) or any 5xx as an endpoint failure -> report_failure and let the
+                -- connection close so a fresh one is created. Other errors (e.g. a 4xx
+                -- with an http_code) fall through to the caller as before.
+                local raw = body.error.http_code
+                local http_code = (type(raw) == "number" and raw)
+                                  or (type(raw) == "string" and tonumber(raw)) or nil
+                if http_code == nil or http_code >= 500 then
+                    health_check.report_failure(endpoint.http_host)
+                    return nil, endpoint.http_host .. ": "
+                                .. (body.error.http_status or body.error.message
+                                    or "watch stream error")
+                end
             end
 
             if body.result and body.result.events then
