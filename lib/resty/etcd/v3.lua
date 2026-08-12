@@ -31,6 +31,7 @@ local semaphore     = require("ngx.semaphore")
 local health_check  = require("resty.etcd.health_check")
 local pl_path       = require("pl.path")
 local grpc_proto    = require("resty.etcd.proto")
+local ws_client     = require("resty.websocket.client")
 math.randomseed(now() * 1000 + ngx.worker.pid())
 
 local INIT_COUNT_RESIZE = 2e8
@@ -1026,6 +1027,200 @@ local function create_watch_request(key, attr)
     }
 
     return create_request
+end
+
+
+-- WebSocket watch session.
+--
+-- etcd's JSON gateway is half-duplex over plain HTTP/1.1: Go's net/http
+-- server emits no response bytes while the request body is still open.
+-- etcd also wraps /v3/ in grpc-websocket-proxy, so a WebSocket upgrade on
+-- /v3/watch gives a full-duplex stream: one WatchRequest per text frame in,
+-- one WatchResponse per text frame out. That makes in-stream
+-- progress_request usable as a delivery barrier (apache/apisix#13777).
+
+local ws_session_mt = {}
+ws_session_mt.__index = ws_session_mt
+
+
+local function ws_decode_frame(self, frame)
+    local body, err = decode_json(frame)
+    if not body then
+        return nil, "failed to decode json body: " .. (err or " unknown")
+    end
+
+    if body.error and body.error.http_code and body.error.http_code >= 500 then
+        health_check.report_failure(self.endpoint.http_host)
+        return nil, self.endpoint.http_host .. ": "
+                    .. (body.error.http_status or body.error.http_code)
+    end
+
+    if body.result and body.result.events then
+        for _, event in ipairs(body.result.events) do
+            if event.kv.value then    -- DELETE not have value
+                event.kv.value = decode_base64(event.kv.value or "")
+                event.kv.value = self.cli.serializer.deserialize(event.kv.value)
+            end
+            event.kv.key = decode_base64(event.kv.key)
+            if event.prev_kv then
+                event.prev_kv.value = decode_base64(event.prev_kv.value or "")
+                event.prev_kv.value = self.cli.serializer.deserialize(event.prev_kv.value)
+                event.prev_kv.key = decode_base64(event.prev_kv.key)
+            end
+        end
+    end
+
+    return body
+end
+
+
+-- returns one decoded WatchResponse, or nil + "timeout"/"closed"/error
+function ws_session_mt.recv(self, timeout)
+    if self.pending then
+        local res = self.pending
+        self.pending = nil
+        return res
+    end
+
+    local ws = self.ws
+    ws:set_timeout((timeout or self.timeout) * 1000)
+
+    local buf
+    while true do
+        local data, typ, err = ws:recv_frame()
+        if not data then
+            if err and str_find(err, "timeout", 1, true) then
+                return nil, "timeout"
+            end
+            return nil, err or "closed"
+        end
+
+        if typ == "text" or typ == "binary" or typ == "continuation" then
+            if err == "again" then    -- fragmented frame, more to come
+                buf = (buf or "") .. data
+            else
+                if buf then
+                    data = buf .. data
+                    buf = nil
+                end
+                return ws_decode_frame(self, data)
+            end
+        elseif typ == "ping" then
+            ws:send_pong(data)
+        elseif typ == "close" then
+            return nil, "closed"
+        end
+        -- pong or unknown frame: keep reading
+    end
+end
+
+
+-- asks etcd how far this stream has delivered; the reply arrives via recv()
+-- as a WatchResponse with no events
+function ws_session_mt.request_progress(self)
+    local bytes, err = self.ws:send_text('{"progress_request":{}}')
+    if not bytes then
+        return nil, err
+    end
+    return true
+end
+
+
+function ws_session_mt.close(self)
+    return self.ws:close()
+end
+
+
+function _M.create_ws_watch_session(self, key, opts)
+    if self.unix_socket_proxy then
+        return nil, "websocket watch does not support unix socket proxy"
+    end
+
+    key = utils.get_real_key(self.key_prefix, key)
+
+    local attr = {
+        range_end       = get_range_end(key),
+        start_revision  = opts and opts.start_revision,
+        progress_notify = opts and opts.progress_notify,
+        filters         = opts and opts.filters,
+        prev_kv         = opts and opts.prev_kv,
+        watch_id        = opts and opts.watch_id,
+    }
+
+    local create_request = create_watch_request(key, attr)
+    create_request.key = encode_base64(key)
+    create_request.range_end = encode_base64(attr.range_end)
+
+    local endpoint, err = choose_endpoint(self)
+    if not endpoint then
+        return nil, err
+    end
+
+    local conn_opts = {}
+    if self.is_auth then
+        local _, auth_err = refresh_jwt_token(self, (opts and opts.timeout) or self.timeout)
+        if auth_err then
+            return nil, auth_err
+        end
+        -- grpc-websocket-proxy turns this subprotocol into an Authorization header
+        conn_opts.protocols = "Bearer," .. self.jwt_token
+    end
+
+    local scheme = "ws"
+    if endpoint.scheme == "https" then
+        scheme = "wss"
+        conn_opts.ssl_verify = self.ssl_verify
+        conn_opts.server_name = self.sni or endpoint.host
+        conn_opts.client_cert = self.ssl_cert
+        conn_opts.client_priv_key = self.ssl_key
+    end
+
+    local ws, new_err = ws_client:new({
+        max_payload_len = (opts and opts.max_payload_len) or 32 * 1024 * 1024,
+    })
+    if not ws then
+        return nil, new_err
+    end
+
+    local uri = scheme .. "://" .. endpoint.address .. ":" .. endpoint.port
+                .. endpoint.api_prefix .. "/watch"
+
+    local ok, conn_err = ws:connect(uri, conn_opts)
+    if not ok then
+        health_check.report_failure(endpoint.http_host)
+        return nil, endpoint.http_host .. ": " .. conn_err
+    end
+
+    local req_body, encode_err = encode_json({create_request = create_request})
+    if not req_body then
+        ws:close()
+        return nil, encode_err
+    end
+
+    local bytes, send_err = ws:send_text(req_body)
+    if not bytes then
+        ws:close()
+        return nil, send_err
+    end
+
+    local session = setmetatable({
+        cli      = self,
+        ws       = ws,
+        endpoint = endpoint,
+        timeout  = (opts and opts.timeout) or self.timeout,
+    }, ws_session_mt)
+
+    -- resty.websocket.client accepts any HTTP/1.1 status line as a handshake,
+    -- so an intermediary that stripped the Upgrade header still "connects".
+    -- Only a real WatchResponse proves the stream works; keep it for recv().
+    local first, ferr = session:recv()
+    if not first then
+        ws:close()
+        return nil, "websocket watch stream unusable: " .. (ferr or "unknown")
+    end
+    session.pending = first
+
+    return session
 end
 
 

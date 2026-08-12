@@ -12,6 +12,7 @@ API V3
     * [watchcancel](#watchcancel)
     * [readdir](#readdir)
     * [watchdir](#watchdir)
+    * [create_ws_watch_session](#create_ws_watch_session)
     * [rmdir](#rmdir)
     * [txn](#txn)
     * [version](#version)
@@ -231,6 +232,70 @@ To watch the update of directory.
 
 ```lua
 local res, err = cli:watchdir('/path/to/dir')
+```
+
+[Back to TOP](#api-v3)
+
+
+### create_ws_watch_session
+
+`syntax: session, err = cli:create_ws_watch_session(dir:string [, opts:table])`
+
+* `dir`: string value, the key prefix to watch (the range end is derived the same way as `watchdir`).
+* `opts`: optional options.
+    * `timeout`: (int) default timeout seconds for `recv` when it is called without one.
+    * `start_revision`: (int) start_revision is an optional revision to watch from (inclusive). No start_revision is "now".
+    * `progress_notify`: (bool) ask the etcd server to periodically send a WatchResponse with no events.
+    * `filters`: (slice of [enum FilterType {NOPUT = 0;NODELETE = 1;}]) filters filter the events at server side before it sends back to the watcher.
+    * `prev_kv`: (bool) If prev_kv is set, created watcher gets the previous KV before the event happens.
+    * `watch_id`: (int) If watch_id is provided and non-zero, it will be assigned to this watcher.
+    * `max_payload_len`: (int) maximal length of a single WebSocket frame accepted from etcd, defaults to 32MB.
+
+Watch a key prefix over a full-duplex WebSocket stream to etcd's JSON gateway.
+
+etcd's gateway is half-duplex over plain HTTP/1.1: the server sends no response
+bytes while the request body is still open, so a watch opened with `watchdir`
+can never write to the stream again. etcd also wraps `/v3/` in
+grpc-websocket-proxy, and a WebSocket upgrade on `/v3/watch` carries one
+WatchRequest per text frame in and one WatchResponse per text frame out. That
+makes `WatchProgressRequest` usable on a live watch: its reply proves this very
+stream already delivered every event up to the reported revision, which is safe
+to resume from after a reconnect, unlike a revision learned from a second
+connection.
+
+The returned session has three methods:
+
+* `res, err = session:recv(timeout)`: waits up to `timeout` seconds for the
+  next WatchResponse, decoded exactly like a `watchdir` response. `err` is
+  `"timeout"` when nothing arrived in time and `"closed"` when the stream is
+  gone.
+* `ok, err = session:request_progress()`: sends a `progress_request` on the
+  live stream. The reply arrives via `recv()` as a WatchResponse without
+  `events`; its `header.revision` is the delivery barrier. etcd only answers
+  once every watcher on the stream is synced, so a request sent immediately
+  after session creation may be dropped (etcd >= 3.6) and should be retried.
+* `session:close()`: closes the stream.
+
+Session creation performs the upgrade, sends the `create_request`, and waits
+for the first WatchResponse; an endpoint that cannot upgrade (for example a
+proxy that strips the `Upgrade` header) is therefore rejected here, so callers
+can fall back to `watchdir`. The consumed response is returned by the first
+`recv()` call.
+
+Note: requires the etcd server to answer progress requests (etcd >= 3.4), and
+etcd >= 3.5 for watch responses larger than 64KB (older gateways buffer
+response lines with a fixed 64KB limit).
+
+```lua
+local session, err = cli:create_ws_watch_session('/path/to/dir', {start_revision = rev})
+local res, err = session:recv(50)
+if not res and err == "timeout" then
+    session:request_progress()
+    local progress = session:recv(3)
+    if progress and not progress.result.events then
+        rev = tonumber(progress.result.header.revision) + 1
+    end
+end
 ```
 
 [Back to TOP](#api-v3)
