@@ -1101,7 +1101,6 @@ function ws_session_mt.recv(self, timeout)
             else
                 if buf then
                     data = buf .. data
-                    buf = nil
                 end
                 return ws_decode_frame(self, data)
             end
