@@ -957,3 +957,30 @@ GET /t
 choose_endpoint(): choose endpoint: http://127.0.0.1:12379
 choose_endpoint(): choose endpoint: http://127.0.0.1:22379
 choose_endpoint(): choose endpoint: http://127.0.0.1:32379
+
+
+=== TEST 23: repeated health-check initialization returns the module
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua_block {
+            local health_check = require("resty.etcd.health_check")
+            local first, first_err = health_check.init({
+                shm_name = "etcd_cluster_health_check",
+            })
+            assert(first == health_check and first_err == nil)
+
+            local second, second_err = health_check.init({
+                shm_name = "etcd_cluster_health_check",
+            })
+            assert(second == health_check and second_err == nil)
+
+            ngx.say("done")
+        }
+    }
+--- request
+GET /t
+--- response_body
+done
+--- no_error_log
+[error]

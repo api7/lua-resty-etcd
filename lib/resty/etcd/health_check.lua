@@ -163,6 +163,9 @@ function _M.init(opts)
         _M.conf = conf
         return _M, nil
     end
+
+    -- Keep the existing configuration when the health-check mode is unchanged.
+    return _M, nil
 end
 
 return _M
